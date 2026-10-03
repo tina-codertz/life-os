@@ -2,7 +2,7 @@
 
 ## Context
 
-James is building **MyLife**, a personal "life operating system" mobile app — daily dashboard, tasks, habits, focus time, and later goals, analytics, finance, journal, gamification, and mini-games. It is simultaneously a real app he will daily-drive and a deliberate long-term learning project for **React Native + Expo** (and later **NestJS + PostgreSQL**). His day job uses Flutter/Django; this project is dedicated RN/Node practice.
+Christina is building **MyLife**, a personal "life operating system" mobile app — daily dashboard, tasks, habits, focus time, and later goals, analytics, finance, journal, gamification, and mini-games. It is simultaneously a real app he will daily-drive and a deliberate long-term learning project for **React Native + Expo** (and later **NestJS + PostgreSQL**). His day job uses Flutter/Django; this project is dedicated RN/Node practice.
 
 Guiding principle (non-negotiable): **BUILD SMALL → USE IT → LEARN → EXPAND → SHIP.** Claude acts as mentor/reviewer; James writes the code — no big generated code dumps.
 
