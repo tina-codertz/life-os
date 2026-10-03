@@ -8,10 +8,14 @@ export const colors = {
 
   accentGreen: "#8FB339",
   accentRed: "#D9475F",
-
-  pastelPink: "#F2A69B",
-  pastelLavender: "#B6B3E8",
-  pastelLilac: "#E8B5D8",
-  pastelBlue: "#BFD9EE",
-  pastelGreen: "#CDE7A6",
 } as const;
+
+export const pastelColors = {
+  pastelPink: '#F2A69B',
+  pastelLavender: '#B6B3E8',
+  pastelLilac: '#E8B5D8',
+  pastelBlue: '#BFD9EE',
+  pastelGreen: '#CDE7A6',
+} as const;
+
+export type PastelKey = keyof typeof pastelColors;

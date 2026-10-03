@@ -1,11 +1,16 @@
-import { Text, View, StyleSheet } from "react-native";
-import { colors } from "@/theme"
+import { AppText } from "@/components/AppText";
+import { Screen } from "@/components/Screen";
+import { colors } from "@/theme";
+import { StyleSheet } from "react-native";
+
 export default function Index() {
   return (
-    <View style={styles.container}>
-      <Text style={styles.text}>Edit src/app/index.tsx to edit this screen.</Text>
-    </View>
-  );
+    <Screen style={styles.container}>
+      <AppText color="accentGreen">
+        Hello World
+      </AppText>
+    </Screen>
+  )
 }
 
 const styles = StyleSheet.create({
@@ -13,9 +18,6 @@ const styles = StyleSheet.create({
     flex: 1,
     alignItems: "center",
     justifyContent: "center",
-    backgroundColor: colors.bg,
-  },
-  text: {
-    color: colors.pastelGreen
+
   },
 });
