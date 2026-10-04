@@ -21,7 +21,7 @@ export function Button({
       style={(state) => [
         styles.button,
         variant === 'primary'
-          ? styles.primary
+        ? styles.primary
           : styles.ghost,
         state.pressed && styles.pressed,
         typeof style === 'function'
@@ -29,11 +29,7 @@ export function Button({
       ]}
     >
       <AppText
-        color={
-          variant === 'primary'
-            ? 'bg'
-            : 'textPrimary'
-        }
+        color="textPrimary"
       >
         {label}
       </AppText>
@@ -50,7 +46,7 @@ const styles = StyleSheet.create({
     justifyContent:"center",
   },
   primary: {
-    backgroundColor:colors.accentGreen
+    backgroundColor:colors.accentRed
 
   },
   ghost: {
