@@ -4,8 +4,6 @@ import { Pressable, StyleSheet, View } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 
 
-
-
 export default function TabLayout() {
 
   return (
