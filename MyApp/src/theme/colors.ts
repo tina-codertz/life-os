@@ -15,3 +15,6 @@ export const colors = {
   pastelBlue: "#BFD9EE",
   pastelGreen: "#CDE7A6",
 } as const;
+
+export type ColorKey = keyof typeof colors;
+export type PastelKey = Extract<ColorKey, `pastel${string}`>;

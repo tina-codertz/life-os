@@ -1,5 +1,3 @@
-import { LinkMenu } from "expo-router/build/link/elements";
-
 export const typography = {
   title: {
     fontSize: 24,
