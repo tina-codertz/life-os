@@ -40,6 +40,7 @@
 | 013 | UUIDv7 primary keys | Confirmed |
 | 014 | Habit reminders as local notifications in MVP | Confirmed |
 | 015 | Email verification not required to start using the app | **Confirmed** |
+| 016 | Commit directly to `main`; no branch protection or PRs for now | **Confirmed** |
 
 ---
 
@@ -122,3 +123,9 @@
 - **Status:** Confirmed · 2026-11-04
 - **Decision:** `expo-notifications` schedules repeating local notifications from `Habit.reminderTimes`, re-synced when habits change and on app start.
 - **Consequences:** Reminders still fire offline. Reminders don't sync to a second device until the app opens there. Server push is deferred to v1.2 (needed for budget alerts and challenges).
+
+### ADR-016 — Commit directly to `main`, no branch protection or PRs (for now)
+- **Status:** Confirmed · 2026-11-04
+- **Context:** Solo developer. The project owner chose to skip branch protection and the PR workflow in step 3.1.
+- **Decision:** Commit and push straight to `main`. CI (step 3.9) still runs on every push but doesn't block anything.
+- **Consequences:** Faster, but a broken commit can land on `main`, and CI only reports it afterwards. Production deploys are triggered by tags, not pushes, so a broken `main` doesn't reach users. Revisit before the first external contributor or before the v1.0 release.

@@ -1,0 +1,11 @@
+{
+  "name": "life-os",
+  "private": true,
+  "workspaces": ["apps/*", "packages/*"],
+  "scripts": {
+    "typecheck": "bun run --filter '*' typecheck"
+  },
+  "devDependencies": {
+    "typescript": "~5.9.0"
+  }
+}
