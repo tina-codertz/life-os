@@ -44,9 +44,9 @@ flowchart LR
 ```text
 life-os/
 ├── apps/
-│   ├── mobile/                    # Expo app
-│   │   ├── app/                   # Expo Router routes ONLY (thin screens)
+│   ├── mobile/                    # Expo app (SDK 58 default template layout)
 │   │   ├── src/
+│   │   │   ├── app/               # Expo Router routes ONLY (thin screens)
 │   │   │   ├── features/          # Feature slices: tasks/, habits/, goals/, calendar/, today/, auth/, settings/
 │   │   │   │   └── tasks/
 │   │   │   │       ├── api.ts         # fetch functions (uses services/http)
@@ -101,7 +101,7 @@ life-os/
 ```
 
 **Changes from the brief's proposal and why:**
-- `app/` holds routes only, and logic lives in `src/features`. Screens stay thin and features stay testable without the router.
+- `src/app/` holds routes only (Expo's default location since SDK 55+), and logic lives in `src/features`. Screens stay thin and features stay testable without the router.
 - Added `today/` (aggregation) and `notifications/` modules. Renamed `schedules` → `calendar` to match the product language.
 - Added `config/` and `prisma/` at the API root because they are infrastructure, not features.
 - `packages/shared` holds **Zod schemas** used by the mobile forms *and* the API validation pipe. One definition means the mobile and API validation can't drift apart.

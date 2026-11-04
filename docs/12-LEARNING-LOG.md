@@ -96,3 +96,15 @@ For every feature, follow the cycle from the brief:
 ### 2026-11-04 — Phase 0 & 1 approved
 **Decisions:** 10–15 h/week (MVP ≈ 30 calendar weeks), keep "Life OS" name, email verification via banner, all Proposed ADRs confirmed except ADR-012.
 **Next:** Phase 3, project setup (block 3).
+
+### 2026-11-04 — 3.1 Git + 3.2 Bun workspaces
+**Explain it in my own words:**
+- *Workspace:* a way of connecting multiple projects that belong to the same product. (Note: Bun links the local folder, `node_modules/@life-os/shared → packages/shared`, instead of downloading anything, so a change in `shared` is seen immediately by both apps.)
+- *`as const`:* preserves literal values without widening them into general types. `Priority` is `'NONE' | 'LOW' | … | 'URGENT'` instead of `string`.
+- *`noUncheckedIndexedAccess`:* makes TypeScript acknowledge that accessing an array index doesn't guarantee an element exists. `tasks[0]` is `Task | undefined`, so you must check before using it.
+**Decision:** skipped branch protection and PRs (ADR-016).
+
+### 2026-11-04 — 3.3 Expo app
+**What was built:** `apps/mobile` from the SDK 58 default template, stripped to a single screen that imports `PRIORITIES` from `@life-os/shared`. Routes live in `src/app/`. App renamed to Life OS, scheme `lifeos`, dark splash.
+**Checked:** typecheck passes, `expo-doctor` 20/20, an iOS production bundle builds and includes the shared constants.
+**To learn:** what Metro is, what Expo Router's `_layout.tsx` does, Expo Go vs a development build.

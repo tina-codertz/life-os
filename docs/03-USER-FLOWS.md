@@ -14,7 +14,7 @@
 **Proposed:** 4 primary tabs + "More". Calendar is a tab because it is a daily-use view. Goals, Finance, Stats and Settings live under *More* until usage data says otherwise.
 
 ```text
-apps/mobile/app/
+apps/mobile/src/app/
 ├── _layout.tsx                 # Root: providers (Theme, QueryClient, Auth gate)
 ├── index.tsx                   # Redirects based on auth + onboarding state
 ├── (auth)/
@@ -71,7 +71,7 @@ flowchart TD
   More --> Goals & Settings & Finance["Finance (v1.1)"] & Stats["Stats (v2)"]
 ```
 
-**Auth gate rule:** the gate lives in `app/(app)/_layout.tsx`. It reads auth status from the Zustand auth store and redirects with `<Redirect href="/(auth)/welcome" />`. Screens never check auth themselves.
+**Auth gate rule:** the gate lives in `src/app/(app)/_layout.tsx`. It reads auth status from the Zustand auth store and redirects with `<Redirect href="/(auth)/welcome" />`. Screens never check auth themselves.
 
 ## 2. Screen inventory
 
