@@ -12,7 +12,7 @@ A personal life management app that brings tasks, habits, goals, calendar and (l
 | State / data | TanStack Query (server state) · Zustand (client state) |
 | Forms | React Hook Form · Zod (schemas shared with the API) |
 | Backend | NestJS (modular monolith) · REST · Swagger/OpenAPI |
-| Database | PostgreSQL 16 · Prisma |
+| Database | PostgreSQL 18 · Prisma |
 | Tooling | Bun workspaces (package manager) · Node LTS runtime · Git/GitHub · GitHub Actions |
 | Hosting | Self-hosted VPS · Docker Compose · Caddy · EAS Build for mobile |
 | Testing | Jest · React Native Testing Library · Supertest · Maestro |

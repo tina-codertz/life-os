@@ -28,7 +28,7 @@ flowchart TB
   subgraph VPS["VPS (Ubuntu LTS, 2 vCPU / 4 GB RAM / 80 GB SSD)"]
     direction TB
     Caddy[Caddy<br/>auto TLS · HSTS · gzip] --> API1[api container<br/>Node LTS · NestJS]
-    API1 --> PG[(postgres:16<br/>volume: pgdata)]
+    API1 --> PG[(postgres:18<br/>volume: pgdata)]
     Backup[backup container<br/>cron pg_dump + age encrypt] --> PG
     Migrate[migrate one-off<br/>prisma migrate deploy] --> PG
   end
@@ -54,8 +54,8 @@ services:
     healthcheck: { test: ["CMD", "wget", "-qO-", "http://localhost:3000/api/v1/health"], interval: 30s }
     restart: unless-stopped
   postgres:
-    image: postgres:16
-    volumes: [pgdata:/var/lib/postgresql/data]
+    image: postgres:18
+    volumes: [pgdata:/var/lib/postgresql]   # Postgres 18+ path
     environment: { POSTGRES_DB: lifeos_prod, POSTGRES_USER: lifeos, POSTGRES_PASSWORD_FILE: /run/secrets/pg_password }
     restart: unless-stopped        # no ports exposed
   backup:

@@ -1,9 +1,16 @@
 {
   "name": "life-os",
   "private": true,
-  "workspaces": ["apps/*", "packages/*"],
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
   "scripts": {
-    "typecheck": "bun run --filter '*' typecheck"
+    "typecheck": "bun run --filter '*' typecheck",
+    "db:up": "docker compose up -d --wait postgres",
+    "db:down": "docker compose down",
+    "db:psql": "docker compose exec postgres psql -U lifeos -d lifeos_dev",
+    "db:reset": "docker compose down -v && docker compose up -d --wait postgres"
   },
   "devDependencies": {
     "typescript": "~6.0.3"

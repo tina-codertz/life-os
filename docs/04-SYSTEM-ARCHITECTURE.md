@@ -24,7 +24,7 @@ flowchart LR
   subgraph VPS[Self-hosted VPS · Docker Compose]
     Caddy[Caddy<br/>TLS · reverse proxy]
     API[NestJS API<br/>modular monolith]
-    PG[(PostgreSQL 16)]
+    PG[(PostgreSQL 18)]
     Caddy --> API --> PG
   end
 

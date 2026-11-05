@@ -62,7 +62,7 @@
 ### ADR-003 — PostgreSQL + Prisma
 - **Status:** Confirmed · 2026-11-03
 - **Context:** Relational data with strong integrity needs (ownership, uniqueness, money).
-- **Decision:** PostgreSQL 16 with Prisma ORM and Prisma Migrate. Raw SQL migrations for CHECK constraints and partial indexes.
+- **Decision:** PostgreSQL 18 with Prisma ORM and Prisma Migrate. Raw SQL migrations for CHECK constraints and partial indexes.
 - **Alternatives:** Drizzle (closer to SQL, good for learning SQL) or TypeORM (decorator-heavy, weaker types).
 - **Consequences:** Prisma hides SQL, so the learning plan includes writing the equivalent SQL by hand and reading `EXPLAIN` output.
 

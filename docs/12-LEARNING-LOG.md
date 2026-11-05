@@ -112,3 +112,16 @@ For every feature, follow the cycle from the brief:
 - *Metro:* bundles the JavaScript code so React Native can execute it. (Also: it resolves imports, including workspace links like `@life-os/shared`, compiles TS/JSX, and serves the bundle to the phone with Fast Refresh.)
 - *`_layout.tsx`:* the navigation manager for a group of screens. (Refinement: the folder structure decides *which* routes exist; `_layout.tsx` decides *how* they're presented, e.g. Stack vs Tabs, plus any shared wrapper or providers.)
 - *Expo Go vs development build:* Expo Go is a prebuilt app that runs your project without building your own first; a development build is your own custom dev version of the app. (Key limit: Expo Go only includes the native modules Expo ships, so any library with custom native code needs a development build.)
+
+### 2026-11-05 — 3.4 NestJS API
+**Explain it in my own words:**
+- *Module:* a way of organizing related parts of the backend (e.g. everything about tasks lives in `TasksModule`).
+- *Controller:* handles the HTTP requests and decides what response goes back to the client.
+- *Decorator:* a TypeScript feature that adds metadata to, or changes how Nest treats, a class, method or property (`@Controller('health')`, `@Get()`).
+- *Why `HealthController` has no service:* it only returns static data, with no computation or database work, so a service would add complexity for nothing. (Follow-up: in 3.6 it pings the database, and *then* it gets `PrismaService` injected. That's the moment DI earns its place.)
+- *Why `configureApp()` is separate:* it centralizes shared app configuration (global prefix now; CORS and validation pipes later), so the production bootstrap and the e2e tests use the same setup and the tests exercise the real configuration.
+
+### 2026-11-05 — 3.5 PostgreSQL in Docker
+**What was built:** `docker-compose.yml` running Postgres 18 (localhost-only port, named volume, healthcheck), an init script that creates `lifeos_test`, `.env.example`, and `bun run db:up | db:down | db:psql | db:reset`.
+**Checked:** container healthy; `lifeos_dev` + `lifeos_test` exist; server timezone is UTC; data survives a restart.
+**To learn:** image vs container vs volume; why the port is bound to `127.0.0.1`; what `db:reset` (`down -v`) destroys.
