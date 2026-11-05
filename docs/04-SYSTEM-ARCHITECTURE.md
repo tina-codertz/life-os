@@ -62,7 +62,7 @@ life-os/
 │   │   ├── assets/
 │   │   └── app.config.ts
 │   │
-│   └── api/                       # NestJS app
+│   └── api/                       # NestJS 12 app (ESM, Vitest, oxlint)
 │       ├── src/
 │       │   ├── main.ts
 │       │   ├── app.module.ts
@@ -109,6 +109,7 @@ life-os/
 ### Shared package boundaries
 - ✅ Zod schemas, enums (`Priority`, `HabitFrequency`), pure date helpers (`toLocalDate(tz)`), API response types.
 - ❌ No React, no NestJS, no Prisma imports. It must stay runtime-agnostic.
+- ⚠️ **No build step:** the API runs `shared`'s `.ts` source directly via Node's built-in type stripping, and Metro compiles it for mobile. So `shared` may only use *erasable* TypeScript: no `enum`, `namespace` or constructor parameter properties (use `as const` arrays + union types instead), and relative imports include the `.ts` extension. `erasableSyntaxOnly` in `packages/shared/tsconfig.json` enforces this.
 
 ## 3. Backend architecture (NestJS)
 

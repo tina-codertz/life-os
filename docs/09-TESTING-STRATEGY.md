@@ -25,7 +25,7 @@ flowchart TB
 ## 2. Layers
 
 ### 2.1 Unit tests (API + shared)
-- **Tool:** Jest (`ts-jest` or `@swc/jest`).
+- **Tool:** Vitest (the NestJS 12 default; same `describe`/`it`/`expect` API as Jest). See ADR-017.
 - **Targets:** pure functions extracted from services:
   - `computeStreak(schedules, completions, today, tz)`
   - `nextOccurrence(rule, fromDate)`
@@ -49,7 +49,7 @@ flowchart TB
 - `Test.createTestingModule` with a mocked `PrismaService` **only** for orchestration logic (e.g. "emits `habit.completed`"). Prefer the integration tests below for anything touching queries.
 
 ### 2.3 API integration / e2e tests
-- **Tool:** Jest + Supertest against a real Nest app (`app.init()`) and **real PostgreSQL** (Docker service in CI). Each test file gets a fresh schema (`prisma migrate reset` or one schema per worker).
+- **Tool:** Vitest + Supertest against a real Nest app (`app.init()`) and **real PostgreSQL** (Docker service in CI). Each test file gets a fresh schema (`prisma migrate reset` or one schema per worker).
 - **Coverage requirement:** every endpoint has at least one happy path, one validation failure, one auth failure (no token → 401), and one **cross-user** test (user B gets 404 for user A's resource).
 - Factories (`test/factories.ts`) create users/tasks/habits. No shared global fixtures.
 

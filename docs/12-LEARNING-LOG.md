@@ -108,3 +108,7 @@ For every feature, follow the cycle from the brief:
 **What was built:** `apps/mobile` from the SDK 58 default template, stripped to a single screen that imports `PRIORITIES` from `@life-os/shared`. Routes live in `src/app/`. App renamed to Life OS, scheme `lifeos`, dark splash.
 **Checked:** typecheck passes, `expo-doctor` 20/20, an iOS production bundle builds and includes the shared constants.
 **To learn:** what Metro is, what Expo Router's `_layout.tsx` does, Expo Go vs a development build.
+**Explain it in my own words (Expo basics):**
+- *Metro:* bundles the JavaScript code so React Native can execute it. (Also: it resolves imports, including workspace links like `@life-os/shared`, compiles TS/JSX, and serves the bundle to the phone with Fast Refresh.)
+- *`_layout.tsx`:* the navigation manager for a group of screens. (Refinement: the folder structure decides *which* routes exist; `_layout.tsx` decides *how* they're presented, e.g. Stack vs Tabs, plus any shared wrapper or providers.)
+- *Expo Go vs development build:* Expo Go is a prebuilt app that runs your project without building your own first; a development build is your own custom dev version of the app. (Key limit: Expo Go only includes the native modules Expo ships, so any library with custom native code needs a development build.)

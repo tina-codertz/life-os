@@ -41,6 +41,7 @@
 | 014 | Habit reminders as local notifications in MVP | Confirmed |
 | 015 | Email verification not required to start using the app | **Confirmed** |
 | 016 | Commit directly to `main`; no branch protection or PRs for now | **Confirmed** |
+| 017 | API uses NestJS 12 defaults: ESM, Vitest, oxlint; `shared` has no build step | Proposed |
 
 ---
 
@@ -129,3 +130,10 @@
 - **Context:** Solo developer. The project owner chose to skip branch protection and the PR workflow in step 3.1.
 - **Decision:** Commit and push straight to `main`. CI (step 3.9) still runs on every push but doesn't block anything.
 - **Consequences:** Faster, but a broken commit can land on `main`, and CI only reports it afterwards. Production deploys are triggered by tags, not pushes, so a broken `main` doesn't reach users. Revisit before the first external contributor or before the v1.0 release.
+
+### ADR-017 — API uses NestJS 12 defaults (ESM, Vitest, oxlint); `shared` has no build step
+- **Status:** Proposed · 2026-11-05
+- **Context:** The brief listed Jest. NestJS 12's scaffold ships ESM output, Vitest and oxlint.
+- **Decision:** Keep the scaffold defaults for `apps/api`. Mobile keeps Jest (`jest-expo`), which is what React Native Testing Library is built around. `packages/shared` is consumed as TypeScript source: Node 26 strips types at runtime for the API, and Metro compiles it for mobile.
+- **Alternatives:** Swap the API to Jest (more config, fights the framework default); build `shared` with `tsc` to `dist/` (an extra watch process and build ordering).
+- **Consequences:** Two test runners with near-identical APIs. `shared` is limited to erasable TypeScript (enforced by `erasableSyntaxOnly`). The API Docker image must include `packages/shared` source (Phase 11).
