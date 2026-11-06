@@ -142,3 +142,17 @@ For every feature, follow the cycle from the brief:
 3. `exactOptionalPropertyTypes` caught `url: string | undefined` in `prisma.config.ts`. The strict setting did its job.
 **Checked:** typecheck, lint, unit (ok + 503 cases), e2e against `lifeos_test`, and the built server returning 200 → 503 (DB stopped) → 200 (DB back, with no API restart).
 **To learn:** read the migration SQL and match each line to `schema.prisma`; what a connection pool is; why `PrismaModule` is `@Global()`.
+**Your answers:**
+- *Connection pool:* a collection of reusable database connections maintained by the application. (Refinement: opening a Postgres connection is slow, with a TCP handshake, authentication and a new server process, so the pool keeps a few open and lends one to each query. That's also why `PrismaService` must be a single shared instance: one pool per app, not one per request.)
+- *Why `@Global()`:* the providers a global module exports can be injected anywhere without importing `PrismaModule` in every feature module. (Refinement: use it sparingly, only for truly app-wide infrastructure like the DB and config. A feature module like `TasksModule` should still be imported explicitly, so dependencies stay visible.)
+- *Why 503, not 500:* 503 means the service is temporarily unable to handle requests, often because a dependency is unavailable. (Refinement: 500 says "the code is broken", while 503 says "try again later". Load balancers, Docker healthchecks and uptime monitors treat 503 as "take out of rotation / alert", which is exactly right when the DB is down.)
+
+### 2026-11-06 — 3.7 Env config with Zod
+**What was built:** `src/config/env.ts`, one Zod schema for every env var the API reads (`NODE_ENV`, `PORT`, `DATABASE_URL`). A global `ConfigModule` validates `process.env` once at startup and provides the typed result under the `ENV` token. `PrismaService` and `main.ts` read from it instead of `process.env`.
+**Concepts:**
+- *Fail fast:* a bad config should stop the app at startup with a clear message, not crash on the first request an hour later.
+- *12-factor config:* config lives in the environment, not in code. Locally it comes from the `.env` file; in production, from the real environment.
+- *Parse, don't validate:* `parseEnv` returns a **typed** object. `PORT` arrives as the string `"4000"` and leaves as the number `4000`, so the rest of the code never re-checks it.
+- *Secret-safe errors:* the message names the variable and the rule it broke, never its value.
+**Checked:** 13 unit tests (defaults, coercion, missing/invalid URL, non-Postgres URL, bad ports, unknown NODE_ENV, all errors listed at once, no value leaked). Also tested the built server: a bad config gives exit code 1, both problems listed, and the secret never printed; a good config gives `/health` 200.
+**To learn:** why `PORT=3000.5` and `PORT=abc` fail but `PORT=4000` passes (look at `z.coerce`); why `process.loadEnvFile` doesn't overwrite a variable that is already set (try `PORT=4000 bun run start:dev`); and why is reading `process.env` directly in a service worse than injecting `ENV`? (Hint: think about tests.)

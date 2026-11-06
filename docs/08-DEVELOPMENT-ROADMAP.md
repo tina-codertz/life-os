@@ -187,7 +187,7 @@ Each module is built **end-to-end** (DB → API → tests → mobile → device 
 | M0 Discovery approved | Done | 2026-11-03 | 2026-11-04 | All docs reviewed; open questions resolved |
 | M1 Architecture approved | Done | 2026-11-03 | 2026-11-04 | Docs 04–06 approved; ADR-012 left open until Phase 4 |
 | M2 Design system v1 | Not started | | | |
-| M3 Repo + tooling | In progress | 2026-11-04 | | 3.1–3.6 done; 3.7 env config next |
+| M3 Repo + tooling | In progress | 2026-11-04 | | 3.1–3.7 done; 3.8 lint/format tooling next |
 | M4 Backend foundation | Not started | | | |
 | M5 Mobile foundation | Not started | | | |
 | M6a Tasks | Not started | | | |
