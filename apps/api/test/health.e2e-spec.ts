@@ -22,11 +22,11 @@ describe('GET /api/v1/health (e2e)', () => {
     await app.close();
   });
 
-  it('returns 200 with status ok', () => {
+  it('returns 200 when the database is reachable', () => {
     return request(app.getHttpServer())
       .get('/api/v1/health')
       .expect(200)
-      .expect({ status: 'ok' });
+      .expect({ status: 'ok', db: 'ok' });
   });
 
   it('is not served without the version prefix', () => {

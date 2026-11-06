@@ -65,6 +65,7 @@
 - **Decision:** PostgreSQL 18 with Prisma ORM and Prisma Migrate. Raw SQL migrations for CHECK constraints and partial indexes.
 - **Alternatives:** Drizzle (closer to SQL, good for learning SQL) or TypeORM (decorator-heavy, weaker types).
 - **Consequences:** Prisma hides SQL, so the learning plan includes writing the equivalent SQL by hand and reading `EXPLAIN` output.
+- **Version (2026-11-06):** **Prisma 7.10.1, pinned exactly.** npm's `latest` tag points at Prisma 8 *release candidates* (new "contract" API, little documentation). We stay on stable 7.x and revisit once 8.0 is final. Prisma 7 specifics: the `pg` driver adapter (`@prisma/adapter-pg`); the generated client lives in `apps/api/src/generated/prisma` (git-ignored, rebuilt by `postinstall`); `migrate dev` no longer runs `generate`, so run `bun run prisma:generate` after schema changes; the DB URL lives in `prisma.config.ts`, not in the schema.
 
 ### ADR-004 — JWT access + rotating opaque refresh tokens
 - **Status:** Confirmed · 2026-11-04

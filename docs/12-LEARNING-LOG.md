@@ -125,3 +125,20 @@ For every feature, follow the cycle from the brief:
 **What was built:** `docker-compose.yml` running Postgres 18 (localhost-only port, named volume, healthcheck), an init script that creates `lifeos_test`, `.env.example`, and `bun run db:up | db:down | db:psql | db:reset`.
 **Checked:** container healthy; `lifeos_dev` + `lifeos_test` exist; server timezone is UTC; data survives a restart.
 **To learn:** image vs container vs volume; why the port is bound to `127.0.0.1`; what `db:reset` (`down -v`) destroys.
+**Explain it in my own words (Docker):**
+- *Image:* the packaged blueprint containing everything needed to create a container.
+- *Container:* the running instance created from an image.
+- *Volume:* persistent storage used by containers. It survives the container being removed.
+- *Why the port is bound to `127.0.0.1`:* so the dev database isn't publicly accessible. (Refinement: 5432 is just Postgres's default port. What restricts access is the `127.0.0.1:` part, which means only programs on this Mac can connect, not other devices on the same Wi-Fi.)
+- *What `db:reset` deletes:* (Refinement: `docker compose down -v` deletes the **volume**, which means all data in both `lifeos_dev` and `lifeos_test`. The fresh container then re-runs `init.sql`. Only use it when you're happy to lose local data.)
+
+**3.3 confirmed:** the app runs in the iOS Simulator (iPhone 17).
+
+### 2026-11-06 — 3.6 Prisma + first migration
+**What was built:** Prisma 7.10.1 (stable) with `User` + `UserSettings` from docs/05; first migration `init_users`; a global `PrismaModule`/`PrismaService` (pg driver adapter); `/api/v1/health` now pings the DB and returns **503** when it's down.
+**Bugs & diagnosis:**
+1. `prisma@latest` installed **Prisma 8 RC**, which explains why there was no `schema.prisma` (Prisma 8 calls it `contract.prisma`). Lesson: check `npm view <pkg> dist-tags` before installing; `latest` isn't always stable.
+2. `P1000 Authentication failed`, even though the password worked inside the container. Cause: a **native PostgreSQL 18 app** was also listening on port 5432, so connections from the Mac reached it instead of Docker. Fix: Docker Postgres now uses host port **5433**. Diagnosis trick: test the same credentials inside the container (worked) vs from the host (failed), which means "wrong server", not "wrong password".
+3. `exactOptionalPropertyTypes` caught `url: string | undefined` in `prisma.config.ts`. The strict setting did its job.
+**Checked:** typecheck, lint, unit (ok + 503 cases), e2e against `lifeos_test`, and the built server returning 200 → 503 (DB stopped) → 200 (DB back, with no API restart).
+**To learn:** read the migration SQL and match each line to `schema.prisma`; what a connection pool is; why `PrismaModule` is `@Global()`.

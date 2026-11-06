@@ -9,7 +9,8 @@ services:
       POSTGRES_DB: ${POSTGRES_DB:-lifeos_dev}
       TZ: UTC
     ports:
-      - '127.0.0.1:5432:5432' # localhost only, never exposed to the network
+      # localhost only. Host port 5433 avoids clashing with a natively installed Postgres on 5432.
+      - '127.0.0.1:${POSTGRES_PORT:-5433}:5432'
     volumes:
       - pgdata:/var/lib/postgresql # Postgres 18+ mounts the parent of the data dir
       - ./docker/postgres/init.sql:/docker-entrypoint-initdb.d/init.sql:ro

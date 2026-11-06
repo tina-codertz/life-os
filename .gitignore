@@ -30,3 +30,6 @@ android/
 # logs
 *.log
 *.tsbuildinfo
+
+# Prisma generated client
+apps/api/src/generated/

@@ -1,0 +1,54 @@
+// Life OS database schema. Design and reasoning: docs/05-DATABASE-DESIGN.md
+
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+// ───────────── Identity ─────────────
+
+model User {
+  id                    String    @id @default(uuid(7)) @db.Uuid
+  email                 String    @unique // stored lowercased (service-enforced)
+  passwordHash          String
+  displayName           String    @db.VarChar(80)
+  emailVerifiedAt       DateTime? @db.Timestamptz(3)
+  onboardingCompletedAt DateTime? @db.Timestamptz(3)
+  role                  Role      @default(USER)
+  createdAt             DateTime  @default(now()) @db.Timestamptz(3)
+  updatedAt             DateTime  @updatedAt @db.Timestamptz(3)
+  deletedAt             DateTime? @db.Timestamptz(3) // scheduled for purge
+
+  settings UserSettings?
+}
+
+enum Role {
+  USER
+  ADMIN
+}
+
+model UserSettings {
+  userId               String   @id @db.Uuid
+  timezone             String   @default("UTC") // IANA, e.g. "Africa/Dar_es_Salaam"
+  followDeviceTimezone Boolean  @default(true)
+  weekStartsOn         Int      @default(1) @db.SmallInt // 0=Sun … 6=Sat
+  theme                Theme    @default(SYSTEM)
+  currency             String   @default("TZS") @db.Char(3) // v1.1
+  habitRemindersOn     Boolean  @default(true)
+  eventReminderDefault Int?     @db.SmallInt // minutes before
+  crashReportsOn       Boolean  @default(true)
+  aiEnabled            Boolean  @default(false) // v2
+  updatedAt            DateTime @updatedAt @db.Timestamptz(3)
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+enum Theme {
+  SYSTEM
+  DARK
+  LIGHT
+}

@@ -10,7 +10,9 @@
     "db:up": "docker compose up -d --wait postgres",
     "db:down": "docker compose down",
     "db:psql": "docker compose exec postgres psql -U lifeos -d lifeos_dev",
-    "db:reset": "docker compose down -v && docker compose up -d --wait postgres"
+    "db:reset": "docker compose down -v && docker compose up -d --wait postgres",
+    "db:migrate": "bun run --filter @life-os/api prisma:migrate",
+    "db:studio": "bun run --filter @life-os/api prisma:studio"
   },
   "devDependencies": {
     "typescript": "~6.0.3"
