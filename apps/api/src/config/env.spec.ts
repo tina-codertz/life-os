@@ -36,7 +36,9 @@ describe('parseEnv', () => {
   });
 
   it('lists every problem at once', () => {
-    expect(() => parseEnv({ PORT: 'abc' })).toThrow(/PORT[\s\S]*DATABASE_URL|DATABASE_URL[\s\S]*PORT/);
+    expect(() => parseEnv({ PORT: 'abc' })).toThrow(
+      /PORT[\s\S]*DATABASE_URL|DATABASE_URL[\s\S]*PORT/,
+    );
   });
 
   it('never includes variable values in the error', () => {

@@ -18,8 +18,12 @@ export const ENV = Symbol('ENV');
 export function parseEnv(raw: Record<string, string | undefined>): Env {
   const result = envSchema.safeParse(raw);
   if (!result.success) {
-    const problems = result.error.issues.map((issue) => `  - ${issue.path.join('.')}: ${issue.message}`);
-    throw new Error(`Invalid environment configuration:\n${problems.join('\n')}\nSee .env.example at the repo root.`);
+    const problems = result.error.issues.map(
+      (issue) => `  - ${issue.path.join('.')}: ${issue.message}`,
+    );
+    throw new Error(
+      `Invalid environment configuration:\n${problems.join('\n')}\nSee .env.example at the repo root.`,
+    );
   }
   return result.data;
 }

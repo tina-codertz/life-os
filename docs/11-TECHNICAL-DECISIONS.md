@@ -4,7 +4,7 @@
 |---|---|
 | **Purpose** | Records *why* decisions were made, with alternatives and trade-offs |
 | **Status** | Living document |
-| **Last updated** | 2026-11-03 |
+| **Last updated** | 2026-11-07 |
 
 **Status values:** `Confirmed` (agreed by the project owner) · `Proposed` (recommended, awaiting review) · `Superseded`.
 
@@ -42,6 +42,7 @@
 | 015 | Email verification not required to start using the app | **Confirmed** |
 | 016 | Commit directly to `main`; no branch protection or PRs for now | **Confirmed** |
 | 017 | API uses NestJS 12 defaults: ESM, Vitest, oxlint; `shared` has no build step | Proposed |
+| 018 | One repo-wide oxlint + Prettier setup (not ESLint); Husky + lint-staged pre-commit | Proposed |
 
 ---
 
@@ -138,3 +139,10 @@
 - **Decision:** Keep the scaffold defaults for `apps/api`. Mobile keeps Jest (`jest-expo`), which is what React Native Testing Library is built around. `packages/shared` is consumed as TypeScript source: Node 26 strips types at runtime for the API, and Metro compiles it for mobile.
 - **Alternatives:** Swap the API to Jest (more config, fights the framework default); build `shared` with `tsc` to `dist/` (an extra watch process and build ordering).
 - **Consequences:** Two test runners with near-identical APIs. `shared` is limited to erasable TypeScript (enforced by `erasableSyntaxOnly`). The API Docker image must include `packages/shared` source (Phase 11).
+
+### ADR-018 — One repo-wide oxlint + Prettier setup; Husky + lint-staged pre-commit
+- **Status:** Proposed · 2026-11-07
+- **Context:** The roadmap (task 3.8) said ESLint. The API already used oxlint (ADR-017), while mobile had Expo's `expo lint` (ESLint + `eslint-config-expo`) configured but never installed. Two linters means two configs, two rule vocabularies and slower CI.
+- **Decision:** One root `.oxlintrc.json` lints every workspace, run type-aware (`oxlint --type-aware`) so rules like `no-floating-promises` work. Per-folder `overrides`: Node env for the API; `react` + `jsx-a11y` plugins with `rules-of-hooks` as an error for mobile; Vitest globals for tests. Warnings fail the run (`--deny-warnings`). One root `.prettierrc` (single quotes, trailing commas, 100 columns). Markdown is excluded because docs are hand-formatted. The mobile `tsconfig` now also extends `tsconfig.base.json`, so every package gets the same strict flags. Husky runs `lint-staged` on commit: lint + format only the staged files.
+- **Alternatives:** ESLint everywhere (largest plugin ecosystem, Expo's default, but much slower and more config); ESLint for mobile + oxlint for the API (two setups); Biome (linter + formatter in one, but weaker type-aware rules).
+- **Consequences:** Fast linting (the whole repo in well under a second). Some niche ESLint-only rules (e.g. Expo-specific ones) aren't available. If one is ever needed, oxlint can run alongside ESLint with `eslint-plugin-oxlint` turning off the duplicated rules. Typecheck isn't in the hook (too slow per commit), so CI (3.9) catches type errors.

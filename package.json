@@ -12,9 +12,27 @@
     "db:psql": "docker compose exec postgres psql -U lifeos -d lifeos_dev",
     "db:reset": "docker compose down -v && docker compose up -d --wait postgres",
     "db:migrate": "bun run --filter @life-os/api prisma:migrate",
-    "db:studio": "bun run --filter @life-os/api prisma:studio"
+    "db:studio": "bun run --filter @life-os/api prisma:studio",
+    "lint": "oxlint --type-aware --deny-warnings",
+    "lint:fix": "oxlint --type-aware --fix",
+    "format": "prettier --write .",
+    "format:check": "prettier --check .",
+    "check": "bun run lint && bun run format:check && bun run typecheck",
+    "prepare": "husky"
   },
   "devDependencies": {
+    "husky": "^9.1.7",
+    "lint-staged": "^17.6.0",
+    "oxlint": "^1.92.0",
+    "oxlint-tsgolint": "^7.0.2006",
+    "prettier": "^3.9.10",
     "typescript": "~6.0.3"
+  },
+  "lint-staged": {
+    "*.{ts,tsx,js,mjs,cjs}": [
+      "oxlint --type-aware --fix --deny-warnings",
+      "prettier --write"
+    ],
+    "*.{json,yml,yaml}": "prettier --write"
   }
 }

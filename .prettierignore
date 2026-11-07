@@ -1,0 +1,12 @@
+# Generated or vendored
+**/generated/
+**/dist/
+**/.expo/
+**/node_modules/
+bun.lock
+apps/api/prisma/migrations/
+apps/mobile/expo-env.d.ts
+apps/mobile/assets/
+
+# Docs are hand-formatted (wide Markdown tables); Prettier would rewrap them
+*.md

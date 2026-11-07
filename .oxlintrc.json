@@ -1,0 +1,51 @@
+{
+  "$schema": "./node_modules/oxlint/configuration_schema.json",
+  "plugins": ["typescript", "unicorn", "oxc", "import"],
+  "categories": {
+    "correctness": "error",
+    "suspicious": "warn"
+  },
+  "rules": {
+    "typescript/no-floating-promises": "error",
+    "import/no-cycle": "error",
+    "typescript/no-extraneous-class": [
+      "warn",
+      {
+        "allowWithDecorator": true
+      }
+    ]
+  },
+  "ignorePatterns": ["**/generated/**", "**/dist/**", "**/.expo/**", "**/node_modules/**"],
+  "overrides": [
+    {
+      "files": ["apps/api/**"],
+      "env": {
+        "node": true
+      }
+    },
+    {
+      "files": ["apps/mobile/**"],
+      "plugins": ["react", "jsx-a11y"],
+      "env": {
+        "browser": true
+      },
+      "rules": {
+        "react/rules-of-hooks": "error",
+        "react/exhaustive-deps": "warn",
+        "react/react-in-jsx-scope": "off",
+        "react/style-prop-object": [
+          "warn",
+          {
+            "allow": ["StatusBar"]
+          }
+        ]
+      }
+    },
+    {
+      "files": ["**/*.spec.ts", "**/*.e2e-spec.ts"],
+      "env": {
+        "vitest": true
+      }
+    }
+  ]
+}
