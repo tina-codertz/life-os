@@ -189,3 +189,17 @@ Node is pinned in `.node-version` and Bun in `packageManager`, so CI uses the sa
 **Checked:** the first run on `main` was green (check 23 s, e2e 35 s). On a throwaway branch with an unmigrated `nickname` column, CI went **red** at exactly the drift step (`[+] Added column nickname`, exit 2). The branch was then deleted.
 **Mistake & lesson:** the probe commit used `git commit -am`, and `-a` stages **every** modified tracked file. It swept in the uncommitted `dh` edit in `docs/00`, which disappeared when the branch was deleted. It was recovered from `git reflog` (deleted commits stay reachable there for weeks) and put back uncommitted. Lesson: stage files by name for anything throwaway, and `git status` before every commit.
 **To learn:** why do the two jobs run in parallel instead of one after the other, and what's the trade-off? Why does CI use a different password from your `.env`, and why is it OK for it to be in the YAML file? What would happen in CI if you added a new env var to `env.ts` but forgot to add it to the workflow?
+
+### 2026-11-07 — 4.1 Part 1: structured logging + request IDs
+**What was built:** `nestjs-pino` as the app logger (`src/logging/logging.module.ts`); `genRequestId` (`src/logging/request-id.ts`) gives every request an ID, returned in `X-Request-Id`, reusing the client's ID only if it matches `^[\w-]{1,64}$`. `LOG_LEVEL` added to the env schema (default `info`, `silent` in e2e). Pretty single-line logs in development, JSON elsewhere; `Authorization`/`Cookie` are redacted; `/health` polling isn't logged.
+**Concepts:**
+- *Structured logging:* each log line is a JSON object, so tools can filter by field (`reqId`, `statusCode`), not grep through text.
+- *Request ID / correlation ID:* one ID ties together the response a user saw and every log line the server wrote for it.
+- *Middleware:* code that runs before the controller on every request (pino-http: assign ID, start timer, log on finish).
+- *Redaction:* secrets are replaced with `[Redacted]` before the line is written.
+- *Never trust client input, even headers:* a client-chosen ID is only accepted if it's boring.
+- *`bufferLogs` + `useLogger`:* Nest logs before the pino logger exists; buffering keeps every line in one format.
+**First attempt (written by me, caught by the pre-commit hook):** a missing comma in `NestFactory.create(AppModule, {…})`; trying to `import { LOG_LEVELS } from '@nestjs/common'` and assign to it (imports are read-only, and the answer was simply a key in Vitest's `env` object); then a `LOG_LEVELS` typo in that object, a silent bug because an unknown key is just ignored. Lesson: config that is "ignored when wrong" deserves a test or a look at the output.
+**Checked:** lint/format/typecheck clean; 16 unit + 5 e2e tests (ID generated, safe ID reused, `<script>` ID replaced). Live server: `X-Request-Id` header present, client ID `my-test-123` shows in the log, `authorization: [Redacted]`, health requests not logged.
+**To learn:** why `LoggingModule` must come after `ConfigModule` in `imports`; why `transport: undefined` wouldn't compile here (`exactOptionalPropertyTypes`); why Node refusing `\n` in a header is a security feature (hint: "header injection"); and what a log line from production would let you do if a user sends a screenshot showing the request ID.
+

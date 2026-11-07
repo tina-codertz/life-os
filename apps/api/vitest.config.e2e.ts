@@ -10,6 +10,7 @@ export default defineConfig({
     globals: true,
     root: './',
     include: ['**/*.e2e-spec.ts'],
-    env: { DATABASE_URL: process.env['DATABASE_URL_TEST'] ?? '' },
+    // Silent logs: request lines would drown out the test output.
+    env: { DATABASE_URL: process.env['DATABASE_URL_TEST'] ?? '', LOG_LEVEL: 'silent' },
   },
 });

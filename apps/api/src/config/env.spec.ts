@@ -8,6 +8,7 @@ describe('parseEnv', () => {
       NODE_ENV: 'development',
       PORT: 3000,
       DATABASE_URL: VALID_URL,
+      LOG_LEVEL: 'info',
     });
   });
 
@@ -33,6 +34,10 @@ describe('parseEnv', () => {
 
   it('throws when NODE_ENV is not a known environment', () => {
     expect(() => parseEnv({ DATABASE_URL: VALID_URL, NODE_ENV: 'staging' })).toThrow(/NODE_ENV/);
+  });
+
+  it('throws when LOG_LEVEL is not a pino level', () => {
+    expect(() => parseEnv({ DATABASE_URL: VALID_URL, LOG_LEVEL: 'loud' })).toThrow(/LOG_LEVEL/);
   });
 
   it('lists every problem at once', () => {
