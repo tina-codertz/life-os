@@ -1,5 +1,5 @@
-import { ServiceUnavailableException } from '@nestjs/common';
 import { Test } from '@nestjs/testing';
+import { AppException } from '../../common/errors/app.exception.js';
 import { PrismaService } from '../../prisma/prisma.service.js';
 import { HealthController } from './health.controller.js';
 
@@ -26,6 +26,9 @@ describe('HealthController', () => {
   it('returns 503 when the database is unreachable', async () => {
     prisma.$queryRaw.mockRejectedValue(new Error('connection refused'));
 
-    await expect(controller.check()).rejects.toBeInstanceOf(ServiceUnavailableException);
+    const err = await controller.check().catch((e: unknown) => e);
+    expect(err).toBeInstanceOf(AppException);
+    expect(err).toMatchObject({ code: 'SERVICE_UNAVAILABLE', cause: expect.any(Error) });
+    expect((err as AppException).getStatus()).toBe(503);
   });
 });

@@ -45,6 +45,9 @@
       "files": ["**/*.spec.ts", "**/*.e2e-spec.ts"],
       "env": {
         "vitest": true
+      },
+      "rules": {
+        "typescript/no-unsafe-type-assertion": "off"
       }
     }
   ]

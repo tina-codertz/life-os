@@ -1,4 +1,5 @@
-import { Controller, Get, ServiceUnavailableException } from '@nestjs/common';
+import { Controller, Get, HttpStatus } from '@nestjs/common';
+import { AppException } from '../../common/errors/app.exception.js';
 import { PrismaService } from '../../prisma/prisma.service.js';
 
 export interface HealthResponse {
@@ -15,9 +16,14 @@ export class HealthController {
   async check(): Promise<HealthResponse> {
     try {
       await this.prisma.$queryRaw`SELECT 1`;
-    } catch {
-      // 503 tells the monitor "up but not able to serve". Details stay in server logs, not the response.
-      throw new ServiceUnavailableException({ status: 'error', db: 'down' });
+    } catch (err) {
+      // 503 tells the monitor "up but not able to serve". The cause goes to the logs only.
+      throw new AppException(
+        HttpStatus.SERVICE_UNAVAILABLE,
+        'SERVICE_UNAVAILABLE',
+        'The database is unavailable.',
+        { cause: err },
+      );
     }
     return { status: 'ok', db: 'ok' };
   }

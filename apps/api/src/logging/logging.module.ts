@@ -14,6 +14,11 @@ import { genRequestId } from './request-id.js';
           genReqId: genRequestId,
           // Health is polled every minute by monitors; logging it would bury real traffic.
           autoLogging: { ignore: (req) => req.url?.endsWith('/health') ?? false },
+          // Request lines are warn for 4xx and error for 5xx, so a level filter shows problems.
+          customLogLevel: (_req, res, err) => {
+            if (err || res.statusCode >= 500) return 'error';
+            return res.statusCode >= 400 ? 'warn' : 'info';
+          },
           // Tokens and cookies must never reach log storage.
           redact: ['req.headers.authorization', 'req.headers.cookie'],
           // Human-readable lines locally; raw JSON everywhere else (for log tools).

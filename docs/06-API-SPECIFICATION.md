@@ -55,15 +55,19 @@
 | 404 | `*_NOT_FOUND`: also returned for other users' resources |
 | 409 | `CONFLICT` / `EMAIL_TAKEN` |
 | 422 | `BUSINESS_RULE_VIOLATION`: valid shape, invalid by rule (e.g. backfill > 7 days, subtask of subtask) |
+| 413 | `PAYLOAD_TOO_LARGE`: request body over the size limit |
 | 429 | `RATE_LIMITED` |
-| 500 | `INTERNAL_ERROR` |
+| 500 | `INTERNAL_ERROR`: generic message only; details go to the logs |
+| 503 | `SERVICE_UNAVAILABLE`: a dependency (e.g. the database) is down |
+
+The common codes live in `packages/shared` (`COMMON_ERROR_CODES`, `ApiErrorBody`). Built in 4.1: `AllExceptionsFilter` (`apps/api/src/common/filters`) maps every thrown value to this table; features throw `AppException(status, code, message, { details, cause })`.
 
 ## 2. Endpoints: MVP
 
 ### Health
 | Method | Path | Notes |
 |---|---|---|
-| GET | `/health` | `{ status: "ok", db: "ok" }`, public |
+| GET | `/health` | `{ status: "ok", db: "ok" }`, public. DB down → 503 `SERVICE_UNAVAILABLE` (error envelope) |
 
 ### Auth (`/auth`, public, rate-limited)
 | Method | Path | Body | Response |

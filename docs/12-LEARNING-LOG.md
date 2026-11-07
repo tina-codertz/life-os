@@ -208,3 +208,30 @@ Node is pinned in `.node-version` and Bun in `packageManager`, so CI uses the sa
 - *Node rejecting `\n` in headers:* Node validates outgoing header values and throws a `TypeError` on invalid characters; never put user-controlled input into headers without validating it, even with Node's protection. (Refinement: the attack is **header injection / response splitting**. A `\r\n` ends the header line, so whatever follows becomes the attacker's own header (e.g. `Set-Cookie`) or even a fake response body. Our regex plus Node's check is *defence in depth*: two independent layers, so one bug isn't enough.)
 - *The screenshot with a request ID:* tracing yes, but it's not a credential and must never authorize access. (Good security instinct, since the client chooses it. The other half: you can **search the logs for that ID** and get the exact request (method, URL, status, duration and, after Part 2, the error and stack trace) without asking the user to reproduce the bug or reveal anything personal.)
 
+### 2026-11-07 — 4.1 Part 2: one error shape for everything
+**What was built:**
+- `AppException(status, code, message, { details, cause })` (`src/common/errors`): the one exception features throw.
+- `AllExceptionsFilter` (`src/common/filters`), registered with `APP_FILTER`, turns *anything* thrown into `{ error: { code, message, details, requestId } }`:
+  - `AppException` → its own status/code/message/details;
+  - Nest's built-in exceptions → code by status (404 `NOT_FOUND`, 400 `VALIDATION_FAILED`, …);
+  - Prisma `P2002` → 409 `CONFLICT`, `P2025` → 404 `NOT_FOUND` (both checked against the real DB first);
+  - everything else → 500 `INTERNAL_ERROR` with a generic message.
+- 5xx errors are logged with the original error and its `cause`; request log lines are now `warn` for 4xx, `error` for 5xx.
+- `ApiErrorBody` + `COMMON_ERROR_CODES` in `packages/shared` for the mobile client later.
+- Health now throws `AppException(503, 'SERVICE_UNAVAILABLE', …, { cause })`.
+- `test/utils/create-test-app.ts` so every e2e file boots the real app the same way.
+**Concepts:**
+- *Exception filter:* the last stop for an error on its way out. `@Catch()` with no arguments catches everything, so no error can leave in a different shape.
+- *Stable error codes:* the app switches on `code` (`EMAIL_TAKEN` → show "already registered"), never on the human `message`, which can be reworded or translated.
+- *Don't leak internals:* a 500's real message may contain hostnames, SQL or secrets. The client gets "Something went wrong"; the logs get everything, linked by the request ID.
+- *`cause`:* wraps the low-level error (`ECONNREFUSED`) inside the meaningful one (`SERVICE_UNAVAILABLE`), so you keep both.
+- *`APP_FILTER` vs `app.useGlobalFilters()`:* the provider version gets dependency injection (our logger) and is part of `AppModule`, so e2e tests get it automatically.
+**Bug found while testing:** a malformed JSON body returned `"requestId":"undefined"` and no header. Express's body parser runs **before** the logging middleware, so the request never got an ID. Fix: the filter creates the ID when it's missing. Found only because I tested it rather than assuming it worked.
+**Lint caught:** `String(req.id)` where the logger's type allows an object, which would produce `"[object Object]"`. Fixed with a `typeof … === 'string'` check. `no-unsafe-type-assertion` is now off for test files only, where partial fake objects (`as unknown as X`) are the point.
+**Checked:** 33 unit + 7 e2e tests; live: 404 / bad JSON / DB-down 503 all in the envelope with matching `X-Request-Id`, recovery to 200 when the DB came back, and the log line for the 503 contains `ECONNREFUSED` while the response doesn't.
+**To learn:**
+1. Why does the mobile app switch on `code` and not on `message`?
+2. Why is P2002 mapped to a generic `CONFLICT` here, when the register endpoint will want `EMAIL_TAKEN`? Where should that more specific error be thrown?
+3. Why are 4xx errors *not* logged by the filter, but 5xx errors are?
+4. Why might a 404 be the right answer when user A requests user B's task, even though it exists (docs/06)?
+
