@@ -18,7 +18,7 @@ describe('GET /api/v1/health (e2e)', () => {
     return request(app.getHttpServer())
       .get('/api/v1/health')
       .expect(200)
-      .expect({ status: 'ok', db: 'ok' });
+      .expect({ data: { status: 'ok', db: 'ok' } });
   });
 
   it('is not served without the version prefix', () => {

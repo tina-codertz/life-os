@@ -33,3 +33,19 @@ export interface ApiErrorBody {
     requestId: string;
   };
 }
+
+// Successful responses (docs/06 §1). A single resource is `{ data }`; a page of a collection
+// adds `meta` for cursor pagination.
+export interface PageMeta {
+  nextCursor: string | null;
+  hasMore: boolean;
+}
+
+export interface ApiDataBody<T> {
+  data: T;
+}
+
+export interface ApiPageBody<T> {
+  data: T[];
+  meta: PageMeta;
+}

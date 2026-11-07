@@ -126,7 +126,7 @@ modules/tasks/
 ```
 
 **Request flow (create task):**
-`POST /api/v1/tasks` → `JwtAuthGuard` (sets `req.user`) → `ZodValidationPipe` (body → DTO) → `TasksController.create(@CurrentUser() user, dto)` → `TasksService.create(user.id, dto)` → `prisma.task.create({ data: { ...dto, userId } })` → `TransformInterceptor` wraps `{ data }` → `201`.
+`POST /api/v1/tasks` → `JwtAuthGuard` (sets `req.user`) → `ZodValidationPipe` (body → DTO) → `TasksController.create(@CurrentUser() user, dto)` → `TasksService.create(user.id, dto)` → `prisma.task.create({ data: { ...dto, userId } })` → `ResponseEnvelopeInterceptor` wraps `{ data }` → `201`.
 
 ### 3.2 Dependency rules between modules
 

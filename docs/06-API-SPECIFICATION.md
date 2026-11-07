@@ -37,6 +37,7 @@
 // Error
 { "error": { "code": "TASK_NOT_FOUND", "message": "Task not found.", "details": [], "requestId": "…" } }
 ```
+Built in 4.1: `ResponseEnvelopeInterceptor` wraps whatever a controller returns in `{ data }`. List endpoints return `new Page(items, meta)` to get `{ data, meta }`. `undefined` (204) and file downloads are not wrapped. Types: `ApiDataBody`, `ApiPageBody`, `PageMeta` in `packages/shared`. No exceptions, including `/health` (monitors check only the status code).
 
 ### Pagination, filtering, sorting
 - `?limit=30&cursor=<opaque>`. Max limit is 100.
@@ -67,7 +68,7 @@ The common codes live in `packages/shared` (`COMMON_ERROR_CODES`, `ApiErrorBody`
 ### Health
 | Method | Path | Notes |
 |---|---|---|
-| GET | `/health` | `{ status: "ok", db: "ok" }`, public. DB down → 503 `SERVICE_UNAVAILABLE` (error envelope) |
+| GET | `/health` | `{ data: { status: "ok", db: "ok" } }`, public. DB down → 503 `SERVICE_UNAVAILABLE` (error envelope) |
 
 ### Auth (`/auth`, public, rate-limited)
 | Method | Path | Body | Response |

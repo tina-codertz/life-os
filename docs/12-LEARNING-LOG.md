@@ -235,3 +235,18 @@ Node is pinned in `.node-version` and Bun in `packageManager`, so CI uses the sa
 3. Why are 4xx errors *not* logged by the filter, but 5xx errors are?
 4. Why might a 404 be the right answer when user A requests user B's task, even though it exists (docs/06)?
 
+### 2026-11-07 — 4.1 Part 3: one success shape
+**What was built:** `ResponseEnvelopeInterceptor` (`src/common/interceptors`), registered with `APP_INTERCEPTOR`, wraps every controller result in `{ data }`. `Page` (`src/common/pagination`): return `new Page(items, { nextCursor, hasMore })` from a list endpoint to get `{ data, meta }`. `undefined` (for 204 No Content) and `StreamableFile` downloads pass through unwrapped. `/health` now returns `{ data: { status, db } }`. Types `ApiDataBody`, `ApiPageBody`, `PageMeta` in `packages/shared`.
+**Concepts:**
+- *Interceptor:* code that wraps the controller call, running both **before** and **after** it. Ours only uses "after": `next.handle()` is an RxJS **Observable** of the controller's result, and `map(toEnvelope)` transforms that value on its way out.
+- *Errors skip interceptors:* a thrown exception never reaches `map`; it goes to the exception filter. Success → interceptor → `{ data }`; failure → filter → `{ error }`. The client checks one key to know which one it got.
+- *Why an envelope at all:* room to grow. `meta` for pagination today; warnings or deprecation notices later, without breaking the shape the app already parses.
+- *Class + `instanceof` for `Page`:* a marker that can't be faked by accident. A task that happened to have `items` and `meta` fields would otherwise be mistaken for a page.
+- *Pure function + thin class:* the logic is in `toEnvelope` (easy to test with plain values); the Nest class just plugs it in. Same pattern as `toApiError` in the filter.
+**Checked:** 41 unit tests (single resource, array, `Page`, look-alike object, `null`, `undefined`, file, the interceptor itself), 7 e2e; live: `/health` → `{"data":{…}}` 200, unknown route still the `{ error }` shape 404.
+**4.1 complete.** The request pipeline is now: logger middleware (request ID) → controller → interceptor `{ data }`, or → filter `{ error }` → log line with status, duration and request ID.
+**To learn:** (answer together with the 4.1 Part 2 questions)
+1. What's the difference between middleware, an interceptor and an exception filter? When does each run?
+2. Why must a DELETE that returns 204 have an empty body, and what would break if we wrapped it as `{ data: undefined }`?
+3. Why is `toEnvelope` exported as a plain function separate from the class?
+
