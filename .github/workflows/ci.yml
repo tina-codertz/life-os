@@ -1,0 +1,66 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+# A newer push to the same branch cancels the run that's still going.
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  check:
+    name: Lint, format, typecheck, unit tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version-file: .node-version
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version-file: package.json
+      - run: bun install --frozen-lockfile
+      - run: bun run check
+      - run: bun run --filter @life-os/api test
+
+  api-e2e:
+    name: API e2e + migration check
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    services:
+      postgres:
+        image: postgres:18
+        # Throwaway credentials for a database that only lives for this job: not a secret.
+        env:
+          POSTGRES_USER: lifeos
+          POSTGRES_PASSWORD: ci_password
+          POSTGRES_DB: lifeos_test
+        ports: ['5432:5432']
+        options: >-
+          --health-cmd "pg_isready -U lifeos -d lifeos_test"
+          --health-interval 5s --health-timeout 5s --health-retries 10
+    env:
+      DATABASE_URL: postgresql://lifeos:ci_password@localhost:5432/lifeos_test
+      DATABASE_URL_TEST: postgresql://lifeos:ci_password@localhost:5432/lifeos_test
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version-file: .node-version
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version-file: package.json
+      - run: bun install --frozen-lockfile
+      - name: Apply migrations to an empty database
+        run: bun run --filter @life-os/api prisma:deploy
+      - name: Fail if schema.prisma has changes without a migration
+        run: bun run --filter @life-os/api prisma:check
+      - run: bun run --filter @life-os/api test:e2e

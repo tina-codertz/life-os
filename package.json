@@ -1,6 +1,7 @@
 {
   "name": "life-os",
   "private": true,
+  "packageManager": "bun@1.4.4",
   "workspaces": [
     "apps/*",
     "packages/*"
