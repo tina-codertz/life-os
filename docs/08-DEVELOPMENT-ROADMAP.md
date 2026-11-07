@@ -95,7 +95,7 @@ Each milestone below lists: **Objectives · Tasks · Dependencies · Learning ·
 | 3.6 Prisma init + first migration (User, UserSettings) | Migrations workflow | Migrations, schema | `apps/api/prisma/*` | 3.5 | Migration applies on an empty DB | Committed SQL reviewed |
 | 3.7 Env config with Zod | Fail-fast config | 12-factor config | `config/env.ts`, `.env.example` | 3.4 | Unit test: missing var throws | No secrets in git |
 | 3.8 oxlint, Prettier, TS strict, Husky/lint-staged (ADR-018) | Consistent code | Tooling | root configs | 3.2 | — | `bun run check` passes |
-| 3.9 CI: lint + typecheck + test | PR checks | CI | `.github/workflows/ci.yml` | 3.8 | — | PR blocked on failure |
+| 3.9 CI: lint + typecheck + test + e2e + migration drift | Push checks | CI | `.github/workflows/ci.yml` | 3.8 | Throwaway branch with an unmigrated schema change goes red | Every push to `main` runs CI (no PR gate, see ADR-016) |
 
 ### Phase 4 — Backend Foundation (Weeks 5–7)
 | Wk | Task | Outcome | Concepts | Files | Testing | Done when |
@@ -187,7 +187,7 @@ Each module is built **end-to-end** (DB → API → tests → mobile → device 
 | M0 Discovery approved | Done | 2026-11-03 | 2026-11-04 | All docs reviewed; open questions resolved |
 | M1 Architecture approved | Done | 2026-11-03 | 2026-11-04 | Docs 04–06 approved; ADR-012 left open until Phase 4 |
 | M2 Design system v1 | Not started | | | |
-| M3 Repo + tooling | In progress | 2026-11-04 | | 3.1–3.8 done; 3.9 CI next |
+| M3 Repo + tooling | Done | 2026-11-04 | 2026-11-07 | 3.1–3.9 done; CI green on `main` |
 | M4 Backend foundation | Not started | | | |
 | M5 Mobile foundation | Not started | | | |
 | M6a Tasks | Not started | | | |

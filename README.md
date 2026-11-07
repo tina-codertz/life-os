@@ -1,8 +1,24 @@
 # Life OS
 
+[![CI](https://github.com/tina-codertz/life-os/actions/workflows/ci.yml/badge.svg)](https://github.com/tina-codertz/life-os/actions/workflows/ci.yml)
+
 A personal life management app that brings tasks, habits, goals, calendar and (later) finances, gamification and an AI assistant into one calm, dark-first mobile experience.
 
-> **Status:** Phases 0–1 (discovery and architecture) approved 2026-11-04. Next: Phase 3, project setup.
+> **Status:** Phase 3 (repo + tooling) done 2026-11-07. Next: Phase 4, backend foundation (auth, users, settings).
+
+## Getting started
+
+Requires Node 26, Bun 1.4 and Docker (OrbStack on macOS).
+
+```sh
+cp .env.example .env      # local defaults; never commit .env
+bun install               # also generates the Prisma client and installs the git hook
+bun run db:up             # Postgres 18 on localhost:5433
+bun run db:migrate        # apply migrations to lifeos_dev
+bun run --filter @life-os/api start:dev    # API on http://localhost:3000/api/v1/health
+bun run --filter @life-os/mobile ios       # app in the iOS Simulator
+bun run check             # lint + format + typecheck (what CI runs first)
+```
 
 ## Stack
 

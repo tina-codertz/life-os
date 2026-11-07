@@ -170,3 +170,22 @@ For every feature, follow the cycle from the brief:
 - *False positives:* tune a rule to the framework instead of deleting it. NestJS modules are empty decorated classes (`allowWithDecorator`), the new JSX transform doesn't need `import React`, and Expo's `StatusBar` takes `style="light"`.
 **Checked:** `bun run check` is clean (lint 0 warnings, Prettier, typecheck ×3). Throwaway files proved the rules fire: a conditional `useState` and an un-awaited promise were both reported as errors. The hook blocked a commit containing a floating promise.
 **To learn:** what does `--deny-warnings` change, and why turn it on in a fresh repo rather than later? Why exclude `*.md` from Prettier? And how would you skip the hook in an emergency (and why should you almost never do that)?
+**Your answers:**
+- *`--deny-warnings`:* so the repo never ignores warnings that could later turn into errors; they're cleaned up as they're introduced. (Refinement: the key word is *now*. With 0 warnings, every new one is visible and belongs to the commit that added it. Turn it on in a repo with 300 warnings and nobody reads them, so it never gets turned on.)
+- *Why `*.md` is excluded:* to keep a consistent code style. (Correction: the reason is the opposite. The docs have a deliberate hand-made style, with wide tables and long lines, and Prettier would rewrap and re-pad every table. That's a huge diff with no meaning that also makes the docs harder to edit. Prettier's job is consistency in **code**; Markdown here is prose.)
+- *Skipping the hook:* `HUSKY=0 git commit …` (or the standard `git commit --no-verify`, which works with any hook manager). Only skip it if you'll inspect the errors yourself manually. (Refinement: since 3.9 there's a second safety net. CI runs the same checks on every push, so a skipped hook is caught a minute later, in public, with a red ❌ on the commit.)
+
+### 2026-11-07 — 3.9 CI with GitHub Actions
+**What was built:** `.github/workflows/ci.yml`, two jobs that run in parallel on every push to `main` (and on PRs or manual runs):
+1. **check:** `bun install --frozen-lockfile` → `bun run check` (lint, format, typecheck) → API unit tests.
+2. **api-e2e:** a throwaway **Postgres 18 service container** → `prisma migrate deploy` → `prisma:check` → e2e tests.
+Node is pinned in `.node-version` and Bun in `packageManager`, so CI uses the same versions as the laptop. Also a CI badge and a Getting started section in the README.
+**Concepts:**
+- *`--frozen-lockfile`:* CI installs exactly what `bun.lock` says and fails if `package.json` and the lockfile disagree, so you never get "works on my machine" from a silently different dependency version.
+- *Service containers:* GitHub starts Postgres next to the job and waits for its healthcheck. It's the same idea as our `docker-compose.yml`, but it exists only for that job.
+- *Migration drift check:* apply every migration to an **empty** DB, then `prisma migrate diff --from-config-datasource --to-schema … --exit-code` compares the result with `schema.prisma` (exit 0 = identical, exit 2 = drift). It catches "I edited the schema but forgot `db:migrate`", a bug that would otherwise surface only when deploying to production.
+- *`concurrency` + `cancel-in-progress`:* two quick pushes don't waste minutes running the older one.
+- *A test that can't fail proves nothing:* green isn't enough, so I also checked it goes red.
+**Checked:** the first run on `main` was green (check 23 s, e2e 35 s). On a throwaway branch with an unmigrated `nickname` column, CI went **red** at exactly the drift step (`[+] Added column nickname`, exit 2). The branch was then deleted.
+**Mistake & lesson:** the probe commit used `git commit -am`, and `-a` stages **every** modified tracked file. It swept in the uncommitted `dh` edit in `docs/00`, which disappeared when the branch was deleted. It was recovered from `git reflog` (deleted commits stay reachable there for weeks) and put back uncommitted. Lesson: stage files by name for anything throwaway, and `git status` before every commit.
+**To learn:** why do the two jobs run in parallel instead of one after the other, and what's the trade-off? Why does CI use a different password from your `.env`, and why is it OK for it to be in the YAML file? What would happen in CI if you added a new env var to `env.ts` but forgot to add it to the workflow?
