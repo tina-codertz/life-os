@@ -613,3 +613,26 @@ Node is pinned in `.node-version` and Bun in `packageManager`, so CI uses the sa
 2. Why protect whole groups with guards instead of only hiding the "Log in" button once you're signed in?
 3. Why must the guards and the "/" redirect use the same function, and what happened in the probe when they didn't?
 4. Why keep the splash screen up while the session is `loading`?
+
+### 2026-11-08 — 5.3 HTTP client, ApiError, single-flight refresh
+**What was built:** `apps/mobile/src/services/`:
+- `http.ts`: `createHttpClient({ baseUrl, tokens })` with `get / post / patch / delete`. Adds `/api/v1`, JSON, the bearer token; unwraps `{ data }`; 204 → `undefined`; 15 s timeout; cancellable with an `AbortSignal`.
+- `api-error.ts`: `ApiError` (`status`, `code`, `message`, `details`, `requestId`) with `fieldErrors()` for forms; `isApiError(e, code?)`.
+- `config.ts`: the API URL (`EXPO_PUBLIC_API_URL`, or the Metro host in development).
+- Expired access token: one shared refresh for all failing requests, one retry each.
+**Concepts:**
+- *Single-flight:* when four requests hit a 401 at the same moment, they must not start four refreshes: each refresh token works once, so three would be "reuse" and end the session (4.5). The first creates the refresh promise; the others `await` the same one (`refreshing ??= …`), and it's cleared when done so the next expiry refreshes again.
+- *Don't refresh what can't be fixed:* only `401 UNAUTHENTICATED` means "your access token expired". A wrong password or a dead refresh token are also 401s, but refreshing wouldn't help (and could loop).
+- *One retry, no loops:* if the retried request is still 401, the error goes up instead of trying forever.
+- *Already refreshed by someone else:* a request that sent the old token, while another request finished refreshing, just retries with the new one, without spending another rotation.
+- *Errors as data:* every failure is one class with a stable `code`, including ones the server never sent (`NETWORK_ERROR`, `TIMEOUT`, `HTTP_ERROR`). Screens switch on codes, forms read `fieldErrors()`, bug reports quote `requestId`.
+- *Don't trust shapes you didn't check:* the error envelope is read field by field, so a malformed reply can't put junk into `ApiError`. Success bodies get their type from the caller; that single assumption is written down in one place.
+- *Dependency injection, again:* the client takes `fetch` and a `TokenSource` as arguments, so tests run it against a scripted fake server, and 5.4 can plug in SecureStore without the client knowing.
+- *`EXPO_PUBLIC_` is public:* those variables are compiled into the app, readable by anyone who unpacks it; only URLs go there, never secrets.
+**Checked:** 17 client tests (87 mobile in total): request shape, 204, no token without auth, error envelope → ApiError with field errors, malformed envelope, non-JSON 502, offline, timeout, caller cancel; 401 → refresh → retry; 4 concurrent 401s → 1 refresh, 8 calls; a later expiry refreshes again; no refresh when another request already did; refresh → null throws without retry; a second 401 isn't looped; no refresh for INVALID_CREDENTIALS / INVALID_REFRESH_TOKEN / unauthenticated calls. Probes: removing single-flight, the already-refreshed shortcut, the code check, or the reset each fail a test. Live against the running API: 3 parallel calls with a broken token → exactly 1 refresh, all succeed; wrong password → `INVALID_CREDENTIALS` with request ID; a strict-body typo → `{ dispayName: 'This field is not allowed.' }`.
+**Lint caught:** a generic type parameter that only pretended to type the response (now one documented assertion in `request`), and a cast in the error parser (now field-by-field).
+**To learn:**
+1. Four requests get a 401 at the same moment. What would happen with four refreshes instead of one?
+2. Why does only `UNAUTHENTICATED` trigger a refresh, and not every 401?
+3. Why is the client given `fetch` and a `TokenSource` instead of importing them?
+4. Why is it fine for `EXPO_PUBLIC_API_URL` to be in the app, but never a secret key?

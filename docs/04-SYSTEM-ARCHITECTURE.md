@@ -185,6 +185,8 @@ export const taskKeys = {
 - A thin `fetch` wrapper (`services/http.ts`). **No axios** unless needed; one less dependency.
 - Injects `Authorization: Bearer <access>`.
 - On `401`: single-flight refresh → retry once → otherwise logout.
+  - **Built in 5.3** (`apps/mobile/src/services/`): `createHttpClient({ baseUrl, tokens })` adds `/api/v1`, sends JSON + `Authorization`, unwraps `{ data }`, and throws `ApiError` (`status`, `code`, `details`, `requestId`, `fieldErrors()`). No response → `NETWORK_ERROR`; 15 s without an answer → `TIMEOUT`; a non-envelope reply → `HTTP_ERROR`. Only `401 UNAUTHENTICATED` triggers a refresh (not `INVALID_CREDENTIALS` / `INVALID_REFRESH_TOKEN`); concurrent 401s share one refresh; a request whose token was already replaced retries without refreshing; one retry at most. Tokens come from a `TokenSource` (the auth store, 5.4).
+  - **API URL** (`services/config.ts`): `EXPO_PUBLIC_API_URL` if set (baked into the build: never a secret); otherwise in development the Metro host + port 3000, so a phone on the same Wi-Fi reaches the API on the Mac.
   - **Single-flight is required, not just nice:** each refresh token works once. If two requests refresh with the same token at once, the API treats the second as *reuse* and ends the whole login (4.5). The same happens if a refresh response is lost and the app retries with the old token: the user has to log in again. Accepted for MVP; a short grace window is the usual fix if it shows up in practice.
 - Parses the standard error envelope into an `ApiError` class (`code`, `message`, `fieldErrors`).
 - Base URL from `app.config.ts` `extra.apiUrl` per EAS profile.
