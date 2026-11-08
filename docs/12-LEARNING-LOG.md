@@ -802,3 +802,23 @@ Done by me in Expo Go: registered with the real form, went through onboarding (n
 2. Why store a palette name instead of a hex colour?
 3. Why answer a malformed ID with 404 rather than 400?
 4. Why do the Task table's goal, subtask and recurrence columns wait for their own modules?
+
+### 2026-11-08 — Tasks I Part 2: the task API
+**What was built:**
+- Shared `schemas/tasks.ts`: `PRIORITIES` (moved here from the package index to avoid an import cycle), `TASK_STATUSES`, `localDateSchema` (real calendar days only), `createTaskSchema`, `updateTaskSchema` (strict), `listTasksQuerySchema`, `PublicTask`.
+- API `modules/tasks`: list / create / get / patch / delete / restore / complete / uncomplete, all scoped to the token's user.
+- `common/pagination/cursor.ts` (opaque cursor, `pageOf` with the "fetch one extra row" trick), `common/dates.ts` (calendar day ↔ Postgres `date`), `@ZodQuery` (validate + document query strings from the shared schema; Swagger now lists the 8 task filters).
+**Concepts:**
+- *Cursor vs offset pagination:* `?page=3` breaks when rows are added while you scroll (you see a task twice or miss one). "Everything older than the last one I saw" (`id < cursor`) doesn't. UUIDv7 IDs sort by creation time, so the ID is the cursor.
+- *Fetch limit + 1:* asking for 31 to show 30 tells you whether there's a next page without a second `COUNT` query.
+- *Opaque cursors:* the client passes back a token it doesn't understand, so the server can change its format later without breaking old apps.
+- *Calendar days, not timestamps:* a task due "1 December" is stored as the date `2026-12-01`, so it's 1 December in any time zone. Times are minutes after local midnight.
+- *Ownership through references:* the foreign key accepts any user's category; the service checks it's yours, and the test proves it (Part 1's flag, closed).
+- *Soft delete + restore:* `deletedAt` hides a task everywhere (lists, edits, completion) but keeps it for an undo, for 30 days.
+- *Idempotent actions:* completing twice keeps the first completion time; restoring a live task just returns it. A retry after a lost response does no harm.
+**Checked:** 17 task e2e tests (defaults; date + time + category; validation; **another user's category refused**; partial update, null clears; clearing the date clears the time, a time on a dateless task is refused; strict PATCH; complete keeps the first time, uncomplete clears it; delete hides, restore returns it; no restore after 30 days; deleted tasks can't be edited or completed; filters by status / priority / category / due range; search in descriptions, any case; 35 tasks page as 30 + 5 with no repeats; bad cursor / limit → 400; another user's task 404 for get / patch / complete / delete / restore and untouched; malformed ID 404; login required) plus cursor and date unit tests. Probes: no category ownership check, list not scoped by user, deleted tasks treated as active, the cursor using `≤`, completing twice overwriting the time: each fails a test. 114 unit + 129 e2e + 63 shared.
+**To learn:**
+1. Why does offset pagination (`?page=3`) show duplicates or skip rows when tasks are added, and how does a cursor avoid it?
+2. Why fetch one more row than the page size?
+3. Why store the due date as a `date` and the time as minutes, instead of one timestamp?
+4. Why should completing an already-completed task keep the original completion time?

@@ -1,0 +1,272 @@
+import type { INestApplication } from '@nestjs/common';
+import type { AuthResult, PublicTask } from '@life-os/shared';
+import request from 'supertest';
+import type { App } from 'supertest/types.js';
+import { PrismaService } from '../src/prisma/prisma.service.js';
+import { createTestApp } from './utils/create-test-app.js';
+import { resetDatabase } from './utils/test-db.js';
+
+const PASSWORD = 'correct horse battery';
+const titles = (res: { body: { data: PublicTask[] } }) => res.body.data.map((t) => t.title);
+
+describe('Tasks (e2e)', () => {
+  let app: INestApplication<App>;
+  let prisma: PrismaService;
+  let tina: AuthResult;
+  let juma: AuthResult;
+
+  const http = () => request(app.getHttpServer());
+  const as = (who: AuthResult) => {
+    const auth = { Authorization: `Bearer ${who.accessToken}` };
+    return {
+      list: (query = '') => http().get(`/api/v1/tasks${query}`).set(auth),
+      create: (body: object) => http().post('/api/v1/tasks').set(auth).send(body),
+      get: (id: string) => http().get(`/api/v1/tasks/${id}`).set(auth),
+      update: (id: string, body: object) =>
+        http().patch(`/api/v1/tasks/${id}`).set(auth).send(body),
+      remove: (id: string) => http().delete(`/api/v1/tasks/${id}`).set(auth),
+      action: (id: string, name: string) => http().post(`/api/v1/tasks/${id}/${name}`).set(auth),
+      category: (name: string) =>
+        http().post('/api/v1/categories').set(auth).send({ name, color: 'blue' }),
+    };
+  };
+  const register = async (email: string): Promise<AuthResult> =>
+    (
+      await http()
+        .post('/api/v1/auth/register')
+        .send({ email, password: PASSWORD, displayName: 'X' })
+        .expect(201)
+    ).body.data;
+  const newTask = async (who: AuthResult, body: object = {}): Promise<PublicTask> =>
+    (
+      await as(who)
+        .create({ title: 'Task', ...body })
+        .expect(201)
+    ).body.data;
+
+  beforeAll(async () => {
+    app = await createTestApp();
+    prisma = app.get(PrismaService);
+  });
+
+  beforeEach(async () => {
+    await resetDatabase(prisma);
+    tina = await register('tina@example.com');
+    juma = await register('juma@example.com');
+  });
+
+  afterAll(async () => {
+    await app.close();
+  });
+
+  describe('create and read', () => {
+    it('needs only a title and fills in defaults', async () => {
+      const task = await newTask(tina, { title: '  Buy milk ' });
+      expect(task).toEqual({
+        id: expect.any(String),
+        title: 'Buy milk',
+        description: null,
+        priority: 'NONE',
+        status: 'TODO',
+        dueDate: null,
+        dueTime: null,
+        completedAt: null,
+        categoryId: null,
+        sortOrder: 0,
+        createdAt: expect.any(String),
+        updatedAt: expect.any(String),
+      });
+      expect((await as(tina).get(task.id).expect(200)).body.data).toEqual(task);
+    });
+
+    it('stores a due date as a calendar day and a time as minutes', async () => {
+      const work = (await as(tina).category('Work')).body.data;
+      const task = await newTask(tina, {
+        title: 'Pay rent',
+        priority: 'HIGH',
+        categoryId: work.id,
+        dueDate: '2026-12-01',
+        dueTime: 540,
+      });
+      expect(task).toMatchObject({
+        priority: 'HIGH',
+        categoryId: work.id,
+        dueDate: '2026-12-01',
+        dueTime: 540,
+      });
+    });
+
+    it('validates with the shared schema (a time needs a date)', async () => {
+      const res = await as(tina).create({ title: '', dueTime: 600 }).expect(400);
+      expect(res.body.error.details.map((d: { field: string }) => d.field)).toEqual([
+        'title',
+        'dueTime',
+      ]);
+    });
+  });
+
+  describe('categories must be your own', () => {
+    it("attaching another user's category is refused on the field", async () => {
+      const jumasCategory = (await as(juma).category('Private')).body.data;
+
+      const res = await as(tina)
+        .create({ title: 'Sneaky', categoryId: jumasCategory.id })
+        .expect(400);
+      expect(res.body.error.details).toEqual([
+        { field: 'categoryId', message: 'Choose one of your categories.' },
+      ]);
+
+      const task = await newTask(tina);
+      await as(tina).update(task.id, { categoryId: jumasCategory.id }).expect(400);
+      expect(await prisma.task.count({ where: { categoryId: jumasCategory.id } })).toBe(0);
+    });
+  });
+
+  describe('update', () => {
+    it('changes only what is sent; null clears', async () => {
+      const work = (await as(tina).category('Work')).body.data;
+      const task = await newTask(tina, { categoryId: work.id, description: 'Old' });
+      const updated = (
+        await as(tina).update(task.id, { title: 'Renamed', categoryId: null }).expect(200)
+      ).body.data;
+      expect(updated).toMatchObject({ title: 'Renamed', categoryId: null, description: 'Old' });
+    });
+
+    it('removing the date removes the time; a time cannot go on a dateless task', async () => {
+      const task = await newTask(tina, { dueDate: '2026-12-01', dueTime: 540 });
+      const cleared = (await as(tina).update(task.id, { dueDate: null }).expect(200)).body.data;
+      expect(cleared).toMatchObject({ dueDate: null, dueTime: null });
+
+      const res = await as(tina).update(task.id, { dueTime: 600 }).expect(400);
+      expect(res.body.error.details).toEqual([
+        { field: 'dueTime', message: 'A time needs a date.' },
+      ]);
+    });
+
+    it('is strict: status changes go through /complete', async () => {
+      const task = await newTask(tina);
+      await as(tina).update(task.id, { status: 'DONE' }).expect(400);
+    });
+  });
+
+  describe('complete and uncomplete', () => {
+    it('records the completion time, keeps it on a repeat, clears it on uncomplete', async () => {
+      const task = await newTask(tina);
+      const done = (await as(tina).action(task.id, 'complete').expect(200)).body.data.task;
+      expect(done.status).toBe('DONE');
+      expect(Date.parse(done.completedAt)).toBeGreaterThan(0);
+
+      const again = (await as(tina).action(task.id, 'complete').expect(200)).body.data.task;
+      expect(again.completedAt).toBe(done.completedAt);
+
+      const todo = (await as(tina).action(task.id, 'uncomplete').expect(200)).body.data.task;
+      expect(todo).toMatchObject({ status: 'TODO', completedAt: null });
+    });
+  });
+
+  describe('delete and restore', () => {
+    it('deleted tasks disappear, and restore brings them back', async () => {
+      const task = await newTask(tina, { title: 'Oops' });
+      await as(tina).remove(task.id).expect(204);
+
+      await as(tina).get(task.id).expect(404);
+      expect(titles(await as(tina).list())).not.toContain('Oops');
+
+      const restored = (await as(tina).action(task.id, 'restore').expect(200)).body.data;
+      expect(restored.title).toBe('Oops');
+      expect(titles(await as(tina).list())).toContain('Oops');
+    });
+
+    it('cannot restore after 30 days', async () => {
+      const task = await newTask(tina);
+      await as(tina).remove(task.id).expect(204);
+      await prisma.task.update({
+        where: { id: task.id },
+        data: { deletedAt: new Date(Date.now() - 31 * 24 * 60 * 60 * 1000) },
+      });
+      const res = await as(tina).action(task.id, 'restore').expect(404);
+      expect(res.body.error.code).toBe('TASK_NOT_FOUND');
+    });
+
+    it('a deleted task cannot be edited or completed', async () => {
+      const task = await newTask(tina);
+      await as(tina).remove(task.id).expect(204);
+      await as(tina).update(task.id, { title: 'x' }).expect(404);
+      await as(tina).action(task.id, 'complete').expect(404);
+    });
+  });
+
+  describe('list: filters, search, pagination', () => {
+    it('filters by status, priority, category and due range, and searches', async () => {
+      const work = (await as(tina).category('Work')).body.data;
+      await newTask(tina, {
+        title: 'Report',
+        categoryId: work.id,
+        priority: 'HIGH',
+        dueDate: '2026-12-01',
+      });
+      await newTask(tina, { title: 'Gym', priority: 'LOW', dueDate: '2026-12-05' });
+      const done = await newTask(tina, { title: 'Pay rent', description: 'Monthly bank transfer' });
+      await as(tina).action(done.id, 'complete').expect(200);
+
+      expect(titles(await as(tina).list('?status=DONE'))).toEqual(['Pay rent']);
+      expect(titles(await as(tina).list('?priority=HIGH'))).toEqual(['Report']);
+      expect(titles(await as(tina).list(`?categoryId=${work.id}`))).toEqual(['Report']);
+      expect(titles(await as(tina).list('?dueFrom=2026-12-02&dueTo=2026-12-31'))).toEqual(['Gym']);
+      expect(titles(await as(tina).list('?q=BANK'))).toEqual(['Pay rent']); // description, any case
+    });
+
+    it('pages newest first with a cursor, without gaps or repeats', async () => {
+      await prisma.task.createMany({
+        data: Array.from({ length: 35 }, (_, i) => ({ userId: tina.user.id, title: `T${i}` })),
+      });
+
+      const first = await as(tina).list().expect(200);
+      expect(first.body.data).toHaveLength(30);
+      expect(first.body.meta.hasMore).toBe(true);
+
+      const second = await as(tina).list(`?cursor=${first.body.meta.nextCursor}`).expect(200);
+      expect(second.body.data).toHaveLength(5);
+      expect(second.body.meta).toEqual({ hasMore: false, nextCursor: null });
+
+      const all = [...titles(first), ...titles(second)];
+      expect(new Set(all).size).toBe(35);
+
+      const small = await as(tina).list('?limit=10').expect(200);
+      expect(small.body.data).toHaveLength(10);
+    });
+
+    it('rejects a bad cursor or limit as a field error', async () => {
+      const bad = await as(tina).list('?cursor=garbage').expect(400);
+      expect(bad.body.error.details[0].field).toBe('cursor');
+      await as(tina).list('?limit=500').expect(400);
+    });
+  });
+
+  describe('one user can never touch another', () => {
+    it("another user's task is 404 everywhere and stays untouched", async () => {
+      const task = await newTask(tina, { title: 'Private' });
+
+      expect((await as(juma).list()).body.data).toEqual([]);
+      await as(juma).get(task.id).expect(404);
+      await as(juma).update(task.id, { title: 'Hacked' }).expect(404);
+      await as(juma).action(task.id, 'complete').expect(404);
+      await as(juma).remove(task.id).expect(404);
+      await as(juma).action(task.id, 'restore').expect(404);
+
+      expect((await as(tina).get(task.id)).body.data).toMatchObject({
+        title: 'Private',
+        status: 'TODO',
+      });
+    });
+
+    it('a malformed ID is the same 404', async () => {
+      const res = await as(tina).get('not-a-uuid').expect(404);
+      expect(res.body.error.code).toBe('TASK_NOT_FOUND');
+    });
+
+    it('needs a login', async () => {
+      await http().get('/api/v1/tasks').expect(401);
+    });
+  });
+});

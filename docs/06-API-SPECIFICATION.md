@@ -171,6 +171,13 @@ Built in 6.1 Part 1: `GET` (ordered by `sortOrder`, then name), `POST` (`201`), 
 | POST | `/tasks/:id/uncomplete` | `200 { task }` |
 | GET | `/tasks/history?from&to` | completed tasks grouped by local completion date |
 
+**Built in 6.1 Part 2:** list, create, get, patch, delete, restore, complete, uncomplete (history, subtasks and recurrence are Tasks II).
+- **List:** newest first; `?limit` (default 30, max 100) & opaque `?cursor` (UUIDv7 IDs sort by creation time, so `id < cursor` pages without gaps or repeats); filters `status`, `priority`, `categoryId`, `dueFrom`/`dueTo` (inclusive), `q` (title or description, any case). Deleted tasks never appear. A bad cursor → 400 on `cursor`.
+- **Dates:** `dueDate` is a calendar day `"YYYY-MM-DD"` in the user's zone (impossible days refused); `dueTime` is minutes after local midnight and needs a date. Clearing `dueDate` clears `dueTime`.
+- **Category:** must be one of *your* categories, else `400` on `categoryId` ("Choose one of your categories."). The foreign key alone would accept anyone's.
+- **PATCH is strict** (status changes go through `/complete` / `/uncomplete`). **Complete** keeps the first `completedAt` when repeated; **uncomplete** clears it. Responses `{ task }`.
+- **Delete** is soft (`204`); **restore** works for 30 days, then `404 TASK_NOT_FOUND`; deleted tasks can't be edited or completed. Another user's task or a malformed ID → `404 TASK_NOT_FOUND`.
+
 ```jsonc
 // POST /tasks
 {

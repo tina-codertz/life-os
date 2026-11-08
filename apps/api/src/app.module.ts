@@ -10,6 +10,7 @@ import { AuthModule } from './modules/auth/auth.module.js';
 import { CategoriesModule } from './modules/categories/categories.module.js';
 import { JwtAuthGuard } from './modules/auth/jwt-auth.guard.js';
 import { HealthModule } from './modules/health/health.module.js';
+import { TasksModule } from './modules/tasks/tasks.module.js';
 import { UsersModule } from './modules/users/users.module.js';
 import { PrismaModule } from './prisma/prisma.module.js';
 import { rateLimitOptions } from './security/rate-limit.js';
@@ -27,6 +28,7 @@ import { rateLimitOptions } from './security/rate-limit.js';
     AuthModule,
     UsersModule,
     CategoriesModule,
+    TasksModule,
   ],
   // APP_* providers (not app.useGlobal*) so they get DI and e2e tests get them too.
   // Success → ResponseEnvelopeInterceptor `{ data }`; failure → AllExceptionsFilter `{ error }`.
