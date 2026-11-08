@@ -33,6 +33,9 @@ const EXISTING: PublicTask = {
   dueTime: null,
   completedAt: null,
   categoryId: WORK.id,
+  parentId: null,
+  subtaskCount: 0,
+  subtasksDone: 0,
   sortOrder: 0,
   createdAt: '2026-11-08T09:00:00.000Z',
   updatedAt: '2026-11-08T09:00:00.000Z',
@@ -54,7 +57,10 @@ async function openForm(url: Href, existing: PublicTask = EXISTING) {
     status: 200,
     body: { data: [], meta: { nextCursor: null, hasMore: false } },
   });
-  routes[`GET /tasks/${EXISTING.id}`] = () => ({ status: 200, body: { data: existing } });
+  routes[`GET /tasks/${EXISTING.id}`] = () => ({
+    status: 200,
+    body: { data: { subtasks: [], ...existing } },
+  });
   const router = await renderRouter('src/app', { initialUrl: '/tasks' });
   await act(async () => appRouter.push(url));
   return router;
@@ -66,6 +72,11 @@ const createReturnsBody = () => {
     status: 201,
     body: { data: { ...EXISTING, ...body, id: 't9' } },
   });
+};
+
+const addSubtask = async (title: string) => {
+  await fireEvent.changeText(screen.getByLabelText('New subtask'), title);
+  await fireEvent(screen.getByLabelText('New subtask'), 'submitEditing');
 };
 
 beforeEach(() => resetMockApi());
@@ -269,6 +280,123 @@ describe('task form', () => {
       await press('Save');
       await waitFor(() => expect(bodies(`PATCH /tasks/${EXISTING.id}`)).toHaveLength(1));
       expect(bodies(`PATCH /tasks/${EXISTING.id}`)[0]).toMatchObject({ dueTime: null });
+    });
+  });
+
+  describe('subtasks', () => {
+    it('a new task: subtasks typed before saving are created with it, in order', async () => {
+      createReturnsBody();
+      routes['POST /tasks/t9/subtasks'] = (body) => ({
+        status: 201,
+        body: { data: { ...EXISTING, id: `s-${String(body?.['title'])}`, parentId: 't9' } },
+      });
+      await openForm('/task-form');
+      await fireEvent.changeText(await screen.findByLabelText('Title'), 'Move house');
+
+      await addSubtask('Book van');
+      await addSubtask('Pack books');
+      await addSubtask('Oops');
+      await press('Remove Oops');
+      expect(screen.getByLabelText('Subtasks, 2')).toBeOnTheScreen();
+
+      await press('Add task');
+      await waitFor(() => expect(bodies('POST /tasks/t9/subtasks')).toHaveLength(2));
+      expect(bodies('POST /tasks/t9/subtasks')).toEqual([
+        { title: 'Book van' },
+        { title: 'Pack books' },
+      ]);
+    });
+
+    it('an empty subtask is refused with the shared message', async () => {
+      await openForm('/task-form');
+      await screen.findByLabelText('Title');
+      await addSubtask('   ');
+      expect(await screen.findByText('Give the task a title.')).toBeOnTheScreen();
+    });
+
+    const WITH_SUBTASKS = {
+      ...EXISTING,
+      subtaskCount: 2,
+      subtasksDone: 0,
+      subtasks: [
+        { ...EXISTING, id: 's1', title: 'Transfer', parentId: EXISTING.id, priority: 'NONE' },
+        { ...EXISTING, id: 's2', title: 'Get receipt', parentId: EXISTING.id, priority: 'NONE' },
+      ],
+    } as PublicTask;
+
+    it('editing: tick, add and remove subtasks straight away', async () => {
+      // A fake server that remembers each change, so re-reading the task sees it.
+      const server = structuredClone(WITH_SUBTASKS) as PublicTask & { subtasks: PublicTask[] };
+      const recount = () => {
+        server.subtaskCount = server.subtasks.length;
+        server.subtasksDone = server.subtasks.filter((t) => t.status === 'DONE').length;
+      };
+      routes['POST /tasks/s1/complete'] = () => {
+        server.subtasks[0]!.status = 'DONE';
+        recount();
+        return { status: 200, body: { data: { task: server.subtasks[0] } } };
+      };
+      routes[`POST /tasks/${EXISTING.id}/subtasks`] = (body) => {
+        const sub = {
+          ...EXISTING,
+          id: 's3',
+          title: String(body?.['title']),
+          parentId: EXISTING.id,
+        };
+        server.subtasks.push(sub);
+        recount();
+        return { status: 201, body: { data: sub } };
+      };
+      routes['DELETE /tasks/s2'] = () => {
+        server.subtasks = server.subtasks.filter((t) => t.id !== 's2');
+        recount();
+        return { status: 204 };
+      };
+      await openForm(`/task-form?id=${EXISTING.id}`, server);
+
+      expect(await screen.findByLabelText('Subtasks, 0 of 2')).toBeOnTheScreen();
+      await fireEvent.press(screen.getByRole('checkbox', { name: 'Transfer' }));
+      await waitFor(() => expect(screen.getByRole('checkbox', { name: 'Transfer' })).toBeChecked());
+      expect(screen.getByLabelText('Subtasks, 1 of 2')).toBeOnTheScreen();
+      await waitFor(() =>
+        expect(calls.some((c) => c.route === 'POST /tasks/s1/complete')).toBe(true),
+      );
+
+      await addSubtask('Email landlord');
+      expect(await screen.findByRole('checkbox', { name: 'Email landlord' })).toBeOnTheScreen();
+      expect(bodies(`POST /tasks/${EXISTING.id}/subtasks`)).toEqual([{ title: 'Email landlord' }]);
+
+      await press('Remove Get receipt');
+      await waitFor(() =>
+        expect(screen.queryByRole('checkbox', { name: 'Get receipt' })).toBeNull(),
+      );
+      await waitFor(() => expect(calls.some((c) => c.route === 'DELETE /tasks/s2')).toBe(true));
+    });
+
+    it('editing: a tick the server refuses is undone and says so', async () => {
+      // The server's answer is held until the test releases it.
+      let refuse: (() => void) | undefined;
+      routes['POST /tasks/s1/complete'] = () =>
+        new Promise((resolve) => {
+          refuse = () =>
+            resolve({
+              status: 503,
+              body: apiError('SERVICE_UNAVAILABLE', 'The database is unavailable.'),
+            });
+        });
+      await openForm(`/task-form?id=${EXISTING.id}`, WITH_SUBTASKS);
+      await screen.findByRole('checkbox', { name: 'Transfer' });
+      // Re-reading the task never finishes, so only the rollback can untick it.
+      routes[`GET /tasks/${EXISTING.id}`] = () => new Promise(() => {});
+
+      await fireEvent.press(screen.getByRole('checkbox', { name: 'Transfer' }));
+      await waitFor(() => expect(screen.getByRole('checkbox', { name: 'Transfer' })).toBeChecked());
+
+      await act(async () => refuse?.());
+      expect(await screen.findByText("Couldn't update the subtask. Try again.")).toBeOnTheScreen();
+      await waitFor(() =>
+        expect(screen.getByRole('checkbox', { name: 'Transfer' })).not.toBeChecked(),
+      );
     });
   });
 });

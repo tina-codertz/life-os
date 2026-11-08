@@ -41,8 +41,12 @@ export function TaskRow({ task, category, today, onToggle, onOpen, onDelete }: T
   const due = task.dueDate ? formatDue(task.dueDate, today, task.dueTime, done) : null;
   const priority = PRIORITY_LABEL[task.priority];
   const badge = task.priority === 'NONE' ? null : PRIORITY_BADGE[task.priority](colors);
-  const details = [due?.text, priority && `${priority} priority`, category?.name].filter(Boolean);
-  const meta = [due?.text, category?.name].filter(Boolean).join(' · ');
+  const subtasks =
+    task.subtaskCount > 0 ? `${task.subtasksDone} of ${task.subtaskCount} subtasks` : null;
+  const details = [due?.text, priority && `${priority} priority`, category?.name, subtasks].filter(
+    Boolean,
+  );
+  const meta = [due?.text, category?.name, subtasks].filter(Boolean).join(' · ');
 
   return (
     <View

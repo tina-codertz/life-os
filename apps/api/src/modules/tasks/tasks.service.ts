@@ -1,9 +1,12 @@
 import { Injectable } from '@nestjs/common';
 import {
+  type CreateSubtaskInput,
   type CreateTaskInput,
   type ListTasksQuery,
+  MAX_SUBTASKS,
   type PublicTask,
   TASK_RESTORE_DAYS,
+  type TaskDetail,
   type UpdateTaskInput,
 } from '@life-os/shared';
 import { toDbDate } from '../../common/dates.js';
@@ -13,8 +16,13 @@ import type { Prisma, Task } from '../../generated/prisma/client.js';
 import { PrismaService } from '../../prisma/prisma.service.js';
 import { CategoriesService } from '../categories/categories.service.js';
 import { CategoryNotFoundError } from '../categories/category.errors.js';
-import { toPublicTask } from './public-task.js';
-import { fieldError, TaskNotFoundError } from './task.errors.js';
+import { NO_SUBTASKS, type SubtaskCounts, toPublicTask } from './public-task.js';
+import {
+  fieldError,
+  SubtaskLimitError,
+  SubtaskNotAllowedError,
+  TaskNotFoundError,
+} from './task.errors.js';
 
 const DAY_MS = 24 * 60 * 60 * 1000;
 
@@ -30,7 +38,8 @@ export class TasksService {
   // Newest first. UUIDv7 IDs sort by creation time, so "id < cursor" pages without gaps or
   // repeats even while tasks are being added.
   async list(userId: string, query: ListTasksQuery): Promise<Page<PublicTask>> {
-    const where: Prisma.TaskWhereInput = { userId, deletedAt: null };
+    // Top-level tasks only: subtasks are shown inside their task (GET /tasks/:id).
+    const where: Prisma.TaskWhereInput = { userId, deletedAt: null, parentId: null };
     if (query.status) where.status = query.status;
     if (query.priority) where.priority = query.priority;
     if (query.categoryId) where.categoryId = query.categoryId;
@@ -54,11 +63,42 @@ export class TasksService {
       take: query.limit + 1,
     });
     const { items, meta } = pageOf(rows, query.limit);
-    return new Page(items.map(toPublicTask), meta);
+    const counts = await this.subtaskCounts(items.map((t) => t.id));
+    return new Page(
+      items.map((t) => toPublicTask(t, counts.get(t.id))),
+      meta,
+    );
   }
 
-  async get(userId: string, id: string): Promise<PublicTask> {
-    return toPublicTask(await this.findActive(userId, id));
+  // The task with its subtasks, oldest first (the order they were added).
+  async get(userId: string, id: string): Promise<TaskDetail> {
+    const task = await this.findActive(userId, id);
+    const subtasks = await this.prisma.task.findMany({
+      where: { parentId: task.id, deletedAt: null },
+      orderBy: [{ sortOrder: 'asc' }, { id: 'asc' }],
+    });
+    return {
+      ...toPublicTask(task, countOf(subtasks)),
+      subtasks: subtasks.map((t) => toPublicTask(t)),
+    };
+  }
+
+  // FR-TASK-005: one level deep, so a subtask can't get subtasks; at most MAX_SUBTASKS each.
+  async addSubtask(
+    userId: string,
+    parentId: string,
+    input: CreateSubtaskInput,
+  ): Promise<PublicTask> {
+    const parent = await this.findActive(userId, parentId);
+    if (parent.parentId) throw new SubtaskNotAllowedError();
+    const existing = await this.prisma.task.count({
+      where: { parentId: parent.id, deletedAt: null },
+    });
+    if (existing >= MAX_SUBTASKS) throw new SubtaskLimitError();
+    const subtask = await this.prisma.task.create({
+      data: { userId, parentId: parent.id, title: input.title, sortOrder: existing },
+    });
+    return toPublicTask(subtask);
   }
 
   async create(userId: string, input: CreateTaskInput): Promise<PublicTask> {
@@ -96,7 +136,7 @@ export class TasksService {
     const dateAfter = input.dueDate !== undefined ? input.dueDate : task.dueDate;
     if (input.dueTime != null && !dateAfter) throw fieldError('dueTime', 'A time needs a date.');
 
-    return toPublicTask(await this.prisma.task.update({ where: { id: task.id }, data }));
+    return this.withCounts(await this.prisma.task.update({ where: { id: task.id }, data }));
   }
 
   // Soft delete: restorable for 30 days (FR-TASK-002), then purged (Phase 10 job).
@@ -109,34 +149,72 @@ export class TasksService {
   async restore(userId: string, id: string): Promise<PublicTask> {
     const task = await this.prisma.task.findFirst({ where: { id, userId } });
     if (!task) throw new TaskNotFoundError();
-    if (!task.deletedAt) return toPublicTask(task);
+    if (!task.deletedAt) return this.withCounts(task);
     if (Date.now() - task.deletedAt.getTime() > TASK_RESTORE_DAYS * DAY_MS) {
       throw new TaskNotFoundError();
     }
-    return toPublicTask(
+    return this.withCounts(
       await this.prisma.task.update({ where: { id: task.id }, data: { deletedAt: null } }),
     );
   }
 
-  // Safe to repeat: completing a done task keeps its original completion time.
-  async complete(userId: string, id: string): Promise<{ task: PublicTask }> {
+  // Safe to repeat: completing a done task keeps its original completion time. Subtasks stay
+  // as they are unless `includeSubtasks` (FR-TASK-005: the app asks the user first).
+  async complete(
+    userId: string,
+    id: string,
+    includeSubtasks = false,
+  ): Promise<{ task: PublicTask }> {
     const task = await this.findActive(userId, id);
-    if (task.status === 'DONE') return { task: toPublicTask(task) };
-    const done = await this.prisma.task.update({
-      where: { id: task.id },
-      data: { status: 'DONE', completedAt: new Date() },
+    const now = new Date();
+    const done = await this.prisma.$transaction(async (tx) => {
+      if (includeSubtasks) {
+        await tx.task.updateMany({
+          where: { parentId: task.id, deletedAt: null, status: 'TODO' },
+          data: { status: 'DONE', completedAt: now },
+        });
+      }
+      if (task.status === 'DONE') return task;
+      return tx.task.update({
+        where: { id: task.id },
+        data: { status: 'DONE', completedAt: now },
+      });
     });
-    return { task: toPublicTask(done) };
+    return { task: await this.withCounts(done) };
   }
 
   async uncomplete(userId: string, id: string): Promise<{ task: PublicTask }> {
     const task = await this.findActive(userId, id);
-    if (task.status === 'TODO') return { task: toPublicTask(task) };
+    if (task.status === 'TODO') return { task: await this.withCounts(task) };
     const todo = await this.prisma.task.update({
       where: { id: task.id },
       data: { status: 'TODO', completedAt: null },
     });
-    return { task: toPublicTask(todo) };
+    return { task: await this.withCounts(todo) };
+  }
+
+  // Active subtasks per parent, total and done, for the given parents (one query).
+  private async subtaskCounts(parentIds: string[]): Promise<Map<string, SubtaskCounts>> {
+    const counts = new Map<string, SubtaskCounts>();
+    if (parentIds.length === 0) return counts;
+    const groups = await this.prisma.task.groupBy({
+      by: ['parentId', 'status'],
+      where: { parentId: { in: parentIds }, deletedAt: null },
+      _count: { _all: true },
+    });
+    for (const g of groups) {
+      if (!g.parentId) continue;
+      const c = counts.get(g.parentId) ?? { total: 0, done: 0 };
+      c.total += g._count._all;
+      if (g.status === 'DONE') c.done += g._count._all;
+      counts.set(g.parentId, c);
+    }
+    return counts;
+  }
+
+  private async withCounts(task: Task): Promise<PublicTask> {
+    if (task.parentId) return toPublicTask(task);
+    return toPublicTask(task, (await this.subtaskCounts([task.id])).get(task.id) ?? NO_SUBTASKS);
   }
 
   private async findActive(userId: string, id: string): Promise<Task> {
@@ -156,4 +234,8 @@ export class TasksService {
       throw err;
     }
   }
+}
+
+function countOf(subtasks: Task[]): SubtaskCounts {
+  return { total: subtasks.length, done: subtasks.filter((t) => t.status === 'DONE').length };
 }

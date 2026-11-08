@@ -1,10 +1,15 @@
 import { Controller, Delete, Get, HttpCode, HttpStatus, Patch, Post } from '@nestjs/common';
 import {
+  type CompleteTaskInput,
+  completeTaskSchema,
+  type CreateSubtaskInput,
+  createSubtaskSchema,
   type CreateTaskInput,
   createTaskSchema,
   type ListTasksQuery,
   listTasksQuerySchema,
   type PublicTask,
+  type TaskDetail,
   type UpdateTaskInput,
   updateTaskSchema,
 } from '@life-os/shared';
@@ -41,9 +46,19 @@ export class TasksController {
     return this.tasks.create(user.id, body);
   }
 
+  // The task with its subtasks[].
   @Get(':id')
-  get(@CurrentUser() user: AuthUser, @taskId() id: string): Promise<PublicTask> {
+  get(@CurrentUser() user: AuthUser, @taskId() id: string): Promise<TaskDetail> {
     return this.tasks.get(user.id, id);
+  }
+
+  @Post(':id/subtasks')
+  addSubtask(
+    @CurrentUser() user: AuthUser,
+    @taskId() id: string,
+    @ZodBody(createSubtaskSchema) body: CreateSubtaskInput,
+  ): Promise<PublicTask> {
+    return this.tasks.addSubtask(user.id, id, body);
   }
 
   @Patch(':id')
@@ -69,8 +84,12 @@ export class TasksController {
 
   @Post(':id/complete')
   @HttpCode(HttpStatus.OK)
-  complete(@CurrentUser() user: AuthUser, @taskId() id: string): Promise<{ task: PublicTask }> {
-    return this.tasks.complete(user.id, id);
+  complete(
+    @CurrentUser() user: AuthUser,
+    @taskId() id: string,
+    @ZodBody(completeTaskSchema) body: CompleteTaskInput,
+  ): Promise<{ task: PublicTask }> {
+    return this.tasks.complete(user.id, id, body.includeSubtasks ?? false);
   }
 
   @Post(':id/uncomplete')

@@ -1,21 +1,34 @@
 import { createTaskSchema, PRIORITIES, type Priority } from '@life-os/shared';
 import { router, useLocalSearchParams } from 'expo-router';
 import { type ReactNode, useEffect, useState } from 'react';
+import { useQueryClient } from '@tanstack/react-query';
 import { Controller, useWatch } from 'react-hook-form';
 import { ScrollView, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { Button, Chip, IconButton, ListGroup, ListRow, Text, TextField } from '@/components/ui';
+import {
+  Button,
+  Chip,
+  IconButton,
+  ListGroup,
+  ListRow,
+  Text,
+  TextField,
+  useToast,
+} from '@/components/ui';
 import { applyApiError, useZodForm } from '@/features/forms/zod-form';
 import { addDays, formatDue, localToday } from '@/features/tasks/dates';
 import { DueTimeRow } from '@/features/tasks/due-time-row';
 import { MonthCalendar } from '@/features/tasks/month-calendar';
 import {
+  createSubtasks,
+  taskKeys,
   useCategories,
   useCreateTask,
   useDeleteTask,
   useTask,
   useUpdateTask,
 } from '@/features/tasks/queries';
+import { SubtasksRow } from '@/features/tasks/subtasks-row';
 import { useMe } from '@/features/users/queries';
 import { useTimezone } from '@/features/users/use-timezone';
 import { spacing, type ThemeColors, useTheme } from '@/theme';
@@ -48,6 +61,10 @@ export default function TaskForm() {
   const existing = useTask(id);
   const categories = useCategories();
   const create = useCreateTask();
+  const queryClient = useQueryClient();
+  const toast = useToast();
+  // A new task's subtasks, typed before the task exists (created right after it).
+  const [draftSubtasks, setDraftSubtasks] = useState<string[]>([]);
   const update = useUpdateTask(id ?? '');
   const remove = useDeleteTask();
 
@@ -82,8 +99,21 @@ export default function TaskForm() {
 
   const save = handleSubmit(async (values) => {
     try {
-      if (id) await update.mutateAsync(values);
-      else await create.mutateAsync(values);
+      if (id) {
+        await update.mutateAsync(values);
+      } else {
+        const created = await create.mutateAsync(values);
+        if (draftSubtasks.length > 0) {
+          // The task exists now; a failed subtask shouldn't undo it or keep the sheet open.
+          await createSubtasks(created.id, draftSubtasks).catch(() =>
+            toast({
+              message: "The task was added, but some subtasks weren't. Open it to add them.",
+              tone: 'error',
+            }),
+          );
+          void queryClient.invalidateQueries({ queryKey: taskKeys.all });
+        }
+      }
       router.back();
     } catch (err) {
       applyApiError(err, setError, [
@@ -204,6 +234,11 @@ export default function TaskForm() {
             />
           )}
         />
+        {id ? (
+          task && <SubtasksRow mode="live" task={task} />
+        ) : (
+          <SubtasksRow mode="draft" drafts={draftSubtasks} onChange={setDraftSubtasks} />
+        )}
       </ListGroup>
 
       <Controller

@@ -135,16 +135,20 @@ model Task {
   completedAt DateTime?    @db.Timestamptz(3)
   sortOrder   Int          @default(0)
   categoryId  String?      @db.Uuid
+  parentId    String?      @db.Uuid // subtask → parent (one level, service-enforced; FR-TASK-005)
   createdAt   DateTime     @default(now()) @db.Timestamptz(3)
   updatedAt   DateTime     @updatedAt @db.Timestamptz(3)
   deletedAt   DateTime?    @db.Timestamptz(3) // soft delete, restorable for 30 days
 
   user     User      @relation(fields: [userId], references: [id], onDelete: Cascade)
   category Category? @relation(fields: [categoryId], references: [id], onDelete: SetNull)
+  parent   Task?     @relation("Subtasks", fields: [parentId], references: [id], onDelete: Cascade)
+  subtasks Task[]    @relation("Subtasks")
 
   @@index([userId, status, dueDate]) // Today + list filters
   @@index([userId, completedAt]) // history, stats
   @@index([userId, categoryId])
+  @@index([parentId])
 }
 
 enum TaskPriority {

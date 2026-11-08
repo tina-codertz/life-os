@@ -1,5 +1,5 @@
 import type { INestApplication } from '@nestjs/common';
-import type { AuthResult, PublicTask } from '@life-os/shared';
+import { type AuthResult, MAX_SUBTASKS, type PublicTask, type TaskDetail } from '@life-os/shared';
 import request from 'supertest';
 import type { App } from 'supertest/types.js';
 import { PrismaService } from '../src/prisma/prisma.service.js';
@@ -25,7 +25,10 @@ describe('Tasks (e2e)', () => {
       update: (id: string, body: object) =>
         http().patch(`/api/v1/tasks/${id}`).set(auth).send(body),
       remove: (id: string) => http().delete(`/api/v1/tasks/${id}`).set(auth),
-      action: (id: string, name: string) => http().post(`/api/v1/tasks/${id}/${name}`).set(auth),
+      action: (id: string, name: string, body?: object) =>
+        http().post(`/api/v1/tasks/${id}/${name}`).set(auth).send(body),
+      addSubtask: (id: string, title: string) =>
+        http().post(`/api/v1/tasks/${id}/subtasks`).set(auth).send({ title }),
       category: (name: string) =>
         http().post('/api/v1/categories').set(auth).send({ name, color: 'blue' }),
     };
@@ -43,6 +46,9 @@ describe('Tasks (e2e)', () => {
         .create({ title: 'Task', ...body })
         .expect(201)
     ).body.data;
+
+  const detail = async (who: AuthResult, id: string): Promise<TaskDetail> =>
+    (await as(who).get(id).expect(200)).body.data;
 
   beforeAll(async () => {
     app = await createTestApp();
@@ -72,11 +78,18 @@ describe('Tasks (e2e)', () => {
         dueTime: null,
         completedAt: null,
         categoryId: null,
+        parentId: null,
+        subtaskCount: 0,
+        subtasksDone: 0,
         sortOrder: 0,
         createdAt: expect.any(String),
         updatedAt: expect.any(String),
       });
-      expect((await as(tina).get(task.id).expect(200)).body.data).toEqual(task);
+      // GET adds the (empty) subtask list.
+      expect((await as(tina).get(task.id).expect(200)).body.data).toEqual({
+        ...task,
+        subtasks: [],
+      });
     });
 
     it('stores a due date as a calendar day and a time as minutes', async () => {
@@ -267,6 +280,91 @@ describe('Tasks (e2e)', () => {
 
     it('needs a login', async () => {
       await http().get('/api/v1/tasks').expect(401);
+    });
+  });
+
+  describe('subtasks (FR-TASK-005)', () => {
+    it('adds subtasks in order; the task shows them and counts them', async () => {
+      const task = await newTask(tina, { title: 'Ship MVP' });
+      const first = (await as(tina).addSubtask(task.id, ' Schema ').expect(201)).body.data;
+      await as(tina).addSubtask(task.id, 'Screens').expect(201);
+      expect(first).toMatchObject({ title: 'Schema', parentId: task.id, status: 'TODO' });
+
+      await as(tina).action(first.id, 'complete').expect(200);
+      const shown = await detail(tina, task.id);
+      expect(shown.subtasks.map((t) => [t.title, t.status])).toEqual([
+        ['Schema', 'DONE'],
+        ['Screens', 'TODO'],
+      ]);
+      expect(shown).toMatchObject({ subtaskCount: 2, subtasksDone: 1 });
+    });
+
+    it('lists show top-level tasks only, each with "done of total"', async () => {
+      const task = await newTask(tina, { title: 'Parent' });
+      const sub = (await as(tina).addSubtask(task.id, 'Child').expect(201)).body.data;
+      await as(tina).action(sub.id, 'complete').expect(200);
+      await as(tina).addSubtask(task.id, 'Another').expect(201);
+
+      const all = (await as(tina).list().expect(200)).body.data as PublicTask[];
+      expect(all.map((t) => t.title)).toEqual(['Parent']);
+      expect(all[0]).toMatchObject({ subtaskCount: 2, subtasksDone: 1 });
+      // Search doesn't surface subtasks on their own either.
+      expect(titles(await as(tina).list('?q=child').expect(200))).toEqual([]);
+    });
+
+    it('one level only: a subtask cannot have subtasks', async () => {
+      const task = await newTask(tina);
+      const sub = (await as(tina).addSubtask(task.id, 'Child').expect(201)).body.data;
+      const res = await as(tina).addSubtask(sub.id, 'Grandchild').expect(422);
+      expect(res.body.error.code).toBe('SUBTASK_NOT_ALLOWED');
+    });
+
+    it(`allows at most ${MAX_SUBTASKS} per task`, async () => {
+      const task = await newTask(tina);
+      await prisma.task.createMany({
+        data: Array.from({ length: MAX_SUBTASKS }, (_, i) => ({
+          userId: tina.user.id,
+          parentId: task.id,
+          title: `Step ${i}`,
+        })),
+      });
+      const res = await as(tina).addSubtask(task.id, 'One more').expect(422);
+      expect(res.body.error.code).toBe('SUBTASK_LIMIT_REACHED');
+    });
+
+    it('completing a task leaves its subtasks alone unless asked', async () => {
+      const task = await newTask(tina);
+      await as(tina).addSubtask(task.id, 'A').expect(201);
+      await as(tina).addSubtask(task.id, 'B').expect(201);
+
+      const plain = (await as(tina).action(task.id, 'complete').expect(200)).body.data.task;
+      expect(plain).toMatchObject({ status: 'DONE', subtaskCount: 2, subtasksDone: 0 });
+
+      // Asked: the open subtasks are completed too (even though the task already was).
+      const all = await as(tina).action(task.id, 'complete', { includeSubtasks: true }).expect(200);
+      expect(all.body.data.task).toMatchObject({ subtasksDone: 2 });
+      expect((await detail(tina, task.id)).subtasks.every((t) => t.status === 'DONE')).toBe(true);
+    });
+
+    it('a deleted subtask disappears from its task and the counts', async () => {
+      const task = await newTask(tina);
+      const sub = (await as(tina).addSubtask(task.id, 'Gone').expect(201)).body.data;
+      await as(tina).remove(sub.id).expect(204);
+      expect(await detail(tina, task.id)).toMatchObject({ subtasks: [], subtaskCount: 0 });
+    });
+
+    it("another user can't add to, see or complete your subtasks", async () => {
+      const task = await newTask(tina);
+      const sub = (await as(tina).addSubtask(task.id, 'Mine').expect(201)).body.data;
+      await as(juma).addSubtask(task.id, 'Sneaky').expect(404);
+      await as(juma).get(sub.id).expect(404);
+      await as(juma).action(sub.id, 'complete').expect(404);
+      expect((await detail(tina, task.id)).subtasks.map((t) => t.title)).toEqual(['Mine']);
+    });
+
+    it('refuses unknown fields on complete', async () => {
+      const task = await newTask(tina);
+      await as(tina).action(task.id, 'complete', { everything: true }).expect(400);
     });
   });
 });

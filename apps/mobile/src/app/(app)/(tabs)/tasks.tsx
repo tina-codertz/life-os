@@ -1,7 +1,7 @@
 import type { PublicTask } from '@life-os/shared';
 import { router } from 'expo-router';
 import { useMemo, useState } from 'react';
-import { ActivityIndicator, FlatList, RefreshControl, View } from 'react-native';
+import { ActivityIndicator, Alert, FlatList, RefreshControl, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { ScreenHeader, ScreenWash, TAB_BAR_SPACE } from '@/components/screen';
 import {
@@ -39,6 +39,32 @@ const EMPTY: Record<TaskFilter, { title: string; description: string }> = {
   DONE: { title: 'Nothing done yet', description: 'Completed tasks show up here.' },
   ALL: { title: 'No tasks yet', description: 'Add your first task.' },
 };
+
+// FR-TASK-005: completing a task doesn't complete its subtasks on its own; if some are still
+// open, ask (the phone's own dialog). Unticking, or a task with none open, just goes ahead.
+function completeOrAsk(
+  task: PublicTask,
+  done: boolean,
+  toggle: (input: { id: string; done: boolean; includeSubtasks?: boolean }) => void,
+) {
+  const open = task.subtaskCount - task.subtasksDone;
+  if (!done || open === 0) {
+    toggle({ id: task.id, done });
+    return;
+  }
+  Alert.alert(
+    'Complete the subtasks too?',
+    open === 1 ? '1 subtask isn’t done yet.' : `${open} subtasks aren’t done yet.`,
+    [
+      { text: 'Cancel', style: 'cancel' },
+      { text: 'Only this task', onPress: () => toggle({ id: task.id, done }) },
+      {
+        text: 'Complete all',
+        onPress: () => toggle({ id: task.id, done, includeSubtasks: true }),
+      },
+    ],
+  );
+}
 
 // The add/edit sheet: no id = new task.
 function openTask(task?: PublicTask) {
@@ -168,7 +194,7 @@ export default function Tasks() {
             task={item}
             category={item.categoryId ? categoryById.get(item.categoryId) : undefined}
             today={today}
-            onToggle={(done) => toggle.mutate({ id: item.id, done })}
+            onToggle={(done) => completeOrAsk(item, done, (input) => toggle.mutate(input))}
             onOpen={() => openTask(item)}
             onDelete={() => remove.mutate(item)}
           />

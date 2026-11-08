@@ -1,4 +1,10 @@
-import type { CreateTaskInput, PublicCategory, PublicTask, UpdateTaskInput } from '@life-os/shared';
+import type {
+  CreateTaskInput,
+  PublicCategory,
+  PublicTask,
+  TaskDetail,
+  UpdateTaskInput,
+} from '@life-os/shared';
 import {
   type InfiniteData,
   type QueryClient,
@@ -44,7 +50,7 @@ export function useTasks(filter: TaskFilter, q = '') {
 export function useTask(id: string | undefined) {
   return useQuery({
     queryKey: taskKeys.detail(id ?? ''),
-    queryFn: ({ signal }) => api().get<PublicTask>(`/tasks/${id}`, { signal }),
+    queryFn: ({ signal }) => api().get<TaskDetail>(`/tasks/${id}`, { signal }),
     enabled: Boolean(id),
   });
 }
@@ -94,15 +100,25 @@ function updateCachedTasks(
   );
 }
 
+interface ToggleInput {
+  id: string;
+  done: boolean;
+  includeSubtasks?: boolean;
+}
+
 // Optimistic: the check shows at once; if the server refuses, the old state comes back and a
 // toast says so. Lists refetch afterwards (a done task leaves "To do").
 export function useToggleTask() {
   const queryClient = useQueryClient();
   const toast = useToast();
   return useMutation({
-    mutationFn: ({ id, done }: { id: string; done: boolean }) =>
-      api().post<{ task: PublicTask }>(`/tasks/${id}/${done ? 'complete' : 'uncomplete'}`),
-    onMutate: async ({ id, done }) => {
+    // includeSubtasks: complete the task's open subtasks too (the user was asked first).
+    mutationFn: ({ id, done, includeSubtasks }: ToggleInput) =>
+      api().post<{ task: PublicTask }>(
+        `/tasks/${id}/${done ? 'complete' : 'uncomplete'}`,
+        includeSubtasks ? { includeSubtasks: true } : undefined,
+      ),
+    onMutate: async ({ id, done, includeSubtasks }) => {
       await queryClient.cancelQueries({ queryKey: taskKeys.all });
       const before = queryClient.getQueriesData<TaskPages>({ queryKey: ['tasks', 'list'] });
       updateCachedTasks(queryClient, (task) =>
@@ -111,6 +127,7 @@ export function useToggleTask() {
               ...task,
               status: done ? 'DONE' : 'TODO',
               completedAt: done ? new Date().toISOString() : null,
+              ...(includeSubtasks ? { subtasksDone: task.subtaskCount } : {}),
             }
           : task,
       );
@@ -156,4 +173,88 @@ export function useDeleteTask() {
     },
     onSettled: () => queryClient.invalidateQueries({ queryKey: taskKeys.all }),
   });
+}
+
+// --- Subtasks (FR-TASK-005), shown inside their task's sheet ---
+
+// Every change to a subtask also changes its task's "2 of 4", so lists refetch after each.
+export function useAddSubtask(parentId: string) {
+  const queryClient = useQueryClient();
+  const toast = useToast();
+  return useMutation({
+    mutationFn: (title: string) => api().post<PublicTask>(`/tasks/${parentId}/subtasks`, { title }),
+    onSuccess: (subtask) => {
+      queryClient.setQueryData<TaskDetail>(taskKeys.detail(parentId), (task) =>
+        task
+          ? { ...task, subtasks: [...task.subtasks, subtask], subtaskCount: task.subtaskCount + 1 }
+          : task,
+      );
+    },
+    onError: () => toast({ message: "Couldn't add the subtask. Try again.", tone: 'error' }),
+    onSettled: () => queryClient.invalidateQueries({ queryKey: taskKeys.all }),
+  });
+}
+
+// Optimistic, like ticking a task: shows at once, comes back if the server refuses.
+export function useToggleSubtask(parentId: string) {
+  const queryClient = useQueryClient();
+  const toast = useToast();
+  return useMutation({
+    mutationFn: ({ id, done }: { id: string; done: boolean }) =>
+      api().post<{ task: PublicTask }>(`/tasks/${id}/${done ? 'complete' : 'uncomplete'}`),
+    onMutate: async ({ id, done }) => {
+      await queryClient.cancelQueries({ queryKey: taskKeys.detail(parentId) });
+      const before = queryClient.getQueryData<TaskDetail>(taskKeys.detail(parentId));
+      if (before) {
+        const subtasks = before.subtasks.map((t) =>
+          t.id === id ? { ...t, status: done ? ('DONE' as const) : ('TODO' as const) } : t,
+        );
+        queryClient.setQueryData<TaskDetail>(taskKeys.detail(parentId), {
+          ...before,
+          subtasks,
+          subtasksDone: subtasks.filter((t) => t.status === 'DONE').length,
+        });
+      }
+      return { before };
+    },
+    onError: (_err, _vars, context) => {
+      if (context?.before) queryClient.setQueryData(taskKeys.detail(parentId), context.before);
+      toast({ message: "Couldn't update the subtask. Try again.", tone: 'error' });
+    },
+    onSettled: () => queryClient.invalidateQueries({ queryKey: taskKeys.all }),
+  });
+}
+
+export function useRemoveSubtask(parentId: string) {
+  const queryClient = useQueryClient();
+  const toast = useToast();
+  return useMutation({
+    mutationFn: (id: string) => api().delete<void>(`/tasks/${id}`),
+    onMutate: async (id) => {
+      await queryClient.cancelQueries({ queryKey: taskKeys.detail(parentId) });
+      const before = queryClient.getQueryData<TaskDetail>(taskKeys.detail(parentId));
+      if (before) {
+        const subtasks = before.subtasks.filter((t) => t.id !== id);
+        queryClient.setQueryData<TaskDetail>(taskKeys.detail(parentId), {
+          ...before,
+          subtasks,
+          subtaskCount: subtasks.length,
+          subtasksDone: subtasks.filter((t) => t.status === 'DONE').length,
+        });
+      }
+      return { before };
+    },
+    onError: (_err, _id, context) => {
+      if (context?.before) queryClient.setQueryData(taskKeys.detail(parentId), context.before);
+      toast({ message: "Couldn't remove the subtask. Try again.", tone: 'error' });
+    },
+    onSettled: () => queryClient.invalidateQueries({ queryKey: taskKeys.all }),
+  });
+}
+
+// A new task's subtasks are typed before the task exists; they're created right after it.
+export async function createSubtasks(parentId: string, titles: string[]): Promise<void> {
+  for (const title of titles) {
+    await api().post<PublicTask>(`/tasks/${parentId}/subtasks`, { title });
+  }
 }

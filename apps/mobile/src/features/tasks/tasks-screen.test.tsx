@@ -1,5 +1,6 @@
 import type { PublicCategory, PublicTask, PublicUser } from '@life-os/shared';
 import { act, fireEvent, renderRouter, screen, waitFor, within } from 'expo-router/testing-library';
+import { Alert, type AlertButton } from 'react-native';
 import { authStore } from '@/features/auth/auth-instance';
 import { apiError, calls, resetMockApi, routes } from '@/test/mock-auth-instance';
 import { addDays, localToday } from './dates';
@@ -36,6 +37,9 @@ const task = (overrides: Partial<PublicTask> = {}): PublicTask => {
     dueTime: null,
     completedAt: null,
     categoryId: null,
+    parentId: null,
+    subtaskCount: 0,
+    subtasksDone: 0,
     sortOrder: 0,
     createdAt: '2026-11-08T09:00:00.000Z',
     updatedAt: '2026-11-08T09:00:00.000Z',
@@ -73,6 +77,18 @@ const wait = (ms: number) =>
   act(async () => {
     jest.advanceTimersByTime(ms);
   });
+
+const parent = () => task({ title: 'Ship MVP', subtaskCount: 3, subtasksDone: 1 });
+
+// Ticks the task and returns the dialog's buttons (the phone's own dialog, mocked).
+async function tickAndGetDialog() {
+  const alert = jest.spyOn(Alert, 'alert').mockImplementation(() => undefined);
+  await fireEvent.press(await screen.findByRole('checkbox', { name: 'Ship MVP' }));
+  const call = alert.mock.calls.at(-1);
+  alert.mockRestore();
+  const buttons: AlertButton[] = call?.[2] ?? [];
+  return { title: call?.[0], message: call?.[1], buttons };
+}
 
 beforeEach(() => {
   resetMockApi();
@@ -266,6 +282,58 @@ describe('Tasks screen', () => {
       await wait(300);
       expect(screen.queryByPlaceholderText('Search tasks')).toBeNull();
       expect(await screen.findByText('Call mum')).toBeOnTheScreen();
+    });
+  });
+
+  describe('subtasks', () => {
+    it('a task shows how many of its subtasks are done', async () => {
+      routes['GET /tasks'] = () => page([parent()]);
+      await openTasks();
+      expect(await screen.findByText('1 of 3 subtasks')).toBeOnTheScreen();
+      expect(screen.getByRole('button', { name: 'Ship MVP, 1 of 3 subtasks' })).toBeOnTheScreen();
+    });
+
+    it.each([
+      ['Complete all', { includeSubtasks: true }],
+      ['Only this task', undefined],
+    ])('with open subtasks, ticking asks first: "%s"', async (choice, body) => {
+      routes['GET /tasks'] = () => page([parent()]);
+      routes['POST /tasks/t1/complete'] = () => ({ status: 200, body: { data: { task: {} } } });
+      await openTasks();
+
+      const dialog = await tickAndGetDialog();
+      expect(dialog.title).toBe('Complete the subtasks too?');
+      expect(dialog.message).toBe('2 subtasks aren’t done yet.');
+      expect(calls.filter((c) => c.route === 'POST /tasks/t1/complete')).toHaveLength(0);
+
+      await act(async () => dialog.buttons.find((b) => b.text === choice)?.onPress?.());
+      await waitFor(() =>
+        expect(calls.filter((c) => c.route === 'POST /tasks/t1/complete')).toHaveLength(1),
+      );
+      expect(calls.find((c) => c.route === 'POST /tasks/t1/complete')?.body).toEqual(body);
+    });
+
+    it('Cancel leaves the task as it was', async () => {
+      routes['GET /tasks'] = () => page([parent()]);
+      await openTasks();
+      const dialog = await tickAndGetDialog();
+      await act(async () => dialog.buttons.find((b) => b.text === 'Cancel')?.onPress?.());
+      expect(calls.filter((c) => c.route.startsWith('POST'))).toHaveLength(0);
+      expect(screen.getByRole('checkbox', { name: 'Ship MVP' })).not.toBeChecked();
+    });
+
+    it('with every subtask done, ticking just completes the task', async () => {
+      routes['GET /tasks'] = () =>
+        page([task({ title: 'Ship MVP', subtaskCount: 2, subtasksDone: 2 })]);
+      routes['POST /tasks/t1/complete'] = () => ({ status: 200, body: { data: { task: {} } } });
+      const alert = jest.spyOn(Alert, 'alert');
+      await openTasks();
+      await fireEvent.press(await screen.findByRole('checkbox', { name: 'Ship MVP' }));
+      expect(alert).not.toHaveBeenCalled();
+      alert.mockRestore();
+      await waitFor(() =>
+        expect(calls.filter((c) => c.route === 'POST /tasks/t1/complete')).toHaveLength(1),
+      );
     });
   });
 });

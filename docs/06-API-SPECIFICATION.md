@@ -164,6 +164,7 @@ Built in 6.1 Part 1: `GET` (ordered by `sortOrder`, then name), `POST` (`201`), 
 | GET | `/tasks` | filters: `status, priority, categoryId, goalId, dueFrom, dueTo, q, parentId=null` (top-level only, default) |
 | POST | `/tasks` | see body below |
 | GET | `/tasks/:id` | includes `subtasks[]` |
+| POST | `/tasks/:id/subtasks` | `{ title }` → `201` the subtask (Tasks II Part 2) |
 | PATCH | `/tasks/:id` | partial |
 | DELETE | `/tasks/:id` | soft delete → `204` |
 | POST | `/tasks/:id/restore` | undo delete (≤ 30 days) |
@@ -172,6 +173,8 @@ Built in 6.1 Part 1: `GET` (ordered by `sortOrder`, then name), `POST` (`201`), 
 | GET | `/tasks/history?from&to` | completed tasks grouped by local completion date |
 
 **Built in 6.1 Part 2:** list, create, get, patch, delete, restore, complete, uncomplete (history, subtasks and recurrence are Tasks II).
+
+**Built in Tasks II Part 2 (subtasks, FR-TASK-005):** a subtask is a task with `parentId`, **one level deep**: adding a subtask to a subtask → `422 SUBTASK_NOT_ALLOWED`; at most `MAX_SUBTASKS` (50) per task → `422 SUBTASK_LIMIT_REACHED`. `POST /tasks/:id/subtasks { title }` adds one at the end. `GET /tasks/:id` returns `subtasks[]` (oldest first). **Every task now carries `parentId`, `subtaskCount` and `subtasksDone`** (the list's "2 of 4", counted in one grouped query per page). **Lists and search return top-level tasks only.** A subtask is edited, completed and deleted (soft) with the normal task endpoints, and a deleted one drops out of its task and the counts. **`POST /tasks/:id/complete` takes an optional body `{ includeSubtasks: true }`**, which also completes the task's open subtasks (in one transaction); without it, subtasks are left as they are (the app asks first). No body is the same as `{}`, and unknown keys → 400.
 - **List:** newest first; `?limit` (default 30, max 100) & opaque `?cursor` (UUIDv7 IDs sort by creation time, so `id < cursor` pages without gaps or repeats); filters `status`, `priority`, `categoryId`, `dueFrom`/`dueTo` (inclusive), `q` (title or description, any case). Deleted tasks never appear. A bad cursor → 400 on `cursor`.
 - **Dates:** `dueDate` is a calendar day `"YYYY-MM-DD"` in the user's zone (impossible days refused); `dueTime` is minutes after local midnight and needs a date. Clearing `dueDate` clears `dueTime`.
 - **Category:** must be one of *your* categories, else `400` on `categoryId` ("Choose one of your categories."). The foreign key alone would accept anyone's.

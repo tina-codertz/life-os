@@ -936,3 +936,34 @@ The project owner added **History: week / month / year** to the design (`docs/Li
 2. Why does the Time row refuse to open without a date, instead of letting the server reject it?
 3. Why did a plain `setTimeout` in the test never finish?
 
+### 2026-11-08 — Tasks II Part 2: subtasks
+**What was built:**
+- **Database:** migration `add_subtasks`: `Task.parentId` (nullable, indexed, `ON DELETE CASCADE`). A subtask is a task like any other, as planned in docs/05.
+- **API:**
+  - `POST /tasks/:id/subtasks`. One level only (`422 SUBTASK_NOT_ALLOWED`), at most 50 (`422 SUBTASK_LIMIT_REACHED`).
+  - `GET /tasks/:id` returns `subtasks[]`. Every task carries `parentId`, `subtaskCount` and `subtasksDone`; one grouped query counts a whole page.
+  - Lists and search return top-level tasks only.
+  - `POST /complete` takes an optional `{ includeSubtasks: true }`, which completes the open subtasks in the same transaction.
+- **Phone:**
+  - The design's **Subtasks** row ("Add", or "1 of 3") in the same group as Due date and Time. Each step has its own tick and a remove ✕, and there's an "Add a subtask" field (return to add).
+  - On a **new** task, steps are drafts created right after the task. On an **existing** task, ticking, adding and removing happen at once; a refused tick is undone with a toast.
+  - Task rows say "**2 of 4 subtasks**".
+  - Ticking a task with open subtasks asks, in the phone's own dialog, **"Complete the subtasks too?"**: Cancel, Only this task, or Complete all (FR-TASK-005).
+**Concepts:**
+- *Self-relation:* a table that points to itself (task → parent task), so subtasks reuse everything tasks already have.
+- *Depth limit in the service:* the database would allow any depth; the rule "one level" lives in code, with a test.
+- *N+1, avoided:* counting each task's subtasks one by one would be 30 queries per page. `groupBy(parentId, status)` does it in one.
+- *Transactions:* completing a task and its subtasks happens all-or-nothing.
+- *Drafts vs live edits:* before a task exists there's nothing to attach subtasks to, so they wait in the form.
+**Found while building:**
+- The edit test first failed because the fake server forgot the tick and the re-read undid it. The fake server now remembers changes, like a real one.
+- A probe showed the "refused tick is undone" test passed even with the undo removed. The test now holds the server's answer, checks the tick shows, then releases the refusal and checks it's undone. It also needed to wait for the screen to redraw: the toast appears a moment before the tick clears.
+- Lint: Prisma's `_count` / `_all` names are allowed in the API's lint rules.
+**Checks:** API 114 unit + 137 e2e (8 new: order and counts, top-level lists, one level, the 50 limit, complete with and without subtasks, deleted subtasks, another user, unknown fields). Shared 63, mobile 304 (9 new). Probes: API (list shows subtasks, depth, `includeSubtasks` ignored, limit) and phone (no prompt, `includeSubtasks` not sent, drafts not created, no rollback, no count on the row). Each makes a test fail. `bun run check` clean; Prisma schema matches migrations.
+
+**To learn:**
+1. Why model a subtask as a task with `parentId` instead of a separate Subtask table?
+2. Why count subtasks with one `groupBy` rather than per task?
+3. Why must "complete the task and its subtasks" be one transaction?
+4. Why are a new task's subtasks kept as drafts, while an existing task's are saved at once?
+

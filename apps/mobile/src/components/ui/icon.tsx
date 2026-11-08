@@ -12,6 +12,7 @@ import Flame from 'lucide-react-native/icons/flame';
 import Globe from 'lucide-react-native/icons/globe';
 import HeartPulse from 'lucide-react-native/icons/heart-pulse';
 import House from 'lucide-react-native/icons/house';
+import Layers from 'lucide-react-native/icons/layers';
 import ListChecks from 'lucide-react-native/icons/list-checks';
 import Lock from 'lucide-react-native/icons/lock';
 import LogOut from 'lucide-react-native/icons/log-out';
@@ -51,6 +52,7 @@ const ICONS = {
   globe: Globe,
   health: HeartPulse,
   home: House,
+  layers: Layers,
   lock: Lock,
   mail: Mail,
   moon: Moon,

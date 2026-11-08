@@ -462,7 +462,7 @@ ALTER TABLE "Goal"  ADD CONSTRAINT goal_manual_progress CHECK ("manualProgress" 
 
 ## 5. Important relationships explained
 
-- **Task ↔ Task (subtasks):** a subtask is just a Task with `parentId`. Deleting a parent cascades to its subtasks. The service rejects a `parentId` that itself has a parent (depth 1).
+- **Task ↔ Task (subtasks):** a subtask is just a Task with `parentId`. Deleting a parent cascades to its subtasks. The service rejects a `parentId` that itself has a parent (depth 1). **Built 2026-11-08** (migration `add_subtasks`: nullable `parentId`, `@@index([parentId])`, FK `ON DELETE CASCADE`).
 - **Task recurrence:** the first task in a series sets `recurrenceSeriesId = its own id` and holds `recurrenceRule`. When an occurrence is completed, the service computes the next `dueDate` (pure function, unit-tested) and inserts the next row **in the same transaction**. Generating one occurrence at a time keeps the table small.
 - **Habit ↔ HabitSchedule:** streak calculation loads the schedules ordered by `effectiveFrom` and picks the rule in force on each date.
 - **Habit streak denormalisation:** `currentStreak`/`bestStreak` are cached on `Habit` so Today doesn't recompute history. They're recomputed in the same transaction as each completion insert/delete, and a nightly job reconciles them (the job also lets a streak "break" overnight without user action).
