@@ -72,6 +72,7 @@ volumes: { pgdata: {}, caddy_data: {} }
 - [ ] Docker log rotation (`max-size: 10m`, `max-file: 3`).
 - [ ] Postgres has no host port; reachable only on the Compose network.
 - [ ] `.env.prod` and secrets readable only by the deploy user. Never in git or CI logs.
+- [ ] `SMTP_URL` from the email provider (contains a password: a secret), `MAIL_FROM` on a domain with SPF/DKIM set up, `EMAIL_LINK_BASE_URL` pointing at links the app opens.
 - [ ] `JWT_ACCESS_SECRET` generated on the server (`openssl rand -base64 48`), different from every other environment. Rotating it logs every user out of their current access token (they refresh after 4.5).
 - [ ] Time sync (`chrony`). The server runs in UTC.
 

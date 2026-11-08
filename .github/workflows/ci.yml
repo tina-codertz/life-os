@@ -48,11 +48,15 @@ jobs:
         options: >-
           --health-cmd "pg_isready -U lifeos -d lifeos_test"
           --health-interval 5s --health-timeout 5s --health-retries 10
+      mailpit:
+        image: axllent/mailpit:v1.33.0
+        ports: ['1025:1025', '8025:8025']
     env:
       DATABASE_URL: postgresql://lifeos:ci_password@localhost:5432/lifeos_test
       DATABASE_URL_TEST: postgresql://lifeos:ci_password@localhost:5432/lifeos_test
       # Throwaway signing key for this job's test tokens only: not a secret.
       JWT_ACCESS_SECRET: ci-only-jwt-secret-not-used-anywhere-else-0123456789
+      SMTP_URL: smtp://localhost:1025
     steps:
       - uses: actions/checkout@v7
       - uses: actions/setup-node@v7

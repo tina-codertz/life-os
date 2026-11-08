@@ -1,13 +1,19 @@
 import { Body, Controller, HttpCode, HttpStatus, Post } from '@nestjs/common';
 import {
   type AuthResult,
+  type ForgotPasswordInput,
+  forgotPasswordSchema,
   type LoginInput,
   loginSchema,
   type RefreshTokenInput,
   refreshTokenSchema,
   type RegisterInput,
   registerSchema,
+  type ResetPasswordInput,
+  resetPasswordSchema,
   type TokenPair,
+  type VerifyEmailInput,
+  verifyEmailSchema,
 } from '@life-os/shared';
 import { ZodValidationPipe } from '../../common/pipes/zod-validation.pipe.js';
 import type { AuthUser } from './auth-user.js';
@@ -57,5 +63,40 @@ export class AuthController {
   @HttpCode(HttpStatus.NO_CONTENT)
   logoutAll(@CurrentUser() user: AuthUser): Promise<void> {
     return this.auth.logoutAll(user.id);
+  }
+
+  // The four below answer 204: there's nothing to return, and for forgot-password the
+  // answer must not reveal whether the email has an account.
+  @Public()
+  @Post('verify-email')
+  @HttpCode(HttpStatus.NO_CONTENT)
+  verifyEmail(
+    @Body(new ZodValidationPipe(verifyEmailSchema)) body: VerifyEmailInput,
+  ): Promise<void> {
+    return this.auth.verifyEmail(body.token);
+  }
+
+  @Post('resend-verification')
+  @HttpCode(HttpStatus.NO_CONTENT)
+  resendVerification(@CurrentUser() user: AuthUser): Promise<void> {
+    return this.auth.resendVerification(user.id);
+  }
+
+  @Public()
+  @Post('forgot-password')
+  @HttpCode(HttpStatus.NO_CONTENT)
+  forgotPassword(
+    @Body(new ZodValidationPipe(forgotPasswordSchema)) body: ForgotPasswordInput,
+  ): Promise<void> {
+    return this.auth.forgotPassword(body.email);
+  }
+
+  @Public()
+  @Post('reset-password')
+  @HttpCode(HttpStatus.NO_CONTENT)
+  resetPassword(
+    @Body(new ZodValidationPipe(resetPasswordSchema)) body: ResetPasswordInput,
+  ): Promise<void> {
+    return this.auth.resetPassword(body);
   }
 }

@@ -52,6 +52,7 @@ flowchart TB
 - **Tool:** Vitest + Supertest against a real Nest app (`createTestApp()`) and **real PostgreSQL** (Docker service in CI). Built in 4.3:
   - `test/global-setup.ts` runs once before all files: refuses any database whose name doesn't end in `_test`, then applies migrations (`prisma migrate deploy`) to `DATABASE_URL_TEST`.
   - `resetDatabase(prisma)` (`test/utils/test-db.ts`) truncates every table except `_prisma_migrations` in a `beforeEach`, so **each test starts empty**. Before deleting anything it requires `NODE_ENV=test` and re-checks the database name with Postgres, inside the same transaction as the `TRUNCATE` (so the check and the delete use the same connection).
+  - Emails: e2e tests send real SMTP to **Mailpit** (docker-compose locally, a service container in CI) and read them back through its HTTP API (`test/utils/mailpit.ts`: `clearInbox`, `waitForEmails`, `tokenFromEmail`).
   - Files run one at a time (`fileParallelism: false`) because they share one database. Fast enough for now; if the suite gets slow, switch to one schema per worker.
 - **Coverage requirement:** every endpoint has at least one happy path, one validation failure, one auth failure (no token → 401), and one **cross-user** test (user B gets 404 for user A's resource).
 - Factories (`test/factories.ts`) create users/tasks/habits with valid, unique defaults; a test passes only the fields it cares about. No shared global fixtures. (4.3: `createUser`.)

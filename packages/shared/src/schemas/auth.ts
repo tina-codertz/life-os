@@ -61,6 +61,22 @@ export const refreshTokenSchema = z.object({
 });
 export type RefreshTokenInput = z.infer<typeof refreshTokenSchema>;
 
+// The token from an emailed link (lifeos://verify-email?token=…).
+const linkTokenSchema = z.string().min(1, { error: 'Missing token.' }).max(200);
+
+export const verifyEmailSchema = z.object({ token: linkTokenSchema });
+export type VerifyEmailInput = z.infer<typeof verifyEmailSchema>;
+
+export const forgotPasswordSchema = z.object({ email: emailSchema });
+export type ForgotPasswordInput = z.infer<typeof forgotPasswordSchema>;
+
+// Same rules as registering: a reset is choosing a new password.
+export const resetPasswordSchema = z.object({
+  token: linkTokenSchema,
+  newPassword: newPasswordSchema,
+});
+export type ResetPasswordInput = z.infer<typeof resetPasswordSchema>;
+
 // A fresh pair: the access token for API calls (memory only), the refresh token to get the
 // next pair. The old refresh token stops working the moment a new one is issued.
 export interface TokenPair {
@@ -77,5 +93,6 @@ export const AUTH_ERROR_CODES = [
   'EMAIL_TAKEN',
   'INVALID_CREDENTIALS',
   'INVALID_REFRESH_TOKEN',
+  'INVALID_LINK',
 ] as const;
 export type AuthErrorCode = (typeof AUTH_ERROR_CODES)[number];

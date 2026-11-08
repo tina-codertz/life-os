@@ -1,18 +1,13 @@
-import { createHash, randomBytes, randomUUID } from 'node:crypto';
+import { randomUUID } from 'node:crypto';
 import { Injectable } from '@nestjs/common';
 import { PinoLogger } from 'nestjs-pino';
+import { hashOpaqueToken, newOpaqueToken } from '../../common/crypto/opaque-token.js';
+import type { Prisma } from '../../generated/prisma/client.js';
 import { PrismaService } from '../../prisma/prisma.service.js';
 import { InvalidRefreshTokenError } from './auth.errors.js';
 
 // ADR-004: 30 days, counted from the last refresh, so an app in regular use stays logged in.
 export const REFRESH_TOKEN_TTL_MS = 30 * 24 * 60 * 60 * 1000;
-
-// SHA-256, not argon2: the token is 256 random bits, so there is nothing to guess and a slow
-// hash would only slow down every refresh. (Passwords are slow-hashed because people pick
-// guessable ones.) The database only ever sees this hash: a leaked table can't be replayed.
-export function hashRefreshToken(token: string): string {
-  return createHash('sha256').update(token).digest('hex');
-}
 
 export interface SessionTokens {
   familyId: string; // the access token's `sid`: one per login (device)
@@ -33,12 +28,12 @@ export class SessionService {
   // A login (or register) starts a new family.
   async start(userId: string, deviceName?: string): Promise<SessionTokens> {
     const familyId = randomUUID();
-    const refreshToken = newRefreshToken();
+    const refreshToken = newOpaqueToken();
     await this.prisma.session.create({
       data: {
         userId,
         familyId,
-        refreshTokenHash: hashRefreshToken(refreshToken),
+        refreshTokenHash: hashOpaqueToken(refreshToken),
         deviceName: deviceName ?? null,
         expiresAt: new Date(Date.now() + REFRESH_TOKEN_TTL_MS),
       },
@@ -49,7 +44,7 @@ export class SessionService {
   // Swaps a refresh token for a new one in the same family. Each token works exactly once.
   async rotate(refreshToken: string): Promise<SessionTokens & { userId: string }> {
     const session = await this.prisma.session.findUnique({
-      where: { refreshTokenHash: hashRefreshToken(refreshToken) },
+      where: { refreshTokenHash: hashOpaqueToken(refreshToken) },
       include: { user: { select: { deletedAt: true } } },
     });
     if (!session) throw new InvalidRefreshTokenError();
@@ -63,7 +58,7 @@ export class SessionService {
       throw new InvalidRefreshTokenError();
     }
 
-    const next = newRefreshToken();
+    const next = newOpaqueToken();
     try {
       await this.prisma.$transaction(async (tx) => {
         // Compare-and-set: only succeeds if nobody rotated this row since we read it. Postgres
@@ -78,7 +73,7 @@ export class SessionService {
           data: {
             userId: session.userId,
             familyId: session.familyId,
-            refreshTokenHash: hashRefreshToken(next),
+            refreshTokenHash: hashOpaqueToken(next),
             deviceName: session.deviceName,
             expiresAt: new Date(Date.now() + REFRESH_TOKEN_TTL_MS),
           },
@@ -97,15 +92,15 @@ export class SessionService {
   // always succeeds and can't be used to test whether a token exists.
   async revokeFamilyOf(refreshToken: string): Promise<void> {
     const session = await this.prisma.session.findUnique({
-      where: { refreshTokenHash: hashRefreshToken(refreshToken) },
+      where: { refreshTokenHash: hashOpaqueToken(refreshToken) },
       select: { familyId: true },
     });
     if (session) await this.revokeFamily(session.familyId);
   }
 
-  // Logout everywhere (and, later, password reset).
-  async revokeAll(userId: string): Promise<void> {
-    await this.prisma.session.updateMany({
+  // Logout everywhere, and password reset (pass `tx` to make it part of that transaction).
+  async revokeAll(userId: string, tx: Prisma.TransactionClient = this.prisma): Promise<void> {
+    await tx.session.updateMany({
       where: { userId, revokedAt: null },
       data: { revokedAt: new Date() },
     });
@@ -124,8 +119,4 @@ export class SessionService {
     this.logger.warn({ familyId, userId }, 'Refresh token reuse detected; session family revoked');
     throw new InvalidRefreshTokenError();
   }
-}
-
-function newRefreshToken(): string {
-  return randomBytes(32).toString('base64url'); // 256 bits → 43 characters
 }

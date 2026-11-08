@@ -498,5 +498,6 @@ Principles: index by **access pattern**, always lead with `userId` (every query 
 - **Ownership checks for related ids:** when a client sends `categoryId` or `goalId`, the service verifies it belongs to the same user before writing. FKs alone don't guarantee this.
 - **Money:** integers only, aggregated in SQL (`SUM("amountMinor")`) and returned as strings in JSON (BigInt isn't JSON-safe).
 - **Purge job:** daily job hard-deletes soft-deleted rows older than 30 days and users with `deletedAt` older than 30 days.
+- **Auth tokens (4.6):** one-time email links; only SHA-256 stored, `usedAt` set by compare-and-set, older unused tokens of the same type deleted when a new one is issued. The purge job also deletes expired or used rows.
 - **Sessions:** every refresh adds a row (about one per 15 minutes of app use), and rotated rows must be kept until their family expires so reuse can still be detected. The purge job also deletes `Session` rows whose `expiresAt` is in the past. (Built in 4.5: the table; the job comes with the other scheduled jobs.)
 - **Backups:** nightly `pg_dump` and a monthly restore test (NFR-REL-001).

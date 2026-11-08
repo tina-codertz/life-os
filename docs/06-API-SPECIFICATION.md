@@ -98,6 +98,13 @@ create(@Body(new ZodValidationPipe(createTaskSchema)) body: CreateTaskInput) { �
 | POST | `/auth/forgot-password` | `{ email }` | `204` (always, even for unknown emails) |
 | POST | `/auth/reset-password` | `{ token, newPassword }` | `204`, revokes all sessions |
 
+Built in 4.6 (emailed one-time links):
+- Register emails a verification link (`EMAIL_LINK_BASE_URL` + `verify-email?token=…`, default `lifeos://`). If sending fails, register still succeeds and the error is logged; the user can resend.
+- **verify-email** (public): `204`; an unknown, expired, used or superseded token → `400 INVALID_LINK`. **resend-verification** (access token): `204`, sends nothing if already verified. Only the newest link of each kind works.
+- **forgot-password** (public): always `204`, same speed for known and unknown emails (the token and email are created in the background). The reset link expires in **1 hour**; verification links in **48 hours**.
+- **reset-password** (public): `newPassword` follows the register rules (a 400 doesn't use up the link). On success: new password, every session revoked, and the email marked verified (the link proves ownership). A verification link can't be used as a reset link.
+- Rate limits for these endpoints arrive in 4.8; until then forgot/resend can send many emails.
+
 Built (4.4–4.5): register `201` and login `200` return `{ user, accessToken, refreshToken }` (`AuthResult`); both accept an optional `deviceName`. Refresh returns `{ accessToken, refreshToken }` (`TokenPair`).
 - **Refresh:** each refresh token works **once**. Presenting an already-used one (replay, or two parallel refreshes) → `401 INVALID_REFRESH_TOKEN` and every token of that login is revoked. Unknown, expired, revoked, or deleted account → the same 401. The app must refresh single-flight (docs/04).
 - **Logout** (public, so it works with an expired access token): ends the token's login, `204` even for an unknown token. **Logout-all** (access token required): ends every login of the user, `204`.

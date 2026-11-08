@@ -413,3 +413,30 @@ Node is pinned in `.node-version` and Bun in `packageManager`, so CI uses the sa
 3. Why is SHA-256 fine for refresh tokens when passwords need argon2?
 4. Two requests both read "not rotated yet" and then both write. What does the compare-and-set do differently, and why couldn't the old race test notice it was missing?
 5. After logout, the access token still works for up to 15 minutes. Why is that acceptable?
+
+### 2026-11-08 — 4.6 Email verification + password reset
+**What was built:**
+- Mailpit in docker-compose (`bun run db:up` starts it; inbox at http://localhost:8025) and as a CI service container.
+- Env: `SMTP_URL` (required), `MAIL_FROM`, `EMAIL_LINK_BASE_URL` (default `lifeos://`). `SMTP_URL=smtp://localhost:1025` was added to the local `.env`.
+- Migration `add_auth_tokens`: the `AuthToken` table from docs/05.
+- `MailService` (`src/mail`, nodemailer), plain-text templates (`modules/auth/emails.ts`).
+- `AuthTokenService`: `issue` (deletes older unused tokens of that type) and `consume` (checks type, expiry, use and deleted account; compare-and-set on `usedAt`).
+- `common/crypto/opaque-token.ts`: the random-token + SHA-256 helpers, now shared by sessions and email links.
+- Endpoints: `verify-email`, `resend-verification` (authenticated), `forgot-password`, `reset-password`, all `204`. Register sends the verification email. `INVALID_LINK` (400).
+**Concepts:**
+- *One-time tokens:* the same recipe as refresh tokens: random, only the hash stored, used once (compare-and-set). Different lifetimes for different risks: a reset link can take over the account (1 hour), a verification link can't (48 hours).
+- *Only the newest link works:* issuing a new token deletes the older unused ones, so an old email lying in an inbox stops being useful.
+- *Separate purposes:* each token has a `type`; a verification link can't be used to reset a password, even though both are just random strings.
+- *Timing, again:* forgot-password must look the same for known and unknown emails. Awaiting "create token + send email" would make known emails slower, so that work runs in the background after the response (`void promise.catch(log)`). Measured live: 1.7 ms vs 1.6 ms.
+- *Fail soft where it's safe:* if the mail server is down, register still succeeds (logged, user can resend), because ADR-015 lets unverified users use the app. Reset-password is the opposite: the token is consumed **inside the same transaction** as the password change and session revocation, so either all of it happens or none, and a failure doesn't burn the link.
+- *Reset = log out everywhere:* if someone else knew the old password, their sessions must die with it.
+- *Integration testing with a real mail server:* the e2e tests send real SMTP to Mailpit and read the emails back through its API, so "the email arrives and its link works" is tested end to end.
+**Found while building:**
+- My first probe (removing the link-type check) "passed" because Prettier had split that condition across lines and my `sed` matched nothing: the code never changed. Re-done properly, the test catches it. Lesson: a probe must first prove it changed the code (I now check with `grep -c`).
+**Checked:** 93 API unit + 22 shared + 58 e2e (register email arrives with a working link that works once; only the hash stored; resend needs auth and only the newest link works; resend no-op when verified; expired/made-up link 400; forgot-password for an unknown email sends nothing; reset sets the password, kills old sessions, works once, verifies the email; weak new password → 400 without using the link; verification link refused for reset; reset link > 1 h refused). Probes: removing the type check or the session revocation each fails a test. Live production build: forgot-password timing equal; with Mailpit stopped, register still 201 and the failure logged with `ECONNREFUSED`; no tokens in the logs; probe users deleted.
+**To learn:**
+1. Why does a password-reset link expire after 1 hour but a verification link after 48?
+2. Why does forgot-password create the token and send the email *after* answering?
+3. Why must the reset token be consumed in the same transaction as the password change?
+4. Why does a password reset log the user out of every device?
+5. Register succeeds even if the email can't be sent. Why is that OK here, and when would it not be?

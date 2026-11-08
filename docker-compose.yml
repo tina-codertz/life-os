@@ -21,5 +21,15 @@ services:
       retries: 10
     restart: unless-stopped
 
+  # Catches every email the API sends in development; nothing leaves your machine.
+  # Inbox UI: http://localhost:8025
+  mailpit:
+    image: axllent/mailpit:v1.33.0
+    container_name: lifeos-mailpit
+    ports:
+      - '127.0.0.1:1025:1025' # SMTP (the API sends here)
+      - '127.0.0.1:8025:8025' # web UI + API (tests read emails here)
+    restart: unless-stopped
+
 volumes:
   pgdata:

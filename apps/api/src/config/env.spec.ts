@@ -2,7 +2,8 @@ import { parseEnv } from './env.js';
 
 const VALID_URL = 'postgresql://lifeos:s3cret-password@localhost:5433/lifeos_dev';
 const SECRET = 'a-test-secret-that-is-at-least-32-chars';
-const REQUIRED = { DATABASE_URL: VALID_URL, JWT_ACCESS_SECRET: SECRET };
+const SMTP_URL = 'smtp://localhost:1025';
+const REQUIRED = { DATABASE_URL: VALID_URL, JWT_ACCESS_SECRET: SECRET, SMTP_URL };
 
 describe('parseEnv', () => {
   it('returns typed values and applies defaults', () => {
@@ -12,6 +13,9 @@ describe('parseEnv', () => {
       DATABASE_URL: VALID_URL,
       LOG_LEVEL: 'info',
       JWT_ACCESS_SECRET: SECRET,
+      SMTP_URL,
+      MAIL_FROM: 'Life OS <no-reply@lifeos.local>',
+      EMAIL_LINK_BASE_URL: 'lifeos://',
     });
   });
 
@@ -47,6 +51,13 @@ describe('parseEnv', () => {
     expect(() => parseEnv({ DATABASE_URL: VALID_URL })).toThrow(/JWT_ACCESS_SECRET/);
     expect(() => parseEnv({ ...REQUIRED, JWT_ACCESS_SECRET: 'short-secret-value' })).toThrow(
       expect.objectContaining({ message: expect.not.stringContaining('short-secret-value') }),
+    );
+  });
+
+  it('requires an smtp:// or smtps:// SMTP_URL', () => {
+    expect(() => parseEnv({ ...REQUIRED, SMTP_URL: 'http://localhost:1025' })).toThrow(/SMTP_URL/);
+    expect(parseEnv({ ...REQUIRED, SMTP_URL: 'smtps://mail.example.com:465' }).SMTP_URL).toBe(
+      'smtps://mail.example.com:465',
     );
   });
 

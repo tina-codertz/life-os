@@ -200,6 +200,7 @@ export const taskKeys = {
 |---|---|
 | Password hashing | `argon2id` via `@node-rs/argon2` (prebuilt binaries, no install script, which Bun would skip), OWASP minimum: 19 MiB, 2 passes, 1 thread. Built in 4.4 (`PasswordService`) |
 | Access token | JWT, 15 min, signed HS256 (single service), claims: `sub`, `sid` (the login's session family), `iss`, `aud`, `iat`, `exp` |
+| Email links | Verify email (48 h) and reset password (1 h): opaque 256-bit tokens, stored as SHA-256 in `AuthToken`, single use. Sent by `MailService` (nodemailer over SMTP: Mailpit locally). Built in 4.6 |
 | Refresh token | Opaque random 256-bit, **stored hashed** (SHA-256) in `Session` table, 30-day TTL from the last refresh, rotated on every refresh with an atomic compare-and-set. Built in 4.5 (`SessionService`) |
 | Reuse detection | Using an already-rotated refresh token revokes the whole session family |
 | Storage on device | Refresh token in SecureStore; access token in memory only |

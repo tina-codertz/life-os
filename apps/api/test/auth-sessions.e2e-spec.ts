@@ -2,7 +2,7 @@ import type { INestApplication } from '@nestjs/common';
 import type { TokenPair } from '@life-os/shared';
 import request from 'supertest';
 import type { App } from 'supertest/types.js';
-import { hashRefreshToken } from '../src/modules/auth/session.service.js';
+import { hashOpaqueToken } from '../src/common/crypto/opaque-token.js';
 import { TokenService } from '../src/modules/auth/token.service.js';
 import { PrismaService } from '../src/prisma/prisma.service.js';
 import { createTestApp } from './utils/create-test-app.js';
@@ -51,7 +51,7 @@ describe('Sessions: refresh, logout, logout-all (e2e)', () => {
   it('stores only a hash of the refresh token, linked to the access token by sid', async () => {
     const sessions = await prisma.session.findMany();
     expect(sessions).toHaveLength(1);
-    expect(sessions[0]?.refreshTokenHash).toBe(hashRefreshToken(phone.refreshToken));
+    expect(sessions[0]?.refreshTokenHash).toBe(hashOpaqueToken(phone.refreshToken));
     expect(sessions[0]?.refreshTokenHash).not.toContain(phone.refreshToken);
     expect(sessions[0]?.deviceName).toBe('Phone');
 

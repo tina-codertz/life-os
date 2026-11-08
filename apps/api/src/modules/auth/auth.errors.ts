@@ -28,3 +28,14 @@ export class InvalidRefreshTokenError extends AppException {
     );
   }
 }
+
+// An emailed link that's unknown, expired, already used or replaced by a newer one.
+export class InvalidLinkError extends AppException {
+  constructor() {
+    super(
+      HttpStatus.BAD_REQUEST,
+      'INVALID_LINK',
+      'This link is invalid or has expired. Request a new one.',
+    );
+  }
+}
