@@ -26,6 +26,8 @@ model User {
   settings   UserSettings?
   sessions   Session[]
   authTokens AuthToken[]
+  categories Category[]
+  tasks      Task[]
 }
 
 // One row per refresh token. Logging in starts a *family*; every refresh replaces the row's
@@ -95,4 +97,65 @@ enum Theme {
   SYSTEM
   DARK
   LIGHT
+}
+
+// ───────────── Organisation ─────────────
+
+// User-defined task groups (FR-TASK-004). Names are unique per user regardless of letter case:
+// the service checks case-insensitively; this index catches exact duplicates in a race.
+model Category {
+  id        String   @id @default(uuid(7)) @db.Uuid
+  userId    String   @db.Uuid
+  name      String   @db.VarChar(50)
+  color     String   @db.VarChar(20) // palette name (packages/shared CATEGORY_COLORS), themed per mode
+  icon      String?  @db.VarChar(40)
+  sortOrder Int      @default(0)
+  createdAt DateTime @default(now()) @db.Timestamptz(3)
+  updatedAt DateTime @updatedAt @db.Timestamptz(3)
+
+  user  User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  tasks Task[]
+
+  @@unique([userId, name])
+}
+
+// ───────────── Tasks ─────────────
+
+// Tasks I (docs/05). Goal links, subtasks, recurrence and "pinned for today" columns arrive
+// with their modules (Goals, Tasks II, Today) as additive migrations.
+model Task {
+  id          String       @id @default(uuid(7)) @db.Uuid
+  userId      String       @db.Uuid
+  title       String       @db.VarChar(200)
+  description String?      @db.VarChar(5000)
+  priority    TaskPriority @default(NONE)
+  status      TaskStatus   @default(TODO)
+  dueDate     DateTime?    @db.Date // the user's local calendar date (ADR-006)
+  dueTime     Int?         @db.SmallInt // minutes after local midnight, 0–1439
+  completedAt DateTime?    @db.Timestamptz(3)
+  sortOrder   Int          @default(0)
+  categoryId  String?      @db.Uuid
+  createdAt   DateTime     @default(now()) @db.Timestamptz(3)
+  updatedAt   DateTime     @updatedAt @db.Timestamptz(3)
+  deletedAt   DateTime?    @db.Timestamptz(3) // soft delete, restorable for 30 days
+
+  user     User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  category Category? @relation(fields: [categoryId], references: [id], onDelete: SetNull)
+
+  @@index([userId, status, dueDate]) // Today + list filters
+  @@index([userId, completedAt]) // history, stats
+  @@index([userId, categoryId])
+}
+
+enum TaskPriority {
+  NONE
+  LOW
+  MEDIUM
+  HIGH
+  URGENT
+}
+
+enum TaskStatus {
+  TODO
+  DONE
 }

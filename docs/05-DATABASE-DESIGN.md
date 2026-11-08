@@ -194,6 +194,9 @@ enum AuthTokenType {
 
 // ───────────── Organisation ─────────────
 
+// Built in 6.1 (migration add_categories_and_tasks): Category as below but `color` is a palette
+// name (VarChar(20)); Task with the Tasks I columns only. goalId / parentId / recurrence* /
+// isPinnedForDate are added by their modules (Goals, Tasks II, Today) as additive migrations.
 model Category {
   id        String   @id @default(uuid(7)) @db.Uuid
   userId    String   @db.Uuid

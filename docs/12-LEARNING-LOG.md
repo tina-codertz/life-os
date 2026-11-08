@@ -780,3 +780,25 @@ Registering on the device worked; the verification email went to **Mailpit** (ht
 
 ### 2026-11-08 — M5 accepted on a real device
 Done by me in Expo Go: registered with the real form, went through onboarding (name, time zone, Dark) and landed on Today in dark mode; signed out and logged back in without seeing onboarding again; checked the light theme. Email verification links stay deferred (previous entry).
+
+### 2026-11-08 — Phase 6, Tasks I Part 1: categories (and the Task table)
+**What was built:**
+- Migration `add_categories_and_tasks`: `Category` and the Tasks I columns of `Task` (priority, status, due date + optional time, completedAt, sortOrder, category, soft delete), with the indexes from docs/05.
+- `packages/shared/src/schemas/categories.ts`: `CATEGORY_COLORS` (palette names), `createCategorySchema`, `updateCategorySchema` (strict), `PublicCategory`.
+- `modules/categories`: `GET / POST / PATCH /:id / DELETE /:id`, `CategoriesService.findOwned()` for the task module.
+- `@IdParam()`: validates `:id` as a UUID and answers a malformed one with the resource's 404.
+**Decisions:**
+- *Columns arrive with their features:* goal links, subtasks, recurrence and "pinned for today" columns come in their own modules' migrations, so nothing exists before it's used.
+- *Palette names, not hex:* every category colour gets a dark and a light value that can pass the contrast test; a raw hex is one colour in both themes.
+- *Unique names regardless of case:* the database's unique index is case-sensitive, so the service checks `mode: 'insensitive'` first; the index still stops an exact duplicate racing in.
+**Concepts:**
+- *Foreign keys don't check ownership:* `Task.categoryId` only has to point at *some* category. A user could attach someone else's category by guessing its ID unless the service checks it's theirs (`findOwned`). That's Part 2's first test.
+- *`ON DELETE SET NULL`:* deleting a category leaves its tasks, just without a category; the database does it, so no code can forget.
+- *404 for "not yours", and for "not even an ID":* a malformed ID gets the same answer as a missing one, so probing reveals nothing.
+- *Limits on user-created things:* 50 categories is plenty for people and stops a script filling the table.
+**Checked:** 9 category e2e tests: create (trimmed) / ordered list / rename / clear icon / delete; case-insensitive uniqueness, including renames, while keeping your own name in another case is fine and another user may reuse it; deleting a category keeps its tasks with `categoryId = null`; another user's category is 404 for update and delete and stays untouched; malformed ID → 404; a body can't set the owner; shared-schema validation; the 50 limit; login required. Probes: ownership check without `userId`, case-sensitive names, malformed IDs reaching the database: each fails a test. 106 unit + 112 e2e + 51 shared.
+**To learn:**
+1. A foreign key guarantees the category exists. Why isn't that enough when a task points at a category?
+2. Why store a palette name instead of a hex colour?
+3. Why answer a malformed ID with 404 rather than 400?
+4. Why do the Task table's goal, subtask and recurrence columns wait for their own modules?

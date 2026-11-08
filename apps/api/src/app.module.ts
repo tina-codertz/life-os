@@ -7,6 +7,7 @@ import { ConfigModule } from './config/config.module.js';
 import { type Env, ENV } from './config/env.js';
 import { LoggingModule } from './logging/logging.module.js';
 import { AuthModule } from './modules/auth/auth.module.js';
+import { CategoriesModule } from './modules/categories/categories.module.js';
 import { JwtAuthGuard } from './modules/auth/jwt-auth.guard.js';
 import { HealthModule } from './modules/health/health.module.js';
 import { UsersModule } from './modules/users/users.module.js';
@@ -25,6 +26,7 @@ import { rateLimitOptions } from './security/rate-limit.js';
     HealthModule,
     AuthModule,
     UsersModule,
+    CategoriesModule,
   ],
   // APP_* providers (not app.useGlobal*) so they get DI and e2e tests get them too.
   // Success → ResponseEnvelopeInterceptor `{ data }`; failure → AllExceptionsFilter `{ error }`.

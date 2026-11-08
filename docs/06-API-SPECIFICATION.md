@@ -156,6 +156,8 @@ Built in 4.7: GET/PATCH `/users/me`, PATCH settings, change-password; 4.9: chang
 | PATCH | `/categories/:id` |
 | DELETE | `/categories/:id`. Tasks keep existing with `categoryId = null` |
 
+Built in 6.1 Part 1: `GET` (ordered by `sortOrder`, then name), `POST` (`201`), `PATCH /:id` (`{ name?, color?, icon?, sortOrder? }`, strict), `DELETE /:id` (`204`). `color` is a **palette name** (`CATEGORY_COLORS`: violet, blue, teal, green, amber, orange, red, pink, gray), not hex, so each has a tuned dark/light value. Names are unique per user **regardless of case** → `409 CATEGORY_NAME_TAKEN` (on `name`). Max 50 per user → `422 CATEGORY_LIMIT_REACHED`. Another user's category, or a malformed ID → `404 CATEGORY_NOT_FOUND` (same answer, so the format reveals nothing).
+
 ### Tasks
 | Method | Path | Notes |
 |---|---|---|

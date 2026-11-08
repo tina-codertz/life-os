@@ -54,3 +54,4 @@ export interface ApiPageBody<T> {
 export * from './schemas/pagination.ts';
 export * from './schemas/auth.ts';
 export * from './schemas/users.ts';
+export * from './schemas/categories.ts';
