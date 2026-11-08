@@ -56,6 +56,11 @@ export function createAuthStore({ storage, baseUrl, fetch }: AuthStoreDeps) {
       },
     });
 
+    // Single-flight for *every* caller: the launch refresh in hydrate() and the HTTP client's
+    // 401 handling can overlap (a screen loads data the moment the app opens). Two refreshes with
+    // the same token look like reuse to the server, which ends the session (4.5).
+    let refreshing: Promise<string | null> | null = null;
+
     async function endSession(): Promise<void> {
       set(SIGNED_OUT);
       await storage.clear();
@@ -96,28 +101,11 @@ export function createAuthStore({ storage, baseUrl, fetch }: AuthStoreDeps) {
         }
       },
 
-      async refresh() {
-        const { refreshToken, user } = get();
-        if (!refreshToken || !user) return null;
-        try {
-          const pair = await http.post<TokenPair>(
-            '/auth/refresh',
-            { refreshToken },
-            { auth: false },
-          );
-          // Store the new refresh token before using it: the old one is already spent on the
-          // server, so losing the new one would end the session at the next launch.
-          await storage.save({ refreshToken: pair.refreshToken, user });
-          set({ accessToken: pair.accessToken, refreshToken: pair.refreshToken });
-          return pair.accessToken;
-        } catch (err) {
-          // The server says the session is over (expired, revoked, reused): sign out.
-          if (isApiError(err, 'INVALID_REFRESH_TOKEN')) {
-            await endSession();
-            return null;
-          }
-          throw err; // offline / timeout: keep the session, the request fails as such
-        }
+      refresh() {
+        refreshing ??= refreshNow().finally(() => {
+          refreshing = null;
+        });
+        return refreshing;
       },
 
       async setUser(user) {
@@ -126,6 +114,26 @@ export function createAuthStore({ storage, baseUrl, fetch }: AuthStoreDeps) {
         set({ user });
       },
     };
+
+    async function refreshNow(): Promise<string | null> {
+      const { refreshToken, user } = get();
+      if (!refreshToken || !user) return null;
+      try {
+        const pair = await http.post<TokenPair>('/auth/refresh', { refreshToken }, { auth: false });
+        // Store the new refresh token before using it: the old one is already spent on the
+        // server, so losing the new one would end the session at the next launch.
+        await storage.save({ refreshToken: pair.refreshToken, user });
+        set({ accessToken: pair.accessToken, refreshToken: pair.refreshToken });
+        return pair.accessToken;
+      } catch (err) {
+        // The server says the session is over (expired, revoked, reused): sign out.
+        if (isApiError(err, 'INVALID_REFRESH_TOKEN')) {
+          await endSession();
+          return null;
+        }
+        throw err; // offline / timeout: keep the session, the request fails as such
+      }
+    }
   });
   return store;
 }

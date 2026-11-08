@@ -1,7 +1,9 @@
 import { SplashScreen, Stack } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
+import { OfflineBanner } from '@/components/offline-banner';
 import { useEffect } from 'react';
 import { SessionProvider, useSession, areaFor } from '@/features/auth/session';
+import { QueryProvider } from '@/services/query-provider';
 import { ThemeProvider, useTheme } from '@/theme';
 
 // Keep the splash screen up until we know whether someone is signed in (5.4 reads the
@@ -12,7 +14,9 @@ export default function RootLayout() {
   return (
     <ThemeProvider>
       <SessionProvider>
-        <RootNavigator />
+        <QueryProvider>
+          <RootNavigator />
+        </QueryProvider>
       </SessionProvider>
     </ThemeProvider>
   );
@@ -52,6 +56,7 @@ function RootNavigator() {
           <Stack.Screen name="(app)" />
         </Stack.Protected>
       </Stack>
+      <OfflineBanner />
       <StatusBar style="auto" />
     </>
   );

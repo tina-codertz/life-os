@@ -1,6 +1,7 @@
 import { z } from 'zod';
 import {
   DISPLAY_NAME_MAX_LENGTH,
+  type PublicUser,
   emailSchema,
   newPasswordSchema,
   PASSWORD_MAX_LENGTH,
@@ -92,6 +93,12 @@ export interface PublicSettings {
   habitRemindersOn: boolean;
   eventReminderDefault: number | null;
   crashReportsOn: boolean;
+}
+
+// GET /users/me.
+export interface MeResponse {
+  user: PublicUser;
+  settings: PublicSettings;
 }
 
 export const USER_ERROR_CODES = ['WRONG_PASSWORD', 'EMAIL_NOT_VERIFIED'] as const;

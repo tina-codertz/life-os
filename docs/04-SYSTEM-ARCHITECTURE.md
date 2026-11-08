@@ -196,6 +196,9 @@ export const taskKeys = {
 - Persist the TanStack Query cache so Today/Tasks render offline with "last updated" info.
 - `onlineManager` wired to NetInfo. Mutations while offline are *paused* and replayed when back online. Habit check-ins are idempotent per `localDate`, so replay is safe.
 - No full offline-first sync (deferred).
+- **Built in 5.6** (`apps/mobile/src/services/`): `createQueryClient()` (staleTime 30 s, gcTime 24 h, retries only network / timeout / 5xx), `connectQueryToDevice()` (NetInfo → `onlineManager`: offline = no network or no internet; AppState → `focusManager`), `QueryProvider` (one client **per user**, keyed by user ID; cache saved to AsyncStorage for 24 h with `buster` = user ID; deleted on sign-out; paused mutations resumed after restore), `OfflineBanner`, `useIsOnline()`. First query: `useMe()` (`features/users/queries.ts`, query keys in one object).
+- **Privacy of the saved cache:** it holds server data (never tokens) unencrypted in AsyncStorage, protected only by the OS's file protection. Three guards keep users apart on a shared phone: per-user client, `buster` on restore, and a storage that only writes a cache whose `buster` is the signed-in user (a throttled save can otherwise land after sign-out and write the data back).
+- **One refresh at a time, everywhere:** `authStore.refresh()` is itself single-flight, so the launch refresh and the HTTP client's 401 handling share one request (two would be reuse, 4.5).
 
 ## 5. Authentication & authorization
 

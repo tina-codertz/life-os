@@ -693,3 +693,34 @@ Node is pinned in `.node-version` and Bun in `packageManager`, so CI uses the sa
 3. Why do the email-link screens live outside the guarded groups?
 4. What does React's StrictMode do to effects, and why did the verify-email test need it?
 5. Why show a wrong password above the form, but `EMAIL_TAKEN` under the email field?
+
+### 2026-11-08 — 5.6 TanStack Query, saved cache, offline banner
+**What was built:** in `apps/mobile/src/services/`:
+- `query-client.ts`: `createQueryClient()` and `shouldRetry` (network, timeout, 5xx yes; 4xx no; at most 2 retries).
+- `network.ts`: `isOnline(state)`, `connectQueryToDevice()` (NetInfo → online manager, AppState → focus manager), `useIsOnline()`.
+- `query-provider.tsx`: a query client per user, the cache saved to AsyncStorage for 24 h, tagged with the user's ID, deleted on sign-out.
+- `components/offline-banner.tsx` in the root layout; `features/users/queries.ts` with `useMe()`; the More screen shows the account card with all four states and "Updated …".
+- `jest.setup.js`: the official AsyncStorage, NetInfo and safe-area mocks.
+**Concepts:**
+- *Server state vs client state:* data that lives on the server (tasks, the profile) belongs in TanStack Query, which caches, refetches, dedupes and retries; things only the app knows (the session, the theme) stay in the store / context.
+- *Stale-while-revalidate:* cached data shows at once; after 30 s it's "stale" and refetched in the background when used. The screen never goes blank while that happens.
+- *Paused, not failed:* offline, queries pause and resume when the network returns, instead of showing an error.
+- *Four states:* loading, error, content, and content with a failed refresh, which keeps showing the saved data.
+- *Retry only what can change:* no connection or a 5xx may work next time; a 404 or 401 won't.
+- *Persisting is publishing to disk:* anything saved outlives the session, so it must be scoped to its owner and deleted on sign-out.
+**Found while building (two real bugs, both now covered by tests):**
+1. **A saved cache could come back after sign-out.** Saves are throttled (one per second), so a save scheduled just before sign-out ran just *after* the delete and wrote the data back. My first fix ("only write while someone is signed in") wasn't enough: a test running after another showed a leftover save for Bob landing after Alice signed in. Final rule: the storage only writes a cache whose owner (`buster`) is the person signed in right now.
+2. **The app could sign itself out at launch (present since 5.4).** `hydrate()` called `refresh()` directly, bypassing the HTTP client's single-flight. A screen loading data at launch (More, via a deep link) got a 401 at the same moment and started a second refresh with the same token, which the server treats as reuse, ending the session. A test reproduced it (two `POST /auth/refresh` with `refresh-1`); `authStore.refresh()` is now single-flight for every caller. Your simulator was signed out when I checked; the database can't tell whether that was this bug or you pressing Sign out.
+**Other things learned:**
+- Jest never exited: query clients keep unused data for 24 h with a timer each. The tests now clear their clients.
+- Test helpers that went through the throttled persister were order-dependent; they now write the saved format directly, like a real leftover cache.
+- A test I'd written for "never show another user's cache" became meaningless once sign-out deleted the cache; it now simulates a cache left by a crash.
+- RNTL 14's `act` is async too.
+**Checked:** 137 mobile tests: retry rules; `isOnline` (including captive Wi-Fi); NetInfo "offline" → online manager → banner appears, and disappears when back; own cache restored; another user's never; switching user gives a fresh client; sign-out deletes the cache and a pending save can't bring it back; launch refresh + simultaneous request → one refresh. Probes: storage writes anything, no per-user tag, one shared client, no delete on sign-out, no store single-flight: each fails a test. `expo-doctor` 20/20.
+**Done-when "offline banner shows" on a device:** proven in tests by driving NetInfo; on the simulator, turn the Mac's Wi-Fi off (the simulator shares it) and the pill appears.
+**To learn:**
+1. Why do server data and the session live in different places (TanStack Query vs the auth store)?
+2. Offline, why should a query *pause* rather than fail?
+3. Why retry a timeout but not a 404?
+4. The saved cache is per user in three ways. What does each one protect against?
+5. How could two parts of the app refreshing at once sign the user out, and why does making `refresh()` single-flight fix it?

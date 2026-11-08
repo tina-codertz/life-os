@@ -84,7 +84,7 @@ All text goes through a `<Text variant="body" tone="secondary">` primitive. Font
 
 ## 5. Component inventory
 
-Primitives live in `src/components/ui/`, and feature components in `src/features/*/components/`. **Built in 5.1:** `Text`, `Button`, `Card`; **5.5:** `TextField` (label, error/helper read by screen readers, Show/Hide for passwords). The rest in 5.8.
+Primitives live in `src/components/ui/`, and feature components in `src/features/*/components/`. **Built in 5.1:** `Text`, `Button`, `Card`; **5.5:** `TextField` (label, error/helper read by screen readers, Show/Hide for passwords); **5.6:** `OfflineBanner` (pill under the status bar, announced, doesn't block taps). The rest in 5.8.
 
 | Component | Variants / props | States |
 |---|---|---|

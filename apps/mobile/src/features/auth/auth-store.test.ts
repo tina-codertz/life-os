@@ -153,6 +153,36 @@ describe('auth store: sign in, restart, sign out', () => {
 });
 
 describe('auth store: as the HTTP client token source', () => {
+  it('launch refresh and a request at the same moment share ONE refresh (no reuse)', async () => {
+    // Refresh answers slowly, so the request's 401 arrives while the launch refresh is pending.
+    let release: (() => void) | undefined;
+    const answered = new Promise<void>((resolve) => (release = resolve));
+    const api = fakeApi({
+      'POST /auth/refresh': rotatingRefresh,
+      'GET /users/me': () => ({ status: 401, body: errorBody('UNAUTHENTICATED') }),
+    });
+    const fetch: FetchLike = async (url, init) => {
+      if (url.endsWith('/auth/refresh')) await answered;
+      return api.fetch(url, init);
+    };
+    const storage = memorySessionStorage({ refreshToken: 'refresh-1', user: USER });
+    const store = createAuthStore({ storage, baseUrl: 'http://api.test', fetch });
+
+    const launching = store.getState().hydrate();
+    await new Promise((resolve) => setTimeout(resolve, 0)); // signed in, launch refresh pending
+    const request = store
+      .getState()
+      .http.get('/users/me')
+      .catch(() => undefined);
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    release?.();
+    await Promise.all([launching, request]);
+
+    // Two refreshes with refresh-1 would be "reuse" to the server and end the session (4.5).
+    expect(api.calls.filter((c) => c.route === 'POST /auth/refresh')).toHaveLength(1);
+    expect(store.getState().status).toBe('signedIn');
+  });
+
   it('an expired access token is refreshed through the store, saved, and the call retried', async () => {
     const { store, storage, calls } = setup(null, {
       'POST /auth/refresh': rotatingRefresh,
