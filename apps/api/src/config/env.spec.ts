@@ -16,6 +16,9 @@ describe('parseEnv', () => {
       SMTP_URL,
       MAIL_FROM: 'Life OS <no-reply@lifeos.local>',
       EMAIL_LINK_BASE_URL: 'lifeos://',
+      RATE_LIMIT_ENABLED: true,
+      CORS_ORIGINS: [],
+      TRUST_PROXY_HOPS: 0,
     });
   });
 
@@ -58,6 +61,23 @@ describe('parseEnv', () => {
     expect(() => parseEnv({ ...REQUIRED, SMTP_URL: 'http://localhost:1025' })).toThrow(/SMTP_URL/);
     expect(parseEnv({ ...REQUIRED, SMTP_URL: 'smtps://mail.example.com:465' }).SMTP_URL).toBe(
       'smtps://mail.example.com:465',
+    );
+  });
+
+  it('parses the security settings', () => {
+    const env = parseEnv({
+      ...REQUIRED,
+      RATE_LIMIT_ENABLED: 'false',
+      CORS_ORIGINS: 'https://lifeos.app, http://localhost:8081',
+      TRUST_PROXY_HOPS: '1',
+    });
+    expect(env).toMatchObject({
+      RATE_LIMIT_ENABLED: false,
+      CORS_ORIGINS: ['https://lifeos.app', 'http://localhost:8081'],
+      TRUST_PROXY_HOPS: 1,
+    });
+    expect(() => parseEnv({ ...REQUIRED, RATE_LIMIT_ENABLED: 'maybe' })).toThrow(
+      /RATE_LIMIT_ENABLED/,
     );
   });
 

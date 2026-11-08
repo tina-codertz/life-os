@@ -137,7 +137,9 @@ flowchart LR
 - [ ] Sentry receiving events from API and both mobile platforms.
 - [ ] Uptime monitor and alerts tested (stop the API, receive the alert).
 - [ ] Rate limits verified in production config.
-- [ ] Swagger disabled/protected in prod.
+- [ ] Swagger off in prod (automatic with `NODE_ENV=production`; e2e test proves the 404).
+- [ ] `TRUST_PROXY_HOPS=1` (Caddy in front). Without it every request looks like it comes from Caddy and all users share one rate-limit bucket; set too high and clients can fake their IP.
+- [ ] One API instance, or move rate-limit counters to Redis (they're in memory).
 - [ ] Privacy policy + terms published.
 - [ ] Support email set up.
 - [ ] Runbook written: deploy, rollback, restore, rotate secrets, revoke all sessions.

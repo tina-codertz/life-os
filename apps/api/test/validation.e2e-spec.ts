@@ -1,9 +1,10 @@
-import { Body, Controller, type INestApplication, Post, Query } from '@nestjs/common';
+import { Controller, type INestApplication, Post, Query } from '@nestjs/common';
 import { type PaginationQuery, paginationQuerySchema } from '@life-os/shared';
 import request from 'supertest';
 import type { App } from 'supertest/types.js';
 import { z } from 'zod';
 import { ZodValidationPipe } from '../src/common/pipes/zod-validation.pipe.js';
+import { ZodBody } from '../src/common/validation/zod-body.decorator.js';
 import { Public } from '../src/modules/auth/public.decorator.js';
 import { createTestApp } from './utils/create-test-app.js';
 
@@ -15,7 +16,7 @@ const echoSchema = z.object({ title: z.string().min(1).max(10), done: z.boolean(
 class ValidationTestController {
   @Post()
   echo(
-    @Body(new ZodValidationPipe(echoSchema)) body: z.infer<typeof echoSchema>,
+    @ZodBody(echoSchema) body: z.infer<typeof echoSchema>,
     @Query(new ZodValidationPipe(paginationQuerySchema)) query: PaginationQuery,
   ) {
     return { body, query };

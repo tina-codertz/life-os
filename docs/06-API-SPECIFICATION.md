@@ -56,7 +56,7 @@ Built in 4.1: `ResponseEnvelopeInterceptor` wraps whatever a controller returns 
 | 404 | `*_NOT_FOUND`: also returned for other users' resources |
 | 409 | `CONFLICT` / `EMAIL_TAKEN` |
 | 422 | `BUSINESS_RULE_VIOLATION`: valid shape, invalid by rule (e.g. backfill > 7 days, subtask of subtask) |
-| 413 | `PAYLOAD_TOO_LARGE`: request body over the size limit |
+| 413 | `PAYLOAD_TOO_LARGE`: request body over the size limit (100 kB, Express's default) |
 | 429 | `RATE_LIMITED` |
 | 500 | `INTERNAL_ERROR`: generic message only; details go to the logs |
 | 503 | `SERVICE_UNAVAILABLE`: a dependency (e.g. the database) is down |
@@ -104,7 +104,7 @@ Built in 4.6 (emailed one-time links):
 - **verify-email** (public): `204`; an unknown, expired, used or superseded token → `400 INVALID_LINK`. **resend-verification** (access token): `204`, sends nothing if already verified. Only the newest link of each kind works.
 - **forgot-password** (public): always `204`, same speed for known and unknown emails (the token and email are created in the background). The reset link expires in **1 hour**; verification links in **48 hours**.
 - **reset-password** (public): `newPassword` follows the register rules (a 400 doesn't use up the link). On success: new password, every session revoked, and the email marked verified (the link proves ownership). A verification link can't be used as a reset link.
-- Rate limits for these endpoints arrive in 4.8; until then forgot/resend can send many emails.
+- Rate limited to 5 / min (4.8).
 
 Built (4.4–4.5): register `201` and login `200` return `{ user, accessToken, refreshToken }` (`AuthResult`); both accept an optional `deviceName`. Refresh returns `{ accessToken, refreshToken }` (`TokenPair`).
 - **Refresh:** each refresh token works **once**. Presenting an already-used one (replay, or two parallel refreshes) → `401 INVALID_REFRESH_TOKEN` and every token of that login is revoked. Unknown, expired, revoked, or deleted account → the same 401. The app must refresh single-flight (docs/04).
@@ -236,7 +236,14 @@ Built in 4.7: GET/PATCH `/users/me`, PATCH settings, change-password. Not yet: *
 | `/users/me/export` | 3 / day / user |
 | `/ai/*` (v2) | 20 / day / user |
 
+**Built in 4.8** (`src/security/rate-limit.ts`, `@nestjs/throttler`, in-memory counters, per route):
+- Default **100 / min**, counted **per user** when logged in and per IP otherwise (many mobile users share one public IP behind carrier NAT). This also covers `/auth/refresh`.
+- `@StrictRateLimit()` **5 / min**: register, login, verify-email, resend-verification, forgot-password, reset-password, change-password.
+- `/health` is never limited. Over the limit → `429 RATE_LIMITED` with `Retry-After` (seconds).
+- **Not yet:** the per-email limit (10 / hour / email, against one account attacked from many IPs), the separate refresh and default numbers above (30 and 120), export and AI limits (those endpoints don't exist yet). `RATE_LIMIT_ENABLED=false` turns limits off (only the general e2e run does this).
+
 ## 5. Swagger / OpenAPI
-- `@nestjs/swagger` generates the spec, and Zod → OpenAPI via the shared schemas (`nestjs-zod` or `zod-to-openapi`, decided in Phase 4, ADR-012).
-- Served at `/api/docs` in development and staging. In production it's disabled or behind basic auth.
+- `@nestjs/swagger` generates the spec. Request bodies come from the shared Zod schemas via `@ZodBody(schema)`, which validates **and** documents from the one schema (Zod's built-in `z.toJSONSchema`, OpenAPI 3.0 target; ADR-012). Built in 4.8.
+- UI at `/api/v1/docs`, JSON at `/api/v1/docs-json`, served whenever `NODE_ENV` isn't `production`. Use **Authorize** with an access token for protected routes; public routes are marked as needing none.
+- Not yet: response schemas (only request bodies are documented).
 - The CI job exports `openapi.json` as a build artifact so contract changes are visible in PR diffs.

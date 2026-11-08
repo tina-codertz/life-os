@@ -260,5 +260,7 @@ export const taskKeys = {
 - **Config:** `config/env.ts` parses `process.env` with Zod at boot, so the app fails fast with a clear message if a variable is missing.
 - **Logging:** `pino` (via `nestjs-pino`), JSON in production, pretty in development. PII redaction for `email`, `password` and `authorization`.
 - **Time:** `date-fns` + `date-fns-tz` (Proposed) on both sides. The server is always UTC.
-- **API docs:** Swagger at `/api/docs` (disabled or protected in production).
+- **API docs:** Swagger at `/api/v1/docs`, not served when `NODE_ENV=production` (4.8).
+- **HTTP hardening (4.8, `app.setup.ts`):** Helmet security headers (nosniff, frameguard, HSTS, CSP, no `X-Powered-By`); CORS off unless `CORS_ORIGINS` lists web origins (native apps don't need it); `trust proxy` set to `TRUST_PROXY_HOPS` so the real client IP is used behind Caddy without letting clients fake it; body limit 100 kB → 413.
+- **Guard order (AppModule):** `JwtAuthGuard` then `ThrottlerGuard`, so logged-in users are rate-limited per user.
 - **Health:** `GET /health` (DB ping) for uptime checks and the Docker healthcheck.

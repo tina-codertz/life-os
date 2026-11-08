@@ -466,3 +466,32 @@ Node is pinned in `.node-version` and Bun in `packageManager`, so CI uses the sa
 3. Why does a wrong *current* password return 403 instead of 401?
 4. Why does the client send `onboardingCompleted: true` instead of a timestamp?
 5. After changing your password, why stay logged in on this device but not on the others?
+
+### 2026-11-08 — 4.8 Rate limits, security headers, CORS, Swagger
+**What was built:**
+- `@nestjs/throttler` (`src/security/rate-limit.ts`): 100/min by default, `@StrictRateLimit()` 5/min on register, login, verify-email, resend-verification, forgot-password, reset-password, change-password; `@SkipThrottle()` on health. Logged-in requests counted per user, anonymous per IP. 429 `RATE_LIMITED` + `Retry-After`.
+- Global guards moved to `AppModule` in an explicit order: `JwtAuthGuard`, then `ThrottlerGuard`.
+- `app.setup.ts`: Helmet, CORS (off unless `CORS_ORIGINS`), `trust proxy` = `TRUST_PROXY_HOPS`, Swagger at `/api/v1/docs` (not in production).
+- `@ZodBody(schema)`: validation + Swagger body docs from one schema (ADR-012, Proposed). Every controller now uses it.
+- Env: `RATE_LIMIT_ENABLED`, `CORS_ORIGINS`, `TRUST_PROXY_HOPS`. `withEnv()` test helper for booting the app with different settings.
+**Concepts:**
+- *Rate limiting:* caps how often one client can call an endpoint. On login it turns "try a million passwords" into "try 5 a minute"; on forgot-password it stops someone flooding a victim's inbox.
+- *What to count by:* per IP is the only option before login, but many mobile users share one IP (carrier-grade NAT), so after login we count per user. That needs the auth guard to have run first: **guard order matters**, and a test proves it (swapping the order fails it).
+- *`trust proxy`:* behind Caddy, every request arrives from Caddy's IP; the real one is in `X-Forwarded-For`. Trust exactly the number of proxies you have: zero means everyone shares one bucket; trusting a header blindly lets attackers invent IPs to dodge limits.
+- *Security headers (Helmet):* the server tells the client what not to do: don't guess content types (`nosniff`), don't show me in a frame (clickjacking), always use HTTPS (HSTS), only run scripts from here (CSP). Also hides `X-Powered-By: Express`, so we don't advertise what to attack.
+- *CORS is for browsers only:* a browser won't let a web page on another site read our responses unless we allow its origin. Native apps aren't affected, so it stays off; never `*`.
+- *One source for validation and docs:* `@ZodBody` makes the Swagger docs come from the same schema the pipe enforces, so they can't disagree.
+- *Disabled in production:* the API docs are for building and testing, not a public map of the attack surface.
+**Found while building:**
+- Two type errors from writing APIs from memory (`getInstance<Express>()`, the throttler's tracker type); both fixed by checking the installed types.
+- A probe that didn't apply: my "remove the login limit" edit assumed the wrong decorator order. The script checked and reported it instead of reporting a false pass; re-done correctly, the test catches it.
+- Swagger UI under Helmet's strict CSP: the page has no inline scripts and all assets load from the same origin, so it works. (My first asset check used the wrong URLs and showed 404s; checking the real paths showed 200s.)
+- docs/06 had more detailed limits than NFR-SEC-004. Built to the NFR; the per-email limit and the separate refresh/default numbers are listed as not done.
+**Checked:** 96 API unit + 42 shared + 87 e2e: headers present and `X-Powered-By` absent; no CORS by default, only listed origins when set; 150 kB body → 413 `PAYLOAD_TOO_LARGE`; Swagger UI served, login body documented from the Zod schema, strict PATCH shows `additionalProperties: false`, public routes need no token, 404 in production; 6th login → 429 with `Retry-After`; limits are per endpoint; per-user counting (Tina blocked, Juma on the same IP not); 101st general request → 429; health never limited. Probes: swapping guard order, removing the login limit, each fails a test. Live: the full M4 flow (register → login → refresh → edit settings → logout → refresh refused) and a 429 with `Retry-After: 60`; no secrets in logs; probe user deleted.
+**M4 status: In review.** The roadmap's acceptance is "register, log in, refresh, log out and edit settings via Swagger", so the last step is yours: open http://localhost:3000/api/v1/docs after restarting the API and click through it.
+**To learn:**
+1. Why is login limited per IP, but a logged-in user's requests per user?
+2. What goes wrong behind Caddy if `trust proxy` is 0? And if the app trusted `X-Forwarded-For` from anyone?
+3. Why doesn't the mobile app need CORS, and why should it never be `*`?
+4. Why does the order of the two global guards matter?
+5. Why is Swagger turned off in production?

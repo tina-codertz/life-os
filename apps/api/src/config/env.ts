@@ -16,6 +16,24 @@ export const envSchema = z.object({
   MAIL_FROM: z.string().min(3).default('Life OS <no-reply@lifeos.local>'),
   // Start of the links in emails: lifeos://verify-email?token=… opens the app (Phase 5).
   EMAIL_LINK_BASE_URL: z.url().default('lifeos://'),
+  // 4.8 security settings.
+  RATE_LIMIT_ENABLED: z.stringbool().default(true), // "false" only in the general e2e run
+  // Browser origins allowed to call the API (comma-separated). The mobile app isn't a browser
+  // and needs none; leave unset unless a web client exists.
+  CORS_ORIGINS: z
+    .string()
+    .optional()
+    .transform((v) =>
+      v
+        ? v
+            .split(',')
+            .map((o) => o.trim())
+            .filter(Boolean)
+        : [],
+    ),
+  // Behind Caddy in production: how many proxies to trust for the client IP (X-Forwarded-For).
+  // Unset = trust none, so a client can't fake its IP to dodge rate limits.
+  TRUST_PROXY_HOPS: z.coerce.number().int().min(0).max(5).default(0),
 });
 
 export type Env = z.infer<typeof envSchema>;

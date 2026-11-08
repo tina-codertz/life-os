@@ -15,6 +15,11 @@ export default defineConfig({
     // in parallel would let one file wipe another's data mid-test, so they run one at a time.
     fileParallelism: false,
     // Silent logs: request lines would drown out the test output.
-    env: { DATABASE_URL: process.env['DATABASE_URL_TEST'] ?? '', LOG_LEVEL: 'silent' },
+    env: {
+      DATABASE_URL: process.env['DATABASE_URL_TEST'] ?? '',
+      LOG_LEVEL: 'silent',
+      // Suites send far more than 5 auth requests a minute; rate-limit.e2e-spec turns it on.
+      RATE_LIMIT_ENABLED: 'false',
+    },
   },
 });

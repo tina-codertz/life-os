@@ -1,4 +1,5 @@
-import { Body, Controller, HttpCode, HttpStatus, Post } from '@nestjs/common';
+import { Controller, HttpCode, HttpStatus, Post } from '@nestjs/common';
+import { ApiTags } from '@nestjs/swagger';
 import {
   type AuthResult,
   type ForgotPasswordInput,
@@ -15,29 +16,33 @@ import {
   type VerifyEmailInput,
   verifyEmailSchema,
 } from '@life-os/shared';
-import { ZodValidationPipe } from '../../common/pipes/zod-validation.pipe.js';
+import { ZodBody } from '../../common/validation/zod-body.decorator.js';
+import { StrictRateLimit } from '../../security/rate-limit.js';
 import type { AuthUser } from './auth-user.js';
 import { AuthService } from './auth.service.js';
 import { CurrentUser } from './current-user.decorator.js';
 import { Public } from './public.decorator.js';
 
 // @Public() per method, not on the class: logout-all needs the guard.
+@ApiTags('auth')
 @Controller('auth')
 export class AuthController {
   constructor(private readonly auth: AuthService) {}
 
   // 201 Created (Nest's default for POST) → { data: { user, accessToken, refreshToken } }.
   @Public()
+  @StrictRateLimit()
   @Post('register')
-  register(@Body(new ZodValidationPipe(registerSchema)) body: RegisterInput): Promise<AuthResult> {
+  register(@ZodBody(registerSchema) body: RegisterInput): Promise<AuthResult> {
     return this.auth.register(body);
   }
 
   // 200, not 201: logging in doesn't create a resource the client can fetch.
   @Public()
+  @StrictRateLimit()
   @Post('login')
   @HttpCode(HttpStatus.OK)
-  login(@Body(new ZodValidationPipe(loginSchema)) body: LoginInput): Promise<AuthResult> {
+  login(@ZodBody(loginSchema) body: LoginInput): Promise<AuthResult> {
     return this.auth.login(body);
   }
 
@@ -45,9 +50,7 @@ export class AuthController {
   @Public()
   @Post('refresh')
   @HttpCode(HttpStatus.OK)
-  refresh(
-    @Body(new ZodValidationPipe(refreshTokenSchema)) body: RefreshTokenInput,
-  ): Promise<TokenPair> {
+  refresh(@ZodBody(refreshTokenSchema) body: RefreshTokenInput): Promise<TokenPair> {
     return this.auth.refresh(body.refreshToken);
   }
 
@@ -55,7 +58,7 @@ export class AuthController {
   @Public()
   @Post('logout')
   @HttpCode(HttpStatus.NO_CONTENT)
-  logout(@Body(new ZodValidationPipe(refreshTokenSchema)) body: RefreshTokenInput): Promise<void> {
+  logout(@ZodBody(refreshTokenSchema) body: RefreshTokenInput): Promise<void> {
     return this.auth.logout(body.refreshToken);
   }
 
@@ -68,14 +71,14 @@ export class AuthController {
   // The four below answer 204: there's nothing to return, and for forgot-password the
   // answer must not reveal whether the email has an account.
   @Public()
+  @StrictRateLimit()
   @Post('verify-email')
   @HttpCode(HttpStatus.NO_CONTENT)
-  verifyEmail(
-    @Body(new ZodValidationPipe(verifyEmailSchema)) body: VerifyEmailInput,
-  ): Promise<void> {
+  verifyEmail(@ZodBody(verifyEmailSchema) body: VerifyEmailInput): Promise<void> {
     return this.auth.verifyEmail(body.token);
   }
 
+  @StrictRateLimit()
   @Post('resend-verification')
   @HttpCode(HttpStatus.NO_CONTENT)
   resendVerification(@CurrentUser() user: AuthUser): Promise<void> {
@@ -83,20 +86,18 @@ export class AuthController {
   }
 
   @Public()
+  @StrictRateLimit()
   @Post('forgot-password')
   @HttpCode(HttpStatus.NO_CONTENT)
-  forgotPassword(
-    @Body(new ZodValidationPipe(forgotPasswordSchema)) body: ForgotPasswordInput,
-  ): Promise<void> {
+  forgotPassword(@ZodBody(forgotPasswordSchema) body: ForgotPasswordInput): Promise<void> {
     return this.auth.forgotPassword(body.email);
   }
 
   @Public()
+  @StrictRateLimit()
   @Post('reset-password')
   @HttpCode(HttpStatus.NO_CONTENT)
-  resetPassword(
-    @Body(new ZodValidationPipe(resetPasswordSchema)) body: ResetPasswordInput,
-  ): Promise<void> {
+  resetPassword(@ZodBody(resetPasswordSchema) body: ResetPasswordInput): Promise<void> {
     return this.auth.resetPassword(body);
   }
 }

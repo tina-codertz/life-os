@@ -1,4 +1,6 @@
 import { Controller, Get, HttpStatus } from '@nestjs/common';
+import { ApiTags } from '@nestjs/swagger';
+import { SkipThrottle } from '@nestjs/throttler';
 import { AppException } from '../../common/errors/app.exception.js';
 import { PrismaService } from '../../prisma/prisma.service.js';
 import { Public } from '../auth/public.decorator.js';
@@ -9,6 +11,9 @@ export interface HealthResponse {
 }
 
 // Used by uptime monitors and the Docker healthcheck.
+// Monitors poll this; never rate-limited.
+@SkipThrottle()
+@ApiTags('health')
 @Public()
 @Controller('health')
 export class HealthController {

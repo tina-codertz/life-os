@@ -111,7 +111,10 @@
 - **Status:** Confirmed · 2026-11-04. See [01-PRD §2](01-PRD.md#2-release-scope).
 
 ### ADR-012 — Zod → OpenAPI tooling
-- **Status:** Open. Options: `nestjs-zod`, `@asteasolutions/zod-to-openapi`, or hand-written decorators. Decide during Phase 4 with a small spike.
+- **Status:** Proposed · 2026-11-08 (was Open)
+- **Decision:** No extra library. Zod 4 exports JSON Schema itself (`z.toJSONSchema(schema, { target: 'openapi-3.0', io: 'input' })`). A ~20-line `@ZodBody(schema)` parameter decorator applies `ZodValidationPipe` **and** `@ApiBody` from the same schema, so the docs can't drift from validation.
+- **Alternatives:** `nestjs-zod` (DTO classes from schemas; another dependency and its own conventions to learn); `@asteasolutions/zod-to-openapi` (registry-based, built for Zod 3 first); hand-written `@ApiProperty` DTOs (two sources of truth).
+- **Consequences:** Request bodies are documented; responses aren't yet (would need a similar `@ZodResponse`). Custom checks (time zone) appear as plain strings.
 
 ### ADR-013 — UUIDv7 keys
 - **Status:** Confirmed · 2026-11-04
