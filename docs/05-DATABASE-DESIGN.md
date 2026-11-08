@@ -211,7 +211,7 @@ model Category {
   tasks Task[]
   goals Goal[]
 
-  @@unique([userId, name])
+  @@unique([userId, name]) // name is citext since 2026-11-08: "Gym" and "GYM" are the same name
 }
 
 // ───────────── Tasks ─────────────

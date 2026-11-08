@@ -1201,3 +1201,13 @@ Still open (History, to discuss): what the design's calendar button on Week / Ye
 1. Why does the server send the level instead of the app working it out from the XP?
 2. With levels starting at 50·L·(L−1), how much XP does level 10 need, and how much more is level 11?
 
+### 2026-11-08 — Bug: two categories with the same name (found by CI)
+**What happened:** CI failed on "creating the same name at once still makes only one". Two of five simultaneous creates ("Gym" and "GYM") both succeeded.
+**Why:** the app checks names ignoring case, but the database's unique index compared them exactly. When both requests passed the app's check at the same moment, the database had no reason to refuse the second. Most runs, one request happens to finish first, so the test usually passed.
+**Fix:** migration `category_name_case_insensitive` makes the column `citext` (case-insensitive text), so the unique index now matches the app's rule. Prisma's draft would have dropped and recreated the column, losing every name; it was replaced with an in-place `ALTER COLUMN … TYPE citext`.
+**Checks:** the race test passed 10 of 10 runs. A new test inserts "Gym" then "GYM" straight into the database and expects it to refuse; it fails every time if the index regresses, not just sometimes. CI's migration check finds no difference.
+
+**To learn:**
+1. Why is a rule that's only checked in the app ("is this name free?") not enough when two requests arrive at once?
+2. Why read a generated migration before applying it?
+

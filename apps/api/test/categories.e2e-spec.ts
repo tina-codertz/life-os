@@ -89,6 +89,16 @@ describe('Categories (e2e)', () => {
     await as(juma).create({ name: 'Work', color: 'teal' }).expect(201);
   });
 
+  // The database itself treats names case-insensitively (citext), so the race below can't
+  // let "Gym" and "GYM" both in. Checked directly, because a race only shows up sometimes.
+  it('the database refuses the same name in another case', async () => {
+    const data = { userId: tina.user.id, color: 'green', sortOrder: 0 };
+    await prisma.category.create({ data: { ...data, name: 'Gym' } });
+    await expect(prisma.category.create({ data: { ...data, name: 'GYM' } })).rejects.toMatchObject({
+      code: 'P2002',
+    });
+  });
+
   // Two phones creating the same name at the same moment: both pass the name check, and the
   // database's unique index must stop the second (the service turns that into the same 409).
   it('creating the same name at once still makes only one', async () => {

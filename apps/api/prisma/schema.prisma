@@ -108,7 +108,9 @@ enum Theme {
 model Category {
   id        String   @id @default(uuid(7)) @db.Uuid
   userId    String   @db.Uuid
-  name      String   @db.VarChar(50)
+  // Case-insensitive (citext), so the unique index below treats "Gym" and "GYM" as the same
+  // name, as the app does. Length (50) is checked by the shared schema.
+  name      String   @db.Citext
   color     String   @db.VarChar(20) // palette name (packages/shared CATEGORY_COLORS), themed per mode
   icon      String?  @db.VarChar(40)
   sortOrder Int      @default(0)
