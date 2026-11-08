@@ -55,6 +55,8 @@ apps/mobile/src/app/
     └── event-form.tsx
 ```
 
+**Built in 5.2:** `(auth)` (welcome, login, register, forgot-password), `(onboarding)` (profile), `(app)` with native tabs (today, tasks, habits, calendar, more) plus `design-preview`. Tab screens are single files for now (`tasks.tsx`, not `tasks/index.tsx`) until they get detail screens. The root layout wraps each group in `Stack.Protected`, driven by one function, `areaFor(session)` in `src/features/auth/session.tsx`: signed out → `(auth)`, signed in but not onboarded → `(onboarding)`, onboarded → `(app)`. `index.tsx` redirects to that area's first screen (`/welcome`, `/profile`, `/today`). While the session is `loading` the splash screen stays up. Content is placeholders until 5.5 / 5.7 / Phase 6. A `__DEV__`-only "Demo: new / returning user" on welcome walks through the gate before real login exists.
+
 ```mermaid
 flowchart TD
   Start([App launch]) --> Splash
