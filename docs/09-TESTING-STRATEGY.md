@@ -49,9 +49,12 @@ flowchart TB
 - `Test.createTestingModule` with a mocked `PrismaService` **only** for orchestration logic (e.g. "emits `habit.completed`"). Prefer the integration tests below for anything touching queries.
 
 ### 2.3 API integration / e2e tests
-- **Tool:** Vitest + Supertest against a real Nest app (`app.init()`) and **real PostgreSQL** (Docker service in CI). Each test file gets a fresh schema (`prisma migrate reset` or one schema per worker).
+- **Tool:** Vitest + Supertest against a real Nest app (`createTestApp()`) and **real PostgreSQL** (Docker service in CI). Built in 4.3:
+  - `test/global-setup.ts` runs once before all files: refuses any database whose name doesn't end in `_test`, then applies migrations (`prisma migrate deploy`) to `DATABASE_URL_TEST`.
+  - `resetDatabase(prisma)` (`test/utils/test-db.ts`) truncates every table except `_prisma_migrations` in a `beforeEach`, so **each test starts empty**. It re-checks the database name itself before deleting anything.
+  - Files run one at a time (`fileParallelism: false`) because they share one database. Fast enough for now; if the suite gets slow, switch to one schema per worker.
 - **Coverage requirement:** every endpoint has at least one happy path, one validation failure, one auth failure (no token → 401), and one **cross-user** test (user B gets 404 for user A's resource).
-- Factories (`test/factories.ts`) create users/tasks/habits. No shared global fixtures.
+- Factories (`test/factories.ts`) create users/tasks/habits with valid, unique defaults; a test passes only the fields it cares about. No shared global fixtures. (4.3: `createUser`.)
 
 ### 2.4 Mobile component tests
 - **Tools:** Jest (`jest-expo` preset) + React Native Testing Library + MSW (mocking `fetch`) *(Proposed)*.

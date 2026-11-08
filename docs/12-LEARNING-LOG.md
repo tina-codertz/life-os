@@ -279,3 +279,30 @@ Node is pinned in `.node-version` and Bun in `packageManager`, so CI uses the sa
 2. Why is "email already taken" not checked in the Zod schema, even though Zod supports async refinements that could query the database?
 3. If the mobile app already validates the form with the same schema, why must the API validate again?
 4. Why do we *strip* unknown keys instead of rejecting them with `z.strictObject`? When would rejecting be the better choice?
+**Your answers (2026-11-08):**
+- *Returning `value` instead of `result.data`:* the unvalidated `userId` would continue into the application. (Right, that's the security half. The other half is correctness: `limit` would still be the **string** `"5"` and the default `30` would never be applied, while TypeScript claims it's a number. The types would lie.)
+- *Why "email taken" isn't in the schema:* Zod checks structure (is this a well-formed email?); whether it's already registered is a business rule for the service. Zod validates the shape, the service enforces business rules, the database protects integrity. (A good three-layer summary. Also practical: the same schema runs in the mobile app, which has no database, and a schema that queries the DB couldn't be shared.)
+- *Why the API checks again:* the app and the API are two separate trust boundaries; frontend validation is for usability, backend validation for security and correctness. (Exactly. Anyone can call the API with `curl`, skipping the app entirely.)
+- *Strip vs reject:* the API keeps the useful fields and ignores unknown ones; rejecting is better when unexpected data could hide a mistake or create a security problem. (Right. Concrete examples where we'd use `z.strictObject`: a typo like `dueDte` silently ignored means the user's due date is lost, so rejecting helps catch client bugs during development; and admin or security-sensitive endpoints, where an unexpected field is more likely an attack than an old app version.)
+
+### 2026-11-08 — 4.3 Test database harness
+**What was built:**
+- `test/global-setup.ts` (Vitest `globalSetup`, runs once before all e2e files): checks that `DATABASE_URL_TEST` names a database ending in `_test`, then runs `prisma migrate deploy` on it.
+- `resetDatabase(prisma)` (`test/utils/test-db.ts`): `TRUNCATE … RESTART IDENTITY CASCADE` on every table except `_prisma_migrations`, called in `beforeEach`. It asks Postgres for `current_database()` and refuses unless it ends in `_test`.
+- `test/factories.ts`: `createUser(prisma, overrides)` with unique defaults (placeholder password hash until 4.4).
+- e2e files now run one at a time (`fileParallelism: false`).
+**Concepts:**
+- *Test isolation:* every test starts from the same known state (empty tables) and creates what it needs. Then tests can run in any order, alone or together, and a failure points at that test, not at data left behind by another one.
+- *TRUNCATE vs DELETE:* `DELETE` removes rows one by one; `TRUNCATE` empties the table in one go, much faster. `CASCADE` empties tables that reference it (`UserSettings` → `User`); `RESTART IDENTITY` resets auto-increment counters.
+- *Guard rails on destructive tools:* the helper deletes everything, so it checks the database name **twice**: from the URL before migrating, and from Postgres itself before truncating. A wrong line in `.env` must not be able to wipe your real data.
+- *Global setup:* code that runs once per test run, outside the test files. Applying migrations there means a new migration never breaks tests with "table does not exist".
+- *Why files run serially:* they share one database. File A's `beforeEach` truncate could empty the tables while file B is halfway through a test, giving random failures (*flaky tests*). The alternative (one database schema per parallel worker) is faster but more complex; not worth it at 2 seconds.
+- *Factories, not fixtures:* a fixture is a shared dataset every test depends on; changing it for one test breaks others. A factory makes fresh data per test, with only the interesting fields spelled out (`createUser(prisma, { displayName: 'Tina' })`).
+- *`$executeRawUnsafe`:* "unsafe" because it takes a plain string, so user input in it would be SQL injection. Here the table names come from Postgres' own catalog and are quoted, so it's safe. Everywhere else we use the tagged template `` $queryRaw`…` ``, which sends values as parameters.
+**Checked it can fail:** pointed at `lifeos_dev` → "Refusing to touch database "lifeos_dev""; dropped the whole test schema → global setup re-migrated it and all tests passed; commented out the reset → the "empty tables" test failed.
+**Checked:** 53 API unit + 8 shared unit + 14 e2e tests; lint/format/typecheck clean.
+**To learn:**
+1. Why does the test check the database name from Postgres (`current_database()`) and not only from the URL?
+2. What is a *flaky test*, and how would running e2e files in parallel against one database create one?
+3. Why is a factory with overrides better than one shared "test user" every test uses?
+4. `$queryRaw` with a template literal vs `$executeRawUnsafe` with a string: why is the first safe against SQL injection?
