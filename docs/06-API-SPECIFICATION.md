@@ -214,6 +214,15 @@ Built in 6.1 Part 1: `GET` (ordered by `sortOrder`, then name), `POST` (`201`), 
 | DELETE | `/habits/:id/completions/:localDate` | undo → `200 { streak }` |
 | GET | `/habits/:id/stats` | `{ rate7, rate30, rate90, total }` |
 
+**Built in Habits I Part 1 (2026-11-08):**
+- `GET /habits[?archived=true]`, `POST /habits`, `GET / PATCH / DELETE /habits/:id`, `POST /habits/:id/archive` · `/unarchive`, `POST /habits/:id/completions`, `DELETE /habits/:id/completions/:localDate`.
+- Each habit carries its **schedule in force today**, `dueToday`, and `today` (today's check-in or null), with "today" in the user's zone.
+- `color` is a palette name like categories. `schedule` is `{ frequency: 'DAILY' }`, `{ frequency: 'WEEKLY_DAYS', weekdays: [0–6, Sunday = 0] }` or `{ frequency: 'TIMES_PER_WEEK', timesPerWeek: 1–7 }`. A schedule change is a new `HabitSchedule` from today; two changes on one day replace each other.
+- **Check-in** is `{ localDate, count? }` → `201` the completion. It's **safe to repeat**: one per day (unique index), and a repeat sets the count. With no count it's the full `targetCount` (one tap means done).
+- `422 CHECK_IN_OUT_OF_RANGE` for the future, more than 7 days back, before `startDate`, or an archived habit. Undo has the same range and is `204` even if there was nothing to undo.
+- Max 50 habits → `422 HABIT_LIMIT_REACHED`. Another user's habit or a malformed id → `404 HABIT_NOT_FOUND`.
+- **Habits II adds:** streaks in the check-in response, `/completions?from&to` for the heatmap, `/stats`, and reminders.
+
 ### Goals
 | Method | Path | Notes |
 |---|---|---|

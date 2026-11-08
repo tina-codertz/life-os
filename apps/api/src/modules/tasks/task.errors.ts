@@ -9,11 +9,8 @@ export class TaskNotFoundError extends AppException {
   }
 }
 
-export function fieldError(field: string, message: string): AppException {
-  return new AppException(HttpStatus.BAD_REQUEST, 'VALIDATION_FAILED', 'Some fields are invalid.', {
-    details: [{ field, message }],
-  });
-}
+// Shared with other modules; kept exported here for the task module's imports.
+export { fieldError } from '../../common/errors/field-error.js';
 
 // FR-TASK-005: one level only.
 export class SubtaskNotAllowedError extends AppException {

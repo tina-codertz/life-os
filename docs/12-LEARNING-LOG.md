@@ -1076,3 +1076,28 @@ Still open (History, to discuss): what the design's calendar button on Week / Ye
 3. Why is an automated accessibility audit useful even though it can't replace trying VoiceOver?
 4. Why must a swipe be measured from where the finger went down, and why does a vertical drag need to be left alone?
 
+### 2026-11-08 — Habits I Part 1: the habits API
+**What was built:**
+- **Shared** (`schemas/habits.ts`): a schedule is daily, chosen weekdays, or N times a week (a *discriminated union*, so each kind has only its own fields). Also the create / update / check-in schemas and `PublicHabit`.
+- **Database** (migration `add_habits`, as planned in docs/05):
+  - `Habit`.
+  - `HabitSchedule`: versions of the schedule, each with `effectiveFrom`.
+  - `HabitCompletion`: one per habit per local day, unique.
+- **API:**
+  - List, create, get, edit, archive / unarchive, soft delete.
+  - Check in and undo for today or up to 7 days back.
+  - Each habit says whether it's **due today** and shows **today's check-in**, in the user's time zone.
+  - Changing the schedule adds a version from today, so past days keep the rule they had (FR-HAB rule 7).
+  - One tap on a count habit (e.g. 8 glasses) means done; a count can also be set.
+**Concepts:**
+- *Versioned rules:* instead of overwriting the schedule, keep each version with the day it started, so history stays as it was lived.
+- *Idempotent check-in:* a unique `(habitId, localDate)` and an upsert make "check in" safe to send twice (a double tap, a retry after a timeout). If two arrive together, the second insert hits the unique index and becomes an update.
+- *Discriminated union:* `frequency` decides which other fields exist (`weekdays` only for WEEKLY_DAYS), and the schema refuses the rest.
+**Tidy-up:** `fieldError` moved from the tasks module to `common/errors`, since habits use it too.
+**Checks:** 14 new e2e tests (defaults, validation, due today, the 50 limit, repeat-safe check-in, count habits, the backfill window, undo, schedule versions, strict PATCH, archive, delete, another user, login) and 5 schema tests. Probes: backfill window, upsert, schedule date, user scoping, archived check, weekday rule. Each makes a test fail (one probe first broke the syntax and was redone). API 116 unit + 167 e2e, shared 114, mobile 369; `bun run check` clean.
+
+**To learn:**
+1. Why keep old schedule versions instead of updating the habit's schedule in place?
+2. What makes checking in twice for the same day harmless?
+3. Why does the backfill window stop at 7 days?
+

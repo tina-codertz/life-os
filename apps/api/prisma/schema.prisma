@@ -28,6 +28,7 @@ model User {
   authTokens AuthToken[]
   categories Category[]
   tasks      Task[]
+  habits     Habit[]
 }
 
 // One row per refresh token. Logging in starts a *family*; every refresh replaces the row's
@@ -166,4 +167,65 @@ enum TaskPriority {
 enum TaskStatus {
   TODO
   DONE
+}
+
+// ───────────── Habits (Habits I; streaks, reminders and stats come in Habits II) ─────────────
+
+model Habit {
+  id          String    @id @default(uuid(7)) @db.Uuid
+  userId      String    @db.Uuid
+  name        String    @db.VarChar(80)
+  icon        String?   @db.VarChar(40) // a Lucide icon name, e.g. "book-open"
+  color       String    @db.VarChar(20) // a palette name (CATEGORY_COLORS), not hex
+  targetCount Int       @default(1) @db.SmallInt // FR-HAB-009, e.g. 8 glasses
+  unit        String?   @db.VarChar(20)
+  startDate   DateTime  @db.Date // the user's local day; nothing before it is "missed"
+  archivedAt  DateTime? @db.Timestamptz(3)
+  sortOrder   Int       @default(0)
+  createdAt   DateTime  @default(now()) @db.Timestamptz(3)
+  updatedAt   DateTime  @updatedAt @db.Timestamptz(3)
+  deletedAt   DateTime? @db.Timestamptz(3) // soft delete
+
+  user        User              @relation(fields: [userId], references: [id], onDelete: Cascade)
+  schedules   HabitSchedule[]
+  completions HabitCompletion[]
+
+  @@index([userId, archivedAt])
+}
+
+// Versions of a habit's schedule: a change applies from its day on, so earlier days keep being
+// judged by the rule they had (FR-HAB rule 7).
+model HabitSchedule {
+  id            String         @id @default(uuid(7)) @db.Uuid
+  habitId       String         @db.Uuid
+  frequency     HabitFrequency
+  weekdays      Int[]          @db.SmallInt // WEEKLY_DAYS: 0 = Sunday … 6 = Saturday
+  timesPerWeek  Int?           @db.SmallInt // TIMES_PER_WEEK
+  effectiveFrom DateTime       @db.Date
+  createdAt     DateTime       @default(now()) @db.Timestamptz(3)
+
+  habit Habit @relation(fields: [habitId], references: [id], onDelete: Cascade)
+
+  @@unique([habitId, effectiveFrom])
+}
+
+enum HabitFrequency {
+  DAILY
+  WEEKLY_DAYS
+  TIMES_PER_WEEK
+}
+
+// One per habit per local day (the unique index makes check-ins safe to repeat).
+model HabitCompletion {
+  id          String   @id @default(uuid(7)) @db.Uuid
+  habitId     String   @db.Uuid
+  userId      String   @db.Uuid // copied for fast per-user queries and scoping
+  localDate   DateTime @db.Date
+  count       Int      @default(1) @db.SmallInt
+  completedAt DateTime @default(now()) @db.Timestamptz(3)
+
+  habit Habit @relation(fields: [habitId], references: [id], onDelete: Cascade)
+
+  @@unique([habitId, localDate])
+  @@index([userId, localDate])
 }
