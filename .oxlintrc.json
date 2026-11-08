@@ -51,7 +51,7 @@
       }
     },
     {
-      "files": ["apps/mobile/**/*.test.ts", "apps/mobile/**/*.test.tsx"],
+      "files": ["apps/mobile/**/*.test.ts", "apps/mobile/**/*.test.tsx", "apps/mobile/src/test/**"],
       "env": {
         "jest": true
       },

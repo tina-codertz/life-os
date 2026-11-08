@@ -664,3 +664,32 @@ Node is pinned in `.node-version` and Bun in `packageManager`, so CI uses the sa
 3. Why must the new refresh token be saved before it's used?
 4. What does `THIS_DEVICE_ONLY` protect against?
 5. How do the tests simulate "restarting the app"?
+
+### 2026-11-08 — 5.5 Log in, Create account, Forgot / Reset password (React Hook Form + Zod)
+**What was built:**
+- `TextField` (label, error or helper, Show/Hide for passwords, error read with the field by screen readers) and `FormScreen` (scrolls, keeps the field above the keyboard).
+- `useZodForm(schema, defaults)` and `applyApiError(err, setError, fields)` (`src/features/forms`).
+- `(auth)/login`, `register`, `forgot-password`: real forms on the **shared** `loginSchema` / `registerSchema` / `forgotPasswordSchema`. Fields chain with the keyboard's Next / Go; password managers get the right `autoComplete` / `textContentType`.
+- Root-level link screens: `reset-password` (form), `verify-email`, `confirm-email-change` (`LinkActionScreen`: one API call, result, refresh the signed-in user).
+- `auth-api.ts`: the auth endpoints, with the device model as `deviceName`. `src/test/mock-auth-instance.ts`: the real store against a scripted fake API, for screen tests.
+**Concepts:**
+- *One schema, two places:* the form validates with the very schema the API validates with, so the messages match ("This password is too common…") and the app never accepts what the server would refuse. The server still checks: the app is just faster feedback.
+- *Parse, then send:* `handleSubmit` hands over the schema's *output*: `  Tina@Example.com ` arrives at the API as `tina@example.com`.
+- *Errors where the user looks:* field problems under the field (from Zod, or from the server's `details`); anything else (wrong password, offline, rate limited) above the button; `EMAIL_TAKEN` on the email field.
+- *Validate on "touched":* no red errors while typing the first time, only once you've left a field.
+- *The gate does the navigating:* after login the form just calls `signIn`; the session changes and the guards move the user to Today or onboarding. No screen decides where to go next.
+- *Links must work in any state:* email links open the app wherever it is, signed in or not, so they live outside the guarded groups.
+- *Single-use actions and StrictMode:* React (in development) runs effects twice on purpose, to expose this kind of bug. A verification link is single-use, so a second call would show "invalid link" for one that worked; a `useRef` guard runs it once. The test renders in StrictMode so it can catch that.
+- *Derive state, don't sync it:* "link has no token" is known at the first render, so it's the starting state, not something an effect discovers (lint's `set-state-in-effect`).
+**Found while building:**
+- The run-once probe was first **not caught**: outside StrictMode, effects run once anyway. Rendering the test in StrictMode fixed that; now removing the guard fails it.
+- One of my probes produced code that didn't parse, so its "4 failed" proved nothing; I discarded it. A probe has to change behaviour, not break the build.
+- React Native 0.88 types refs by instance (`ComponentRef<typeof TextInput>`, exported as `TextFieldHandle`); the resolver's types needed the form's input/output types passed explicitly.
+- `apps/mobile/AGENTS.md` asks for APIs from the SDK docs or installed types, not memory; I'd been reading installed types, and now also run `expo-doctor` (20/20 checks).
+**Checked:** 117 mobile tests (14 new): empty login → shared messages, nothing sent; login sends the normalised email and the gate opens Today; wrong password → alert, stays; Show/Hide; common password refused client-side; `EMAIL_TAKEN` on email; server field errors on fields; register → onboarding; forgot always shows the same confirmation; reset sends token + new password; expired reset link; verify-email calls the API once even under StrictMode; confirm-email-change refreshes the signed-in user; a link without a token explains itself. Probes: no per-field server errors, no run-once guard: each fails a test. Simulator: a deep link to `/login` while signed in was redirected to Today, and the session survived the reload.
+**To learn:**
+1. Why validate the form with the same schema as the API, when the API validates anyway?
+2. After a successful login, why doesn't the login screen navigate anywhere itself?
+3. Why do the email-link screens live outside the guarded groups?
+4. What does React's StrictMode do to effects, and why did the verify-email test need it?
+5. Why show a wrong password above the form, but `EMAIL_TAKEN` under the email field?

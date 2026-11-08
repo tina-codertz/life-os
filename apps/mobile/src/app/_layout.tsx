@@ -18,6 +18,8 @@ export default function RootLayout() {
   );
 }
 
+const LINK_SCREEN = { headerShown: true, title: '', headerShadowVisible: false } as const;
+
 // The auth gate. Each group is only reachable while its guard is true; navigating to a route
 // whose guard is false redirects to "/", which sends the user to their area's first screen.
 function RootNavigator() {
@@ -36,6 +38,10 @@ function RootNavigator() {
         screenOptions={{ headerShown: false, contentStyle: { backgroundColor: colors.bg.canvas } }}
       >
         <Stack.Screen name="index" />
+        {/* Links from emails: open in any state, so they sit outside the guards. */}
+        <Stack.Screen name="verify-email" options={LINK_SCREEN} />
+        <Stack.Screen name="confirm-email-change" options={LINK_SCREEN} />
+        <Stack.Screen name="reset-password" options={LINK_SCREEN} />
         <Stack.Protected guard={area === 'auth'}>
           <Stack.Screen name="(auth)" />
         </Stack.Protected>

@@ -55,6 +55,9 @@ apps/mobile/src/app/
     └── event-form.tsx
 ```
 
+**Built in 5.5:** real Log in / Create account / Forgot password forms in `(auth)`. The email links live at the **root, outside the guards** (a change from the tree above, which had `reset-password` in `(auth)`): `reset-password`, `verify-email` and `confirm-email-change` must open whether or not the phone is signed in. Reset signs this phone out (the API ended every session).
+**Open UI issue:** on iOS 26 the five-tab bar truncates "Habits" and "Calendar" ("Hab…", "Cal…") on an iPhone 17; revisit labels or tab count in the layout pass.
+
 **Built in 5.2:** `(auth)` (welcome, login, register, forgot-password), `(onboarding)` (profile), `(app)` with native tabs (today, tasks, habits, calendar, more) plus `design-preview`. Tab screens are single files for now (`tasks.tsx`, not `tasks/index.tsx`) until they get detail screens. The root layout wraps each group in `Stack.Protected`, driven by one function, `areaFor(session)` in `src/features/auth/session.tsx`: signed out → `(auth)`, signed in but not onboarded → `(onboarding)`, onboarded → `(app)`. `index.tsx` redirects to that area's first screen (`/welcome`, `/profile`, `/today`). While the session is `loading` the splash screen stays up. Content is placeholders until 5.5 / 5.7 / Phase 6. A `__DEV__`-only "Demo: new / returning user" on welcome walks through the gate before real login exists.
 
 ```mermaid
