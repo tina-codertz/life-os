@@ -1,5 +1,6 @@
 import type { HistoryDay } from '@life-os/shared';
 import { addDays, addMonths, monthGrid } from '@/features/tasks/dates';
+import { sorted } from '@/lib/arrays';
 
 // Calendar-day helpers for History. Days are "YYYY-MM-DD" in the user's zone; maths in UTC.
 
@@ -69,11 +70,11 @@ export function heatLevel(count: number, max: number): 0 | 1 | 2 | 3 | 4 {
 
 // The most days in a row with something completed.
 export function longestStreak(days: string[]): number {
-  const sorted = [...new Set(days)].toSorted();
+  const ordered = sorted([...new Set(days)]);
   let best = 0;
   let run = 0;
   let previous: string | null = null;
-  for (const day of sorted) {
+  for (const day of ordered) {
     run = previous !== null && addDays(previous, 1) === day ? run + 1 : 1;
     best = Math.max(best, run);
     previous = day;

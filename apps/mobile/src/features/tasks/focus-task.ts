@@ -1,4 +1,5 @@
 import type { Priority, PublicTask } from '@life-os/shared';
+import { sorted } from '@/lib/arrays';
 
 const RANK: Record<Priority, number> = { URGENT: 4, HIGH: 3, MEDIUM: 2, LOW: 1, NONE: 0 };
 
@@ -7,11 +8,12 @@ const RANK: Record<Priority, number> = { URGENT: 4, HIGH: 3, MEDIUM: 2, LOW: 1, 
 // time (no time last), then the oldest due date. None if nothing is due yet.
 export function pickFocusTask(tasks: PublicTask[], today: string): PublicTask | null {
   const due = tasks.filter((t) => t.status === 'TODO' && t.dueDate !== null && t.dueDate <= today);
-  const sorted = due.toSorted(
+  const ranked = sorted(
+    due,
     (a, b) =>
       RANK[b.priority] - RANK[a.priority] ||
       (a.dueTime ?? 1440) - (b.dueTime ?? 1440) ||
       (a.dueDate ?? '').localeCompare(b.dueDate ?? ''),
   );
-  return sorted[0] ?? null;
+  return ranked[0] ?? null;
 }

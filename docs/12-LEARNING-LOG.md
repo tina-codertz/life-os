@@ -1039,3 +1039,12 @@ The project owner added **History: week / month / year** to the design (`docs/Li
 3. Why is `GET /tasks/history` declared before `GET /tasks/:id`?
 4. How does a screen reader user get the numbers from a bar chart?
 
+### 2026-11-08 — Bug: the Tasks screen crashed on the phone (blank screen)
+**What happened:** after the highlighted card, the app showed a blank white screen. The simulator log said `TypeError: undefined is not a function` in the Tasks screen. The card's code used `Array#toSorted` (ES2023), and History used it and `toReversed`. The phone's JavaScript engine (**Hermes**, in Expo Go) doesn't have them, but **Jest runs on Node, which does**, so all 343 tests passed while the app crashed. The linter had even suggested `toSorted` over `sort` (it protects the original array).
+**Fix:** `src/lib/arrays.ts` has `sorted()` / `reversed()`, which copy then sort or reverse, so they work everywhere and still don't change the original. A **guard test** (`src/lib/hermes-compat.test.ts`) scans all app and shared code and fails if a method Hermes lacks appears again (`toSorted`, `toReversed`, `toSpliced`, `findLast`, `Object/Map.groupBy`). It failed on the four files before the fix, and putting `toSorted` back makes it fail again.
+**Lesson:** green tests on Node don't prove the app runs on the phone's engine. Look at screens on the simulator after each change, and turn each "works in tests, fails on device" gap into a test.
+
+**To learn:**
+1. Why did every test pass while the app crashed on the phone?
+2. How does the guard test stop this from happening again?
+

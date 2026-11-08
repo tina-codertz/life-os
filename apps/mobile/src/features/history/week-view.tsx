@@ -1,6 +1,7 @@
 import type { PublicCategory } from '@life-os/shared';
 import { View } from 'react-native';
 import { Card, EmptyState, IconTile, Text } from '@/components/ui';
+import { reversed } from '@/lib/arrays';
 import { addDays } from '@/features/tasks/dates';
 import { categoryIcon } from '@/features/tasks/category-icon';
 import { radius, spacing, useTheme } from '@/theme';
@@ -42,9 +43,10 @@ export function WeekView({
   const total = thisWeek.reduce((a, b) => a + b, 0);
   const before = weekDays(lastWeek).reduce((a, d) => a + (counts.get(d) ?? 0), 0);
   const max = Math.max(...thisWeek, 1);
-  const withTasks = history.data.days
-    .filter((d) => d.date >= start && (d.tasks?.length ?? 0) > 0)
-    .toReversed();
+  // Newest day first.
+  const withTasks = reversed(
+    history.data.days.filter((d) => d.date >= start && (d.tasks?.length ?? 0) > 0),
+  );
 
   return (
     <View style={{ gap: spacing.md }}>

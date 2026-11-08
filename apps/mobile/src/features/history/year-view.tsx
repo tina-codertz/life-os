@@ -1,5 +1,6 @@
 import { View } from 'react-native';
 import { IconTile, Text } from '@/components/ui';
+import { sorted } from '@/lib/arrays';
 import { radius, spacing, useTheme } from '@/theme';
 import { longestStreak, monthLetter, monthName, monthShort, yearMonths } from './history-dates';
 import { HistoryState } from './history-state';
@@ -23,11 +24,10 @@ export function YearView({ year }: { year: number }) {
   const max = Math.max(...perMonth, 0);
   const bestIndex = max > 0 ? perMonth.indexOf(max) : -1;
   const best = months[bestIndex];
-  const ranked = months
-    .map((m, i) => ({ month: m, count: perMonth[i] ?? 0 }))
-    .filter((m) => m.count > 0)
-    .toSorted((a, b) => b.count - a.count)
-    .slice(0, 3);
+  const ranked = sorted(
+    months.map((m, i) => ({ month: m, count: perMonth[i] ?? 0 })).filter((m) => m.count > 0),
+    (a, b) => b.count - a.count,
+  ).slice(0, 3);
   const streak = longestStreak(history.data.days.map((d) => d.date));
 
   return (
