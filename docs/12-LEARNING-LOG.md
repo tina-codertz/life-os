@@ -343,6 +343,11 @@ Node is pinned in `.node-version` and Bun in `packageManager`, so CI uses the sa
 2. What does the salt protect against, and why is it fine that it's stored right next to the hash?
 3. Register answers `EMAIL_TAKEN`, which tells anyone whether an email has an account. Why do we accept that here, but not on login or forgot-password?
 4. Why does `toPublicUser` list the fields one by one instead of removing `passwordHash` from the object?
+**Your answers (2026-11-08):**
+- *Why slow hashing:* normally we want fast code, but password hashing must consider what happens if the database is stolen; the extra time is acceptable because hashing only happens at register and login, not on every request. (Right, and the missing half is *why* slowness hurts the attacker: with a stolen table they guess offline, as fast as their hardware allows. A fast hash lets a GPU try billions of guesses per second; argon2id costs ~10 ms and 19 MiB **per guess**, so that drops to thousands. The memory part matters most, because GPUs have many cores but little memory per core. You pay the cost once per login; they pay it for every guess.)
+- *Salt:* a random value added before hashing, so two users with the same password get different hashes; it isn't a secret, its job is uniqueness. (Right. What that defeats: precomputed "rainbow tables" (one table of hash → password for everyone) and cracking many users at once. With unique salts every user must be attacked separately. Since it only has to be unique, not secret, storing it inside the hash string is fine.)
+- *EMAIL_TAKEN on register but not login/forgot:* a balance between usability and privacy; an attacker could test emails. (Right. The reason register gets the usability side: the person signing up genuinely needs to know "you already have an account, log in instead", and hiding it would need a verify-email-first sign-up flow. Login and forgot-password don't need to say it, so they don't. The rate limits make probing slow either way.)
+- *Allow-list in `toPublicUser`:* new database fields don't automatically become public. (Exactly.)
 
 ### 2026-11-08 — 4.4 Part 2: login + access tokens
 **What was built:**
@@ -365,6 +370,11 @@ Node is pinned in `.node-version` and Bun in `packageManager`, so CI uses the sa
 2. Why can't we "log out" an access token, and how does a 15-minute lifetime make that acceptable?
 3. Why does an unknown email still run a password check against a dummy hash?
 4. What would go wrong if `verifyAccessToken` accepted whatever algorithm the token's header names?
+**Your answers (2026-11-08):**
+- *What the signature protects:* the payload is only Base64URL-encoded, so anyone with the token can read it; the signature protects integrity and authenticity. (Right. Concretely: change `sub` to another user's ID and the signature no longer matches, and only someone with `JWT_ACCESS_SECRET` (the API) can make a matching one. Readable but not forgeable, which is why the payload holds IDs, never personal data.)
+- *Why an access token can't be logged out:* it's stateless, checked by signature and expiry without a database lookup; logging out deletes the app's copy, but a stolen copy works until it expires, hence short lifetimes. (Exactly. Refresh tokens (4.5) are the stateful half that *can* be revoked.)
+- *Dummy hash for unknown emails:* protects against timing-based user enumeration. (Right. The mechanism: without it, "no such email" would answer ~10 ms faster than "wrong password", because it skips argon2. Measured with the dummy: 11.1 ms vs 10.8 ms.)
+- *Trusting the header's algorithm:* the header comes from the client, so the API mustn't trust its declaration. (Right. The two classic attacks: `"alg": "none"` (no signature at all, so anyone can write any token) and *algorithm confusion* (switching an RS256 token to HS256 so the server checks it with its public key as the HMAC secret, a key the attacker knows). We pin `algorithms: ['HS256']`, and a test proves `none` is refused.)
 
 ### 2026-11-08 — 4.4 Part 3: protecting routes
 **What was built:**
