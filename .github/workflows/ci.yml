@@ -51,6 +51,8 @@ jobs:
     env:
       DATABASE_URL: postgresql://lifeos:ci_password@localhost:5432/lifeos_test
       DATABASE_URL_TEST: postgresql://lifeos:ci_password@localhost:5432/lifeos_test
+      # Throwaway signing key for this job's test tokens only: not a secret.
+      JWT_ACCESS_SECRET: ci-only-jwt-secret-not-used-anywhere-else-0123456789
     steps:
       - uses: actions/checkout@v7
       - uses: actions/setup-node@v7

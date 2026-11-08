@@ -28,7 +28,7 @@ describe('POST /auth/register (e2e)', () => {
     await app.close();
   });
 
-  it('creates the user and returns it without any password data', async () => {
+  it('creates the user, logs them in, and returns no password data', async () => {
     const res = await register({ ...valid, email: '  Tina@Example.COM ' }).expect(201);
 
     expect(res.body).toEqual({
@@ -41,6 +41,7 @@ describe('POST /auth/register (e2e)', () => {
           onboardingCompletedAt: null,
           createdAt: expect.any(String),
         },
+        accessToken: expect.any(String),
       },
     });
     expect(JSON.stringify(res.body)).not.toMatch(/password|argon2/i);

@@ -322,7 +322,7 @@ Node is pinned in `.node-version` and Bun in `packageManager`, so CI uses the sa
 - `toPublicUser()`: lists the fields to send one by one.
 **Concepts:**
 - *Hashing, not encryption:* encryption can be reversed with a key; a hash can't. To log in we hash the attempt and compare. If the database leaks, the attacker has hashes, not passwords.
-- *Slow on purpose:* a normal hash (SHA-256) is built to be fast, so an attacker with a GPU tries billions of guesses per second. argon2id costs ~40 ms and 19 MiB **per guess**; the memory part is what GPUs are bad at.
+- *Slow on purpose:* a normal hash (SHA-256) is built to be fast, so an attacker with a GPU tries billions of guesses per second. argon2id costs ~10 ms of CPU and 19 MiB of memory **per guess** (measured on this Mac); the memory part is what GPUs are bad at.
 - *Salt:* random bytes mixed into each hash, so two users with the same password get different hashes and precomputed tables ("rainbow tables") are useless. argon2 stores salt and settings inside the hash string, so settings can be raised later.
 - *Common-password check:* length alone lets `1234567890` through. Attackers try the popular passwords first, so blocking them removes the cheapest guesses.
 - *Normalise before you store:* `Tina@Example.com` and `tina@example.com` must be one account. Lowercasing in the shared schema means the API, the database and the app all see the same value.
@@ -339,3 +339,25 @@ Node is pinned in `.node-version` and Bun in `packageManager`, so CI uses the sa
 2. What does the salt protect against, and why is it fine that it's stored right next to the hash?
 3. Register answers `EMAIL_TAKEN`, which tells anyone whether an email has an account. Why do we accept that here, but not on login or forgot-password?
 4. Why does `toPublicUser` list the fields one by one instead of removing `passwordHash` from the object?
+
+### 2026-11-08 — 4.4 Part 2: login + access tokens
+**What was built:**
+- `JWT_ACCESS_SECRET` in the env schema (required, ≥ 32 characters), `.env.example` (placeholder + how to generate one), CI (throwaway value). A random value was added to the local `.env` without printing it.
+- `TokenService` (`modules/auth`, library `jose`): `signAccessToken({ userId })` and `verifyAccessToken(token)`. HS256, 15 minutes, `sub`/`iss`/`aud`/`iat`/`exp`.
+- `POST /auth/login` → `200 { data: { user, accessToken } }`; register now also returns `accessToken` (FR-AUTH-001: logged in straight away).
+- `InvalidCredentialsError` → `401 INVALID_CREDENTIALS`, for unknown email, wrong password and deleted account alike.
+**Concepts:**
+- *JWT:* three base64url parts, `header.payload.signature`. The signature is an HMAC of the first two with the secret: change one character of the payload and it no longer matches. It's **signed, not encrypted**: anyone can read the payload, so it holds an ID, never personal data.
+- *Stateless access token:* the API checks a token with maths alone, no database lookup. The price: it can't be cancelled before it expires, hence only 15 minutes, with refresh tokens (4.5, stored in the database, *can* be revoked) to get new ones.
+- *Pin the algorithm:* a classic JWT attack is a token with `"alg": "none"` (no signature) or a switched algorithm. `algorithms: ['HS256']` refuses anything else; a test proves `none` is rejected.
+- *`iss` / `aud`:* who made the token and who it's for. A token signed with the same key for another purpose (a future email link, say) can't be used as an access token.
+- *Don't reveal which emails exist:* one error code and message for every login failure. And one *timing*: without a hash to check, "unknown email" would answer ~10 ms faster than "wrong password", and an attacker could measure that. So an unknown email still verifies against a dummy hash. Measured live: median 11.1 ms vs 10.8 ms.
+- *Secrets:* the signing key can mint a token for any user. Validated at startup like everything else, never printed (a test proves the error message doesn't contain it), different per environment.
+- *200 vs 201:* register creates a user (201); login creates nothing the client can fetch (200).
+**Mistakes I caught:** the edited-payload test first decoded an empty string instead of the real payload, so it tested nothing useful; rewritten before running. A code comment claimed argon2 takes 30–50 ms; measured, it's ~11 ms on this Mac, so I corrected the comment and the Part 1 log entry.
+**Checked:** 73 API unit (7 token tests: round-trip, 15-min expiry, payload keys, expired, wrong secret, edited payload, `alg: none`, wrong audience) + 22 shared + 26 e2e (login 200 and the token verifies to that user; any-case email; wrong password and unknown email give identical 401s; deleted account 401; `short` password → 401 not 400; missing password → 400). Live production build: register 201, login 200, timing equal, password absent from logs, probe user deleted.
+**To learn:**
+1. A JWT's payload can be read by anyone holding it. So what *does* the signature protect?
+2. Why can't we "log out" an access token, and how does a 15-minute lifetime make that acceptable?
+3. Why does an unknown email still run a password check against a dummy hash?
+4. What would go wrong if `verifyAccessToken` accepted whatever algorithm the token's header names?

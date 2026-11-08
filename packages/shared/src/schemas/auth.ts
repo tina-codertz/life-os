@@ -54,5 +54,11 @@ export interface PublicUser {
   createdAt: string;
 }
 
-export const AUTH_ERROR_CODES = ['EMAIL_TAKEN'] as const;
+// What register and login return. `refreshToken` joins in 4.5.
+export interface AuthResult {
+  user: PublicUser;
+  accessToken: string;
+}
+
+export const AUTH_ERROR_CODES = ['EMAIL_TAKEN', 'INVALID_CREDENTIALS'] as const;
 export type AuthErrorCode = (typeof AUTH_ERROR_CODES)[number];

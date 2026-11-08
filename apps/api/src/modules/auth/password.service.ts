@@ -2,7 +2,7 @@ import { Injectable } from '@nestjs/common';
 import { hash, verify } from '@node-rs/argon2';
 
 // argon2id (the library's default algorithm) with OWASP's minimum settings: 19 MiB of memory,
-// 2 passes, 1 thread, about 30–50 ms per hash. The memory cost is what makes guessing
+// 2 passes, 1 thread, ~10 ms per hash on a laptop (more on a small VPS). The memory cost is what makes guessing
 // expensive on GPUs. The settings and a random salt are stored inside the hash string
 // ("$argon2id$v=19$m=19456,t=2,p=1$<salt>$<hash>"), so they can be raised later without
 // breaking existing passwords.

@@ -8,3 +8,11 @@ export class EmailTakenError extends AppException {
     });
   }
 }
+
+// One error for "no such email" and "wrong password", so a login attempt can't be used to
+// find out who has an account.
+export class InvalidCredentialsError extends AppException {
+  constructor() {
+    super(HttpStatus.UNAUTHORIZED, 'INVALID_CREDENTIALS', 'Email or password is incorrect.');
+  }
+}

@@ -98,7 +98,10 @@ create(@Body(new ZodValidationPipe(createTaskSchema)) body: CreateTaskInput) { �
 | POST | `/auth/forgot-password` | `{ email }` | `204` (always, even for unknown emails) |
 | POST | `/auth/reset-password` | `{ token, newPassword }` | `204`, revokes all sessions |
 
-Built so far (4.4 Part 1): `POST /auth/register` returns `201 { user }`; tokens are added in Part 2 (access) and 4.5 (refresh).
+Built so far (4.4): `POST /auth/register` → `201 { user, accessToken }`; `POST /auth/login` → `200 { user, accessToken }` (`AuthResult` in `packages/shared`). `refreshToken` is added in 4.5.
+- Access token: JWT, HS256 with `JWT_ACCESS_SECRET`, 15 min. Claims `sub` (user ID), `iss: life-os-api`, `aud: life-os-app`, `iat`, `exp`; `sid` joins in 4.5. Verification accepts HS256 only.
+- Login failure, whether the email is unknown, the password is wrong or the account is deleted → the same `401 INVALID_CREDENTIALS` "Email or password is incorrect.", with the same timing (an unknown email still runs one argon2 verify).
+- `loginSchema` doesn't apply the new-password rules (an old password must keep working).
 - Body schema `registerSchema` (`packages/shared`): email trimmed + lowercased; password 10–128 characters and not one of the 1,000 most-used long passwords; `displayName` 1–80 after trimming. Unknown fields (`role`, `emailVerifiedAt`) are dropped.
 - `user` is a `PublicUser`: `{ id, email, displayName, emailVerifiedAt, onboardingCompletedAt, createdAt }`, built field by field, never including the hash.
 - Duplicate email (any case, including two simultaneous sign-ups) → `409 EMAIL_TAKEN`. Register necessarily reveals that an email has an account; login and forgot-password must not (FR-AUTH-001), and the 4.8 rate limit makes probing slow.

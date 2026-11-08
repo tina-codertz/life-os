@@ -7,6 +7,9 @@ export const envSchema = z.object({
   PORT: z.coerce.number().int().min(1).max(65535).default(3000),
   DATABASE_URL: z.url({ protocol: /^postgres(ql)?$/ }),
   LOG_LEVEL: z.enum(['fatal', 'error', 'warn', 'info', 'debug', 'trace', 'silent']).default('info'),
+  // Signs access tokens (HS256). Anyone with it can mint a token for any user: keep it out of
+  // git and logs, and use a different random value per environment.
+  JWT_ACCESS_SECRET: z.string().min(32, { error: 'must be at least 32 characters' }),
 });
 
 export type Env = z.infer<typeof envSchema>;

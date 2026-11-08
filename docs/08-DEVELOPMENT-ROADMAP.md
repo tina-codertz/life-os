@@ -188,7 +188,7 @@ Each module is built **end-to-end** (DB → API → tests → mobile → device 
 | M1 Architecture approved | Done | 2026-11-03 | 2026-11-04 | Docs 04–06 approved; ADR-012 left open until Phase 4 |
 | M2 Design system v1 | Not started | | | |
 | M3 Repo + tooling | Done | 2026-11-04 | 2026-11-07 | 3.1–3.9 done; CI green on `main` |
-| M4 Backend foundation | In progress | 2026-11-07 | | 4.1 done (logging, request ID, error + success envelopes); 4.2 done (Zod validation pipe, shared schemas); 4.3 done (test-DB harness, factories); 4.4 Part 1 done (register, argon2id); Part 2 login + JWT next |
+| M4 Backend foundation | In progress | 2026-11-07 | | 4.1 done (logging, request ID, error + success envelopes); 4.2 done (Zod validation pipe, shared schemas); 4.3 done (test-DB harness, factories); 4.4 Parts 1–2 done (register, argon2id, login, JWT access token); Part 3 auth guard next |
 | M5 Mobile foundation | Not started | | | |
 | M6a Tasks | Not started | | | |
 | M6b Habits | Not started | | | |
