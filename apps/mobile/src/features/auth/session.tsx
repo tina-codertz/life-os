@@ -1,9 +1,12 @@
-import { createContext, type ReactNode, useContext, useMemo, useState } from 'react';
+import type { AuthResult, PublicUser } from '@life-os/shared';
+import { type ReactNode, useEffect } from 'react';
+import { useStore } from 'zustand';
+import { authStore } from './auth-instance';
+import type { AuthStatus } from './auth-store';
 
-// What the navigation gate needs to know about the user. 5.4 replaces the in-memory state
-// with the real auth store (tokens in SecureStore, restored on launch); screens keep using
-// useSession() unchanged.
-export type SessionStatus = 'loading' | 'signedOut' | 'signedIn';
+// What screens and the navigation gate use. Backed by the auth store (5.4): the refresh token
+// in SecureStore, so a signed-in user stays signed in across app restarts.
+export type SessionStatus = AuthStatus;
 
 export interface SessionState {
   status: SessionStatus;
@@ -11,37 +14,35 @@ export interface SessionState {
 }
 
 export interface Session extends SessionState {
-  signIn: (user: { onboarded: boolean }) => void;
-  completeOnboarding: () => void;
-  signOut: () => void;
+  user: PublicUser | null;
+  signIn: (result: AuthResult) => Promise<void>;
+  completeOnboarding: () => Promise<void>;
+  signOut: () => Promise<void>;
 }
 
-const SessionContext = createContext<Session | null>(null);
-
-export function SessionProvider({
-  children,
-  initialState = { status: 'signedOut', onboarded: false },
-}: {
-  children: ReactNode;
-  initialState?: SessionState;
-}) {
-  const [state, setState] = useState<SessionState>(initialState);
-  const session = useMemo<Session>(
-    () => ({
-      ...state,
-      signIn: ({ onboarded }) => setState({ status: 'signedIn', onboarded }),
-      completeOnboarding: () => setState((s) => ({ ...s, onboarded: true })),
-      signOut: () => setState({ status: 'signedOut', onboarded: false }),
-    }),
-    [state],
-  );
-  return <SessionContext.Provider value={session}>{children}</SessionContext.Provider>;
+// Restores the stored session once, at launch. Until it's done, status is 'loading' and the
+// root layout keeps the splash screen up.
+export function SessionProvider({ children }: { children: ReactNode }) {
+  useEffect(() => {
+    void authStore.getState().hydrate();
+  }, []);
+  return children;
 }
 
 export function useSession(): Session {
-  const session = useContext(SessionContext);
-  if (!session) throw new Error('useSession() must be used inside <SessionProvider>');
-  return session;
+  const status = useStore(authStore, (s) => s.status);
+  const user = useStore(authStore, (s) => s.user);
+  const { signIn, signOut, setUser, http } = authStore.getState();
+  return {
+    status,
+    user,
+    onboarded: Boolean(user?.onboardingCompletedAt),
+    signIn,
+    signOut,
+    async completeOnboarding() {
+      await setUser(await http.patch<PublicUser>('/users/me', { onboardingCompleted: true }));
+    },
+  };
 }
 
 // Which part of the app this session may see. One function, used by the root layout's guards

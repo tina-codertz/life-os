@@ -24,7 +24,9 @@ export interface RequestOptions {
 }
 
 export interface HttpClientConfig {
-  baseUrl: string; // e.g. http://192.168.1.20:3000
+  // e.g. http://192.168.1.20:3000. A function is read on each request, so nothing is resolved
+  // at import time (tests, and builds that set the URL later).
+  baseUrl: string | (() => string);
   tokens: TokenSource;
   fetch?: FetchLike;
   timeoutMs?: number;
@@ -65,7 +67,8 @@ export function createHttpClient({
     signal?.addEventListener('abort', onCallerAbort);
 
     try {
-      const response = await fetchImpl(`${baseUrl}/${API_PREFIX}${path}`, {
+      const root = typeof baseUrl === 'function' ? baseUrl() : baseUrl;
+      const response = await fetchImpl(`${root}/${API_PREFIX}${path}`, {
         method,
         headers,
         ...(body === undefined ? {} : { body: JSON.stringify(body) }),

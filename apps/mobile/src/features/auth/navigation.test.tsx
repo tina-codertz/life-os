@@ -1,28 +1,73 @@
-import { fireEvent, renderRouter, screen } from 'expo-router/testing-library';
-import type { SessionState } from './session';
+import type { PublicUser } from '@life-os/shared';
+import { fireEvent, renderRouter, screen, waitFor } from 'expo-router/testing-library';
+import type { FetchLike } from '@/services/http';
+import { authStore } from './auth-instance';
+import type { AuthState } from './auth-store';
 
-// Renders the real src/app routes with the session starting in a chosen state, then checks
-// where the user ends up. (`mock` prefix: jest.mock factories may only use such variables.)
-let mockInitialState: SessionState = { status: 'signedOut', onboarded: false };
+// The real src/app routes and the real auth store, with in-memory storage and a fake API.
+// Each test puts the store in a state, renders, and checks where the user ends up.
 
-jest.mock('./session', () => {
-  const actual: typeof import('./session') = jest.requireActual('./session');
-  return {
-    ...actual,
-    SessionProvider: ({ children }: { children: React.ReactNode }) => (
-      <actual.SessionProvider initialState={mockInitialState}>{children}</actual.SessionProvider>
-    ),
-  };
+const user = (onboarded: boolean): PublicUser => ({
+  id: 'u1',
+  email: 'tina@example.com',
+  displayName: 'Tina',
+  emailVerifiedAt: null,
+  onboardingCompletedAt: onboarded ? '2026-11-08T10:00:00.000Z' : null,
+  createdAt: '2026-11-08T09:00:00.000Z',
 });
 
-async function open(state: SessionState, url = '/') {
-  mockInitialState = state;
-  return renderRouter('src/app', { initialUrl: url });
+// Function declaration (hoisted), so the jest.mock factory below can use it.
+function mockReply(status: number, body?: unknown) {
+  return Promise.resolve({
+    ok: status < 300,
+    status,
+    text: async () => (body === undefined ? '' : JSON.stringify(body)),
+  });
 }
 
-const SIGNED_OUT: SessionState = { status: 'signedOut', onboarded: false };
-const NEW_USER: SessionState = { status: 'signedIn', onboarded: false };
-const RETURNING: SessionState = { status: 'signedIn', onboarded: true };
+function mockFetch(...[url, init]: Parameters<FetchLike>): ReturnType<FetchLike> {
+  const reply = mockReply;
+  if (url.endsWith('/auth/register')) {
+    return reply(201, {
+      data: { user: user(false), accessToken: 'access-1', refreshToken: 'refresh-1' },
+    });
+  }
+  if (url.endsWith('/users/me') && init.method === 'PATCH') return reply(200, { data: user(true) });
+  if (url.endsWith('/auth/logout')) return reply(204);
+  return reply(404, { error: { code: 'NOT_FOUND', message: 'nope', details: [], requestId: 'r' } });
+}
+
+jest.mock('./auth-instance', () => {
+  const { createAuthStore } = jest.requireActual<typeof import('./auth-store')>('./auth-store');
+  const { memorySessionStorage } =
+    jest.requireActual<typeof import('./session-storage')>('./session-storage');
+  const store = createAuthStore({
+    storage: memorySessionStorage(),
+    baseUrl: 'http://api.test',
+    fetch: mockFetch,
+  });
+  return { authStore: store, api: () => store.getState().http };
+});
+
+const SIGNED_OUT: AuthState = {
+  status: 'signedOut',
+  user: null,
+  accessToken: null,
+  refreshToken: null,
+};
+const signedIn = (onboarded: boolean): AuthState => ({
+  status: 'signedIn',
+  user: user(onboarded),
+  accessToken: 'access-0',
+  refreshToken: 'refresh-0',
+});
+const NEW_USER = signedIn(false);
+const RETURNING = signedIn(true);
+
+async function open(state: AuthState, url = '/') {
+  authStore.setState(state);
+  return renderRouter('src/app', { initialUrl: url });
+}
 
 describe('auth gate', () => {
   it.each([
@@ -45,25 +90,32 @@ describe('auth gate', () => {
     expect(router.getPathname()).toBe(expected);
   });
 
-  it('a session that is still loading shows nothing yet (the splash screen stays)', async () => {
-    await open({ status: 'loading', onboarded: false });
-    expect(screen.queryByRole('header')).toBeNull();
+  it('shows nothing while the session is loading (the splash screen stays)', async () => {
+    // Real hydration would finish at once with empty storage; swap in one that never ends.
+    const realHydrate = authStore.getState().hydrate;
+    authStore.setState({ ...SIGNED_OUT, status: 'loading', hydrate: () => new Promise(() => {}) });
+    try {
+      await renderRouter('src/app', { initialUrl: '/' });
+      expect(screen.queryByRole('header')).toBeNull();
+    } finally {
+      authStore.setState({ hydrate: realHydrate });
+    }
   });
 
-  it('follows the session through sign-in, onboarding and sign-out', async () => {
+  it('follows the session through sign-up, onboarding and sign-out', async () => {
     const router = await open(SIGNED_OUT);
     expect(router.getPathname()).toBe('/welcome');
 
     await fireEvent.press(screen.getByRole('button', { name: 'Demo: new user' }));
-    expect(router.getPathname()).toBe('/profile');
+    await waitFor(() => expect(router.getPathname()).toBe('/profile'));
 
     await fireEvent.press(screen.getByRole('button', { name: 'Finish onboarding' }));
-    expect(router.getPathname()).toBe('/today');
+    await waitFor(() => expect(router.getPathname()).toBe('/today'));
   });
 
   it('signing out from the app returns to welcome', async () => {
     const router = await open(RETURNING, '/more');
     await fireEvent.press(screen.getByRole('button', { name: 'Sign out' }));
-    expect(router.getPathname()).toBe('/welcome');
+    await waitFor(() => expect(router.getPathname()).toBe('/welcome'));
   });
 });

@@ -636,3 +636,31 @@ Node is pinned in `.node-version` and Bun in `packageManager`, so CI uses the sa
 2. Why does only `UNAUTHENTICATED` trigger a refresh, and not every 401?
 3. Why is the client given `fetch` and a `TokenSource` instead of importing them?
 4. Why is it fine for `EXPO_PUBLIC_API_URL` to be in the app, but never a secret key?
+
+### 2026-11-08 — 5.4 Auth store (Zustand) + SecureStore
+**What was built:** in `apps/mobile/src/features/auth/`:
+- `auth-store.ts`: `createAuthStore({ storage, baseUrl, fetch? })`, a vanilla Zustand store with `hydrate`, `signIn`, `signOut`, `refresh`, `setUser`. It creates the app's HTTP client and is its token source.
+- `session-storage.ts`: `secureSessionStorage` (SecureStore: refresh token + cached user, `AFTER_FIRST_UNLOCK_THIS_DEVICE_ONLY`) and `memorySessionStorage` for tests.
+- `auth-instance.ts`: the app's one store and `api()`.
+- `session.tsx`: `useSession()` now reads the store (same shape as 5.2, so the gate didn't change); `SessionProvider` runs `hydrate()` at launch.
+- Dev demo buttons now register real throwaway accounts through the API; "Finish onboarding" sends `PATCH /users/me`.
+**Concepts:**
+- *Where each token lives:* access token in memory (15 min, gone when the app closes, never written to disk); refresh token in the Keychain / Keystore, the only thing that keeps you signed in. Plain AsyncStorage is an unencrypted file, so never for tokens.
+- *State that survives a restart:* on launch the store reads SecureStore. With a cached user it shows the app immediately (no spinner, works offline) and refreshes in the background.
+- *Different failures, different answers:* "session over" (`INVALID_REFRESH_TOKEN`) → sign out; "can't reach the server" → stay signed in, it's not the user's fault. Getting this wrong logs people out every time they lose signal.
+- *Save before you use:* the server spends the old refresh token the moment it answers, so the new one is written to SecureStore *before* anything else. Lose it and the next launch presents a spent token (reuse, 4.5) and the user is logged out.
+- *Zustand vanilla store:* one store readable from React (`useStore(authStore, selector)`, re-renders only when the selected value changes) and from plain code (the HTTP client), without a Provider.
+- *A factory for testability:* `createAuthStore({ storage, … })` lets tests "restart the app" by creating a second store on the same in-memory storage, and lets the navigation tests use the real store with a fake API.
+- *`THIS_DEVICE_ONLY`:* a refresh token restored from a backup onto a second phone would be used by two devices, trip reuse detection and log both out.
+**Found while building:**
+- **A real bug, caught by lint (`no-floating-promises`):** `completeOnboarding` didn't `await` saving the updated user, so a failed save would have been lost silently.
+- My first "opens before the network answers" test checked the state synchronously and failed, because reading SecureStore is itself async. Rewritten with a held-back fake response, so it now proves "signed in while the refresh is still pending".
+- Store actions are now function-typed properties instead of methods (they never use `this`), which is what lets `const { signIn } = store.getState()` be safe.
+**Checked:** 103 mobile tests (16 new): launch with nothing / cached / dead session / offline; hydrate runs once; sign-in stores refresh token + user and never the access token; **restart** (new store, same storage) is signed in; sign-out offline and online; the store as token source (refresh, save, retry; dead refresh token → signed out); cached-user updates; SecureStore load/save/clear with this-device-only access and three kinds of damaged data. Probes: signing out on any refresh error, no hydrate guard, not saving on sign-in: each fails tests. Simulator: the app boots through `hydrate` to Welcome.
+**Done-when "survives app restart" on a device:** tests prove it with a simulated restart; the real check is yours (tap a demo button, force-quit Expo Go, reopen).
+**To learn:**
+1. Why is the access token kept only in memory, while the refresh token goes to SecureStore?
+2. At launch with no internet, why stay signed in instead of showing login?
+3. Why must the new refresh token be saved before it's used?
+4. What does `THIS_DEVICE_ONLY` protect against?
+5. How do the tests simulate "restarting the app"?

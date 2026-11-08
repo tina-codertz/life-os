@@ -4,15 +4,18 @@ import { Button } from '@/components/ui';
 import { useSession } from '@/features/auth/session';
 
 export default function More() {
-  const { signOut } = useSession();
+  const { signOut, user } = useSession();
   return (
-    <PlaceholderScreen title="More" description="Goals and settings (Phase 6).">
+    <PlaceholderScreen
+      title="More"
+      description={`Signed in as ${user?.email ?? '…'}. Goals and settings come in Phase 6.`}
+    >
       <Button
         title="Design system"
         variant="secondary"
         onPress={() => router.push('/design-preview')}
       />
-      <Button title="Sign out" variant="ghost" onPress={signOut} />
+      <Button title="Sign out" variant="ghost" onPress={() => void signOut()} />
     </PlaceholderScreen>
   );
 }
