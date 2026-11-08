@@ -1,9 +1,14 @@
 import { execFileSync } from 'node:child_process';
-import { assertTestDatabaseName, databaseNameFromUrl } from './utils/test-db.js';
+import {
+  assertTestDatabaseName,
+  assertTestEnvironment,
+  databaseNameFromUrl,
+} from './utils/test-db.js';
 
 // Runs once before all e2e files: brings the test database up to the latest migration,
 // so a new migration never makes the tests fail with "table does not exist".
 export default function setup(): void {
+  assertTestEnvironment(process.env['NODE_ENV']);
   const url = process.env['DATABASE_URL_TEST'];
   if (!url) {
     throw new Error('DATABASE_URL_TEST is not set. See .env.example at the repo root.');
