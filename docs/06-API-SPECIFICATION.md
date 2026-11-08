@@ -232,10 +232,11 @@ Built in 6.1 Part 1: `GET` (ordered by `sortOrder`, then name), `POST` (`201`), 
 ### Progress (XP and the overall streak; Habits I step 2b, gamification pieces brought forward)
 | Method | Path | Notes |
 |---|---|---|
-| GET | `/progress` | `{ xp, streak: { current, best } }`: the ⚡ and 🔥 chips |
+| GET | `/progress` | `{ xp, streak: { current, best }, level: { level, start, next, toNext } }`: the ⚡ and 🔥 chips and Lio's level |
 
 - **XP is a ledger** (`XpEvent`, one row per award, unique on `(userId, source, sourceKey)`), so an award can't pay twice and undoing deletes it. The total is the sum of what still stands.
 - **Amounts** (shared `XP`, from the design): a top-level task completed **+15** (subtasks earn nothing), a habit day reaching its target **+5**, a chest **+40** (step 2d).
+- **Levels (FR-GAME-003, 2026-11-08):** worked out on the server from the XP total (`levelOf` in shared). Level L starts at 50·L·(L−1) XP (0, 100, 300, 600, 1000, 1500…), so each level takes 100 XP more than the last.
 - **Taking it back:** un-completing a task, undoing a check-in, or lowering a day's count below the target takes the XP back.
 - **Same transaction:** awards are made in the same transaction as the completion, so points and completions can't drift. It's a direct `XpService` call rather than the domain events ADR-001 sketched.
 - **The 🔥 streak** counts days in a row (in the user's zone) with a habit day done or a top-level task completed. Today with nothing yet doesn't break it.

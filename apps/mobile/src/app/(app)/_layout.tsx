@@ -13,6 +13,7 @@ export default function AppLayout() {
         options={{ title: 'Design system', headerTintColor: colors.text.primary }}
       />
       <Stack.Screen name="habit/[id]" options={{ headerShown: false }} />
+      <Stack.Screen name="lio" options={{ headerShown: false }} />
       <Stack.Screen
         name="calendar"
         options={{

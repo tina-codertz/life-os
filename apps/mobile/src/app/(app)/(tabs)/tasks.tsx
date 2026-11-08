@@ -242,8 +242,7 @@ export default function Tasks() {
         }
         contentContainerStyle={{
           paddingTop: insets.top + spacing.md,
-          // Room for the floating "+" above the tab bar, so the last row can scroll clear.
-          paddingBottom: insets.bottom + TAB_BAR_SPACE + 72,
+          paddingBottom: insets.bottom + TAB_BAR_SPACE,
           paddingHorizontal: spacing.gutter,
           gap: spacing.md,
         }}

@@ -59,6 +59,13 @@ describe('Progress: XP and the overall streak (e2e)', () => {
     expect((await progress(tina)).xp).toBe(15);
   });
 
+  it('the level comes with the XP (FR-GAME-003)', async () => {
+    expect((await progress(tina)).level).toEqual({ level: 1, start: 0, next: 100, toNext: 100 });
+    const task = (await post(tina, '/tasks', { title: 'Pay rent' }).expect(201)).body.data;
+    await post(tina, `/tasks/${task.id}/complete`).expect(200);
+    expect((await progress(tina)).level).toEqual({ level: 1, start: 0, next: 100, toNext: 85 });
+  });
+
   it('subtasks earn nothing on their own', async () => {
     const task = (await post(tina, '/tasks', { title: 'Move' }).expect(201)).body.data;
     const sub = (await post(tina, `/tasks/${task.id}/subtasks`, { title: 'Pack' }).expect(201)).body

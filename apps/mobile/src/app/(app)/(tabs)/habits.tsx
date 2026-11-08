@@ -16,7 +16,8 @@ import {
 } from '@/components/ui';
 import { buildPath, habitIcon, scheduleLabel } from '@/features/habits/quest';
 import { QuestPath } from '@/features/habits/quest-path';
-import { useHabitDays, useHabits, useProgress } from '@/features/habits/queries';
+import { ProgressChips } from '@/features/habits/progress-chips';
+import { useHabitDays, useHabits } from '@/features/habits/queries';
 import { useDayPress } from '@/features/habits/use-day-press';
 import { addDays, localToday } from '@/features/tasks/dates';
 import { useTimezone } from '@/features/users/use-timezone';
@@ -118,63 +119,6 @@ export default function Habits() {
         </View>
         {body}
       </ScrollView>
-    </View>
-  );
-}
-
-// 🔥 the overall streak and ⚡ the XP total (GET /progress).
-function ProgressChips() {
-  const { colors } = useTheme();
-  const progress = useProgress();
-  if (!progress.data) return null;
-  const { xp, streak } = progress.data;
-  return (
-    <>
-      <StatChip
-        icon="flame"
-        color={colors.flame}
-        value={String(streak.current)}
-        label={`${streak.current}-day streak`}
-      />
-      <StatChip
-        icon="zap"
-        color={colors.accent.default}
-        value={xp.toLocaleString('en-GB')}
-        label={`${xp.toLocaleString('en-GB')} XP`}
-      />
-    </>
-  );
-}
-
-function StatChip({
-  icon,
-  color,
-  value,
-  label,
-}: {
-  icon: 'flame' | 'zap';
-  color: string;
-  value: string;
-  label: string;
-}) {
-  const { colors, shadows } = useTheme();
-  return (
-    <View
-      accessible
-      accessibilityLabel={label}
-      style={{
-        flexDirection: 'row',
-        alignItems: 'center',
-        gap: spacing.sm,
-        height: MIN_TOUCH_TARGET,
-        paddingHorizontal: spacing.lg,
-        borderRadius: radius.full,
-        backgroundColor: colors.bg.surface,
-        boxShadow: shadows.sm,
-      }}
-    >
-      <Icon name={icon} size={18} color={color} />
-      <Text variant="calloutStrong">{value}</Text>
     </View>
   );
 }

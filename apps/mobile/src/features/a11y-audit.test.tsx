@@ -113,7 +113,13 @@ function serve(onboarded = true) {
   });
   routes['GET /progress'] = () => ({
     status: 200,
-    body: { data: { xp: 1240, streak: { current: 3, best: 3 } } },
+    body: {
+      data: {
+        xp: 1240,
+        streak: { current: 3, best: 3 },
+        level: { level: 5, start: 1000, next: 1500, toNext: 260 },
+      },
+    },
   });
   routes['GET /tasks/history'] = () => {
     const days: HistoryDay[] = [{ date: TODAY, count: 1, tasks: [TASKS[2] as PublicTask] }];
@@ -198,6 +204,12 @@ describe('every control can be named by a screen reader', () => {
   it('Habit detail: streak, tiles, the month and Mark done today', async () => {
     await open('/habit/h1');
     await screen.findByLabelText('Consistency: 86%');
+    expect(unnamedControls()).toEqual([]);
+  });
+
+  it('Lio page', async () => {
+    await open('/lio');
+    await screen.findByText('260 XP to level 6');
     expect(unnamedControls()).toEqual([]);
   });
 

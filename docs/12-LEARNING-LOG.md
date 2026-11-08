@@ -1183,3 +1183,21 @@ Still open (History, to discuss): what the design's calendar button on Week / Ye
 1. Why is "Consistency" counted in the same periods as the streak, not just "days done ÷ days since start"?
 2. Why can a saved cache make a test pass or fail depending on which test ran before it?
 
+### 2026-11-08 — Lio's bubble and the Lio page
+**What was built:**
+- **Lio's bubble:** a round Lio button floating bottom-left above the tab bar on every tab. It's your choice, instead of the design's Lio tab, so Settings stays a tab.
+- **The Lio page:** the 🔥 / ⚡ chips and the level card ("12 days strong!", "Lio · Level 5", "260 XP to level 6", a progress bar).
+- **Levels (FR-GAME-003):** `/progress` now includes the level, worked out on the server. Level L starts at 50·L·(L−1) XP, so each level needs 100 XP more than the last. With the design's 1,240 XP that's level 5 with 260 to go.
+- **Not yet:** the design's daily chest, weekly challenge and badges cards each need server rules (when a chest opens, what a challenge counts, when a badge is earned). They'll come with their own steps rather than as pictures that don't do anything.
+**Concepts:**
+- *Derived values live on the server:* the app shows the level but doesn't calculate it, so changing the formula never needs an app update.
+- *A growing curve:* each level costs a bit more than the last, so early levels come quickly and later ones mean more.
+**Checks:**
+- Tests: levels 3 (shared), progress e2e 1, Lio 3, a11y audit 18 screens.
+- Probes: removing the bubble, a wrong bar fraction and showing the pill at 0 each make a test fail. A unit test can't see where the bubble sits, so I checked that on the simulator.
+- Totals: mobile 430, API 116 + 179, shared 139.
+
+**To learn:**
+1. Why does the server send the level instead of the app working it out from the XP?
+2. With levels starting at 50·L·(L−1), how much XP does level 10 need, and how much more is level 11?
+

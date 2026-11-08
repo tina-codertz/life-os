@@ -1,5 +1,5 @@
 import { Injectable } from '@nestjs/common';
-import { activityStreak, localToday, type Progress } from '@life-os/shared';
+import { activityStreak, levelOf, localToday, type Progress } from '@life-os/shared';
 import { Prisma } from '../../generated/prisma/client.js';
 import { PrismaService } from '../../prisma/prisma.service.js';
 
@@ -25,12 +25,14 @@ export class ProgressService {
           AND "parentId" IS NULL AND "completedAt" IS NOT NULL
       `),
     ]);
+    const xp = sum._sum.amount ?? 0;
     return {
-      xp: sum._sum.amount ?? 0,
+      xp,
       streak: activityStreak(
         days.map((d) => d.day),
         localToday(tz),
       ),
+      level: levelOf(xp),
     };
   }
 }

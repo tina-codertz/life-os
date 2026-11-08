@@ -13,7 +13,7 @@
 
 **Proposed:** 4 primary tabs + "More". Calendar is a tab because it is a daily-use view. Goals, Finance, Stats and Settings live under *More* until usage data says otherwise.
 
-**Confirmed 2026-11-08 (the design export):** the tabs are **Today · Habits · Tasks · Money · Settings** (the design's Profile). Money shows "coming soon" until Finance (v1.1). **Calendar is not a tab:** it's pushed from the calendar button at the top of Habits (the design's Calendar screen has no tab bar).
+**Confirmed 2026-11-08 (the design export):** the tabs are **Today · Habits · Tasks · Money · Settings** (the design's Profile). Money shows "coming soon" until Finance (v1.1). **Calendar is not a tab:** it's pushed from the calendar button at the top of Habits (the design's Calendar screen has no tab bar). **Lio** (the design's 5th tab) is a floating bubble bottom-left on every tab instead (your choice, 2026-11-08), so Settings stays a tab; it opens the Lio page (`lio`).
 
 ```text
 apps/mobile/src/app/

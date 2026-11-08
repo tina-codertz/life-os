@@ -4,8 +4,9 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Text } from '@/components/ui';
 import { spacing, useTheme } from '@/theme';
 
-// Room for the floating tab bar (68 pt + 20 pt margin) at the bottom of tab screens.
-export const TAB_BAR_SPACE = 100;
+// Room at the bottom of tab screens for the floating tab bar (68 pt + 20 pt margin) and, above
+// it, Lio's bubble and the "+" buttons (56 pt + 16 pt), so the last row can scroll clear.
+export const TAB_BAR_SPACE = 172;
 
 // The soft colour fading in at the top of every screen in the design. Drawn behind the
 // content, ignored by touches and screen readers.
