@@ -159,7 +159,7 @@ export function DesignPreview() {
               mascot="sleepy"
               title="No habits yet"
               description="Small daily actions add up."
-              action={{ label: 'Add your first habit', onPress: () => {} }}
+              action={{ label: 'Add your first habit', icon: 'add', onPress: () => {} }}
             />
           </Card>
           <Card>

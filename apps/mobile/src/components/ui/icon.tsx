@@ -19,6 +19,7 @@ import Mail from 'lucide-react-native/icons/mail';
 import Moon from 'lucide-react-native/icons/moon';
 import Palette from 'lucide-react-native/icons/palette';
 import Plus from 'lucide-react-native/icons/plus';
+import Search from 'lucide-react-native/icons/search';
 import RefreshCw from 'lucide-react-native/icons/refresh-cw';
 import Smartphone from 'lucide-react-native/icons/smartphone';
 import Sun from 'lucide-react-native/icons/sun';
@@ -58,6 +59,7 @@ const ICONS = {
   person: User,
   phone: Smartphone,
   refresh: RefreshCw,
+  search: Search,
   signOut: LogOut,
   sun: Sun,
   tag: Tag,

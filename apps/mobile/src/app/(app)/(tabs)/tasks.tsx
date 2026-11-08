@@ -13,6 +13,7 @@ import {
   Skeleton,
   SkeletonGroup,
   Text,
+  TextField,
 } from '@/components/ui';
 import { localToday } from '@/features/tasks/dates';
 import {
@@ -23,6 +24,7 @@ import {
   useToggleTask,
 } from '@/features/tasks/queries';
 import { TaskRow } from '@/features/tasks/task-row';
+import { useDebouncedValue } from '@/features/tasks/use-debounced-value';
 import { useTimezone } from '@/features/users/use-timezone';
 import { spacing, useTheme } from '@/theme';
 
@@ -47,7 +49,11 @@ export default function Tasks() {
   const insets = useSafeAreaInsets();
   const { colors } = useTheme();
   const [filter, setFilter] = useState<TaskFilter>('TODO');
-  const tasks = useTasks(filter);
+  // The design's search button opens a search field; closing it clears the search.
+  const [searchOpen, setSearchOpen] = useState(false);
+  const [search, setSearch] = useState('');
+  const query = useDebouncedValue(search.trim());
+  const tasks = useTasks(filter, query);
   const categories = useCategories();
   const toggle = useToggleTask();
   const remove = useDeleteTask();
@@ -61,7 +67,32 @@ export default function Tasks() {
 
   const header = (
     <View style={{ gap: spacing.md, paddingBottom: spacing.xs }}>
-      <ScreenHeader title="Tasks" />
+      <ScreenHeader
+        title="Tasks"
+        actions={
+          <IconButton
+            icon={searchOpen ? 'close' : 'search'}
+            accessibilityLabel={searchOpen ? 'Close search' : 'Search tasks'}
+            onPress={() => {
+              if (searchOpen) setSearch('');
+              setSearchOpen(!searchOpen);
+            }}
+          />
+        }
+      />
+      {searchOpen && (
+        <TextField
+          label="Search tasks"
+          labelHidden
+          icon="search"
+          placeholder="Search tasks"
+          value={search}
+          onChangeText={setSearch}
+          autoCorrect={false}
+          returnKeyType="search"
+          clearButtonMode="while-editing"
+        />
+      )}
       <View accessibilityRole="radiogroup" style={{ flexDirection: 'row', gap: spacing.sm }}>
         {FILTERS.map((f) => (
           <Chip
@@ -100,6 +131,17 @@ export default function Tasks() {
         ))}
       </SkeletonGroup>
     );
+  } else if (query) {
+    empty = (
+      <Card>
+        <EmptyState
+          title={`No tasks match “${query}”`}
+          description="Try another word, or another filter."
+          mascot="sleepy"
+          action={{ label: 'Clear search', onPress: () => setSearch('') }}
+        />
+      </Card>
+    );
   } else {
     empty = (
       <Card>
@@ -107,7 +149,7 @@ export default function Tasks() {
           {...EMPTY[filter]}
           mascot="sleepy"
           {...(filter !== 'DONE'
-            ? { action: { label: 'New task', onPress: () => openTask() } }
+            ? { action: { label: 'New task', icon: 'add', onPress: () => openTask() } }
             : {})}
         />
       </Card>

@@ -1,12 +1,13 @@
 import { createTaskSchema, PRIORITIES, type Priority } from '@life-os/shared';
 import { router, useLocalSearchParams } from 'expo-router';
 import { type ReactNode, useEffect, useState } from 'react';
-import { Controller } from 'react-hook-form';
+import { Controller, useWatch } from 'react-hook-form';
 import { ScrollView, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Button, Chip, IconButton, ListGroup, ListRow, Text, TextField } from '@/components/ui';
 import { applyApiError, useZodForm } from '@/features/forms/zod-form';
 import { addDays, formatDue, localToday } from '@/features/tasks/dates';
+import { DueTimeRow } from '@/features/tasks/due-time-row';
 import { MonthCalendar } from '@/features/tasks/month-calendar';
 import {
   useCategories,
@@ -50,14 +51,19 @@ export default function TaskForm() {
   const update = useUpdateTask(id ?? '');
   const remove = useDeleteTask();
 
-  const { control, handleSubmit, setError, reset, formState } = useZodForm(createTaskSchema, {
-    title: '',
-    description: '',
-    priority: 'NONE',
-    categoryId: null,
-    dueDate: null,
-    dueTime: null,
-  });
+  const { control, handleSubmit, setError, setValue, reset, formState } = useZodForm(
+    createTaskSchema,
+    {
+      title: '',
+      description: '',
+      priority: 'NONE',
+      categoryId: null,
+      dueDate: null,
+      dueTime: null,
+    },
+  );
+
+  const dueDate = useWatch({ control, name: 'dueDate' });
 
   // Editing: fill the form once the task has loaded.
   const task = existing.data;
@@ -168,19 +174,37 @@ export default function TaskForm() {
         />
       )}
 
-      <Controller
-        control={control}
-        name="dueDate"
-        render={({ field, fieldState }) => (
-          <DueDatePicker
-            value={field.value ?? null}
-            onChange={field.onChange}
-            today={today}
-            weekStartsOn={weekStartsOn}
-            error={fieldState.error?.message}
-          />
-        )}
-      />
+      <ListGroup>
+        <Controller
+          control={control}
+          name="dueDate"
+          render={({ field, fieldState }) => (
+            <DueDateRow
+              value={field.value ?? null}
+              onChange={(day) => {
+                field.onChange(day);
+                // No date, no time (the API refuses a time on its own).
+                if (day === null) setValue('dueTime', null);
+              }}
+              today={today}
+              weekStartsOn={weekStartsOn}
+              error={fieldState.error?.message}
+            />
+          )}
+        />
+        <Controller
+          control={control}
+          name="dueTime"
+          render={({ field, fieldState }) => (
+            <DueTimeRow
+              value={field.value ?? null}
+              onChange={field.onChange}
+              hasDate={dueDate != null}
+              error={fieldState.error?.message}
+            />
+          )}
+        />
+      </ListGroup>
 
       <Controller
         control={control}
@@ -257,7 +281,7 @@ function ChoiceGroup({
 }
 
 // Due date: one tap for Today or Tomorrow; any other day from the month calendar.
-function DueDatePicker({
+function DueDateRow({
   value,
   onChange,
   today,
@@ -276,70 +300,68 @@ function DueDatePicker({
   const [calendarOpen, setCalendarOpen] = useState(false);
 
   return (
-    <ListGroup>
-      <ListRow
-        icon="calendar"
-        tint={colors.tile.sky}
-        title="Due date"
-        value={value ? formatDue(value, today).text : 'None'}
+    <ListRow
+      icon="calendar"
+      tint={colors.tile.sky}
+      title="Due date"
+      value={value ? formatDue(value, today).text : 'None'}
+    >
+      <View
+        accessibilityRole="radiogroup"
+        accessibilityLabel="Due date"
+        style={{ flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm }}
       >
-        <View
-          accessibilityRole="radiogroup"
-          accessibilityLabel="Due date"
-          style={{ flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm }}
-        >
-          <Chip
-            label="Today"
-            selected={value === today}
-            onPress={() => {
-              onChange(today);
-              setCalendarOpen(false);
-            }}
-          />
-          <Chip
-            label="Tomorrow"
-            selected={value === tomorrow}
-            onPress={() => {
-              onChange(tomorrow);
-              setCalendarOpen(false);
-            }}
-          />
-          <Chip
-            label={otherDay ? formatDue(value, today).text : 'Pick a date'}
-            icon="calendar"
-            selected={otherDay || calendarOpen}
-            onPress={() => setCalendarOpen((open) => !open)}
-          />
-        </View>
-        {calendarOpen && (
-          <MonthCalendar
-            value={value}
-            today={today}
-            weekStartsOn={weekStartsOn}
-            onChange={(day) => {
-              onChange(day);
-              setCalendarOpen(false);
-            }}
-          />
-        )}
-        {value && (
-          <Button
-            title="Remove due date"
-            variant="ghost"
-            size="sm"
-            onPress={() => {
-              onChange(null);
-              setCalendarOpen(false);
-            }}
-            style={{ alignSelf: 'flex-start', paddingHorizontal: spacing.xs }}
-          />
-        )}
-        {error && (
-          <Text variant="caption" tone="danger">
-            {error}
-          </Text>
-        )}
-      </ListRow>
-    </ListGroup>
+        <Chip
+          label="Today"
+          selected={value === today}
+          onPress={() => {
+            onChange(today);
+            setCalendarOpen(false);
+          }}
+        />
+        <Chip
+          label="Tomorrow"
+          selected={value === tomorrow}
+          onPress={() => {
+            onChange(tomorrow);
+            setCalendarOpen(false);
+          }}
+        />
+        <Chip
+          label={otherDay ? formatDue(value, today).text : 'Pick a date'}
+          icon="calendar"
+          selected={otherDay || calendarOpen}
+          onPress={() => setCalendarOpen((open) => !open)}
+        />
+      </View>
+      {calendarOpen && (
+        <MonthCalendar
+          value={value}
+          today={today}
+          weekStartsOn={weekStartsOn}
+          onChange={(day) => {
+            onChange(day);
+            setCalendarOpen(false);
+          }}
+        />
+      )}
+      {value && (
+        <Button
+          title="Remove due date"
+          variant="ghost"
+          size="sm"
+          onPress={() => {
+            onChange(null);
+            setCalendarOpen(false);
+          }}
+          style={{ alignSelf: 'flex-start', paddingHorizontal: spacing.xs }}
+        />
+      )}
+      {error && (
+        <Text variant="caption" tone="danger">
+          {error}
+        </Text>
+      )}
+    </ListRow>
   );
 }

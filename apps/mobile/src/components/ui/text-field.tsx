@@ -15,6 +15,8 @@ export interface TextFieldProps extends Omit<TextInputProps, 'style' | 'editable
   disabled?: boolean;
   // A small icon tile at the start of the field (the design's sign-in fields).
   icon?: IconName;
+  // For a search box: the label is still read by screen readers, but not shown.
+  labelHidden?: boolean;
   ref?: Ref<TextFieldHandle>;
 }
 
@@ -27,6 +29,7 @@ export function TextField({
   disabled = false,
   secureTextEntry,
   icon,
+  labelHidden = false,
   ref,
   ...inputProps
 }: TextFieldProps) {
@@ -39,9 +42,11 @@ export function TextField({
 
   return (
     <View style={{ gap: spacing.sm }}>
-      <Text variant="label" tone="label" nativeID={`${messageId}-label`}>
-        {label}
-      </Text>
+      {!labelHidden && (
+        <Text variant="label" tone="label" nativeID={`${messageId}-label`}>
+          {label}
+        </Text>
+      )}
       <View
         style={{
           flexDirection: 'row',

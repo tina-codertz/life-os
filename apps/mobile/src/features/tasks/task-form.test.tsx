@@ -43,7 +43,7 @@ const choose = (name: string) => fireEvent.press(screen.getByRole('radio', { nam
 const bodies = (route: string) => calls.filter((c) => c.route === route).map((c) => c.body);
 
 // Opens the Tasks tab, then the sheet (so "back" has somewhere to go).
-async function openForm(url: Href) {
+async function openForm(url: Href, existing: PublicTask = EXISTING) {
   authStore.setState({ status: 'signedIn', user: USER, accessToken: 'a', refreshToken: 'r' });
   routes['GET /users/me'] = () => ({
     status: 200,
@@ -54,7 +54,7 @@ async function openForm(url: Href) {
     status: 200,
     body: { data: [], meta: { nextCursor: null, hasMore: false } },
   });
-  routes[`GET /tasks/${EXISTING.id}`] = () => ({ status: 200, body: { data: EXISTING } });
+  routes[`GET /tasks/${EXISTING.id}`] = () => ({ status: 200, body: { data: existing } });
   const router = await renderRouter('src/app', { initialUrl: '/tasks' });
   await act(async () => appRouter.push(url));
   return router;
@@ -210,6 +210,65 @@ describe('task form', () => {
       await press('Add task');
       await waitFor(() => expect(bodies('POST /tasks')).toHaveLength(1));
       expect(bodies('POST /tasks')[0]).toMatchObject({ dueDate: null });
+    });
+  });
+
+  describe('time', () => {
+    it("can't be set until there is a date", async () => {
+      await openForm('/task-form');
+      await screen.findByLabelText('Title');
+      expect(screen.getByLabelText('Time, Pick a date first')).toBeOnTheScreen();
+      expect(screen.queryByRole('button', { name: /^Time/ })).toBeNull();
+    });
+
+    it('opens the picker, saves the chosen time, and shows it on the row', async () => {
+      createReturnsBody();
+      await openForm('/task-form');
+      await fireEvent.changeText(await screen.findByLabelText('Title'), 'Standup');
+      await choose('Today');
+
+      await press('Time, None');
+      // The phone's picker reports 16:30.
+      await fireEvent(screen.getByTestId('time-picker'), 'onChange', {
+        nativeEvent: { timestamp: new Date(2026, 0, 1, 16, 30).getTime() },
+      });
+      expect(screen.getByRole('button', { name: 'Time, 16:30' })).toBeOnTheScreen();
+
+      await press('Add task');
+      await waitFor(() => expect(bodies('POST /tasks')).toHaveLength(1));
+      expect(bodies('POST /tasks')[0]).toMatchObject({ dueDate: today(), dueTime: 16 * 60 + 30 });
+    });
+
+    it('removing the date removes the time too', async () => {
+      createReturnsBody();
+      await openForm('/task-form');
+      await fireEvent.changeText(await screen.findByLabelText('Title'), 'Gym');
+      await choose('Tomorrow');
+      await press('Time, None'); // adds the next full hour
+      await press('Remove due date');
+      expect(screen.getByLabelText('Time, Pick a date first')).toBeOnTheScreen();
+
+      await press('Add task');
+      await waitFor(() => expect(bodies('POST /tasks')).toHaveLength(1));
+      expect(bodies('POST /tasks')[0]).toMatchObject({ dueDate: null, dueTime: null });
+    });
+
+    it('editing shows the saved time, and Remove time clears it', async () => {
+      routes[`PATCH /tasks/${EXISTING.id}`] = (body) => ({
+        status: 200,
+        body: { data: { ...EXISTING, ...body } },
+      });
+      await openForm(`/task-form?id=${EXISTING.id}`, {
+        ...EXISTING,
+        dueDate: today(),
+        dueTime: 9 * 60 + 15,
+      });
+      expect(await screen.findByRole('button', { name: 'Time, 09:15' })).toBeOnTheScreen();
+
+      await press('Remove time');
+      await press('Save');
+      await waitFor(() => expect(bodies(`PATCH /tasks/${EXISTING.id}`)).toHaveLength(1));
+      expect(bodies(`PATCH /tasks/${EXISTING.id}`)[0]).toMatchObject({ dueTime: null });
     });
   });
 });

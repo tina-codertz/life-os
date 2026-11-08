@@ -916,3 +916,23 @@ Done by me in Expo Go: registered with the real form, went through onboarding (n
 ### 2026-11-08 — M6a accepted on a real device
 I did the whole checklist in Expo Go and everything worked: sign-out confirmation (Cancel and Sign out); a new account through name → focus areas (limit of 3 shown) → Today; tasks added with Today, Tomorrow, a calendar date and no date; completing (instant tick, green Done badge) and un-completing; editing; delete with Undo; pull to refresh; Appearance in dark, light and system; and after a restart I was still signed in, with my tasks and theme. **M6a Tasks is Done.**
 
+### 2026-11-08 — Design export 2: History screens
+The project owner added **History: week / month / year** to the design (`docs/Life OS — App Design (2).html`, now 29 screens). History becomes **Tasks II Part 4**, built for tasks first; the Habits / Goals parts fill in later. The docs folder was deleted by accident on the same day and restored from git (`git restore docs/`). The one uncommitted edit (`00-PRODUCT-VISION.md`) could only come back from the Trash.
+
+### 2026-11-08 — Tasks II Part 1: Time and search
+**What was built (mobile only; the API already supported both):**
+- **Time row** in New task, in the same group as Due date, as in the design. Tapping it opens the **phone's own time picker**: a wheel under the row on iOS, a dialog on Android. A time needs a date: without one the row reads "Pick a date first" and can't be tapped. Removing the date removes the time too. "Remove time" clears it. A new time starts at the next full hour. The row on the task list already shows it ("Today · 16:30").
+- **Search** on Tasks: the design's round search button opens a search field (the design's input style, label read by screen readers but not shown). The server is asked after a **300 ms pause** in typing (`useDebouncedValue`), case-insensitive, within the current filter. "No tasks match “…”" offers **Clear search**. Tapping ✕ closes and clears it.
+**Concepts:**
+- *Debounce:* wait until typing pauses before asking the server: one request per word, not per letter.
+- *A form field that depends on another:* `useWatch` reads the date as it changes, and `setValue` clears the time when the date goes.
+- *Fake timers:* `renderRouter` turns on Jest's fake timers, so a 300 ms wait never ends by itself. The test moves the clock (`jest.advanceTimersByTime`), which also lets it type letter by letter and prove only one search goes out.
+- *Native pickers:* where the design shows a row but no picker, the platform's own control adds no new look and is already accessible.
+**Found while building:** the search test first hung for 20 s. A real `setTimeout` in the test never fired under fake timers, which is how I found out `renderRouter` uses them. Also the same `openForm()` trap as before: the helper overwrote the test's own task reply. It now takes the task to serve.
+**Checks:** 295 mobile tests (8 new). Probes: no debounce, `q` not sent, closing not clearing, the picker's value ignored, and the time not cleared with the date. Each makes a test fail. `bun run check` clean, `expo-doctor` 20/20. On the simulator the Time row shows "Pick a date first" until a date is set. (In Expo Go, the dev-tools gear covers the search button's spot; a real build has no gear.)
+
+**To learn:**
+1. What would happen to the server without the 300 ms pause, if someone types a 12-letter word?
+2. Why does the Time row refuse to open without a date, instead of letting the server reject it?
+3. Why did a plain `setTimeout` in the test never finish?
+

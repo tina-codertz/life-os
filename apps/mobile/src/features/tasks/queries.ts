@@ -15,7 +15,7 @@ export type TaskFilter = 'TODO' | 'DONE' | 'ALL';
 
 export const taskKeys = {
   all: ['tasks'] as const,
-  list: (filter: TaskFilter) => ['tasks', 'list', filter] as const,
+  list: (filter: TaskFilter, q = '') => ['tasks', 'list', filter, q] as const,
   detail: (id: string) => ['tasks', 'detail', id] as const,
 };
 export const categoryKeys = { all: ['categories'] as const };
@@ -23,12 +23,15 @@ export const categoryKeys = { all: ['categories'] as const };
 type TaskPages = InfiniteData<Paged<PublicTask>, string | null>;
 
 // The task list, 30 at a time; the next page is fetched with the cursor from the last one.
-export function useTasks(filter: TaskFilter) {
+// `q` searches titles and notes on the server (Tasks II).
+export function useTasks(filter: TaskFilter, q = '') {
+  const search = q.trim();
   return useInfiniteQuery({
-    queryKey: taskKeys.list(filter),
+    queryKey: taskKeys.list(filter, search),
     queryFn: ({ pageParam, signal }) => {
       const params = new URLSearchParams();
       if (filter !== 'ALL') params.set('status', filter);
+      if (search) params.set('q', search);
       if (pageParam) params.set('cursor', pageParam);
       const query = params.toString();
       return api().getPage<PublicTask>(`/tasks${query ? `?${query}` : ''}`, { signal });

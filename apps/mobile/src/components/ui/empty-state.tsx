@@ -2,6 +2,7 @@ import type { ReactNode } from 'react';
 import { View } from 'react-native';
 import { spacing } from '@/theme';
 import { Button } from './button';
+import type { IconName } from './icon';
 import { Mascot, type MascotMood } from './mascot';
 import { Text } from './text';
 
@@ -9,7 +10,7 @@ export interface EmptyStateProps {
   title: string;
   description?: string;
   // e.g. { label: 'Add your first habit', onPress } (docs/07 §6: a contextual next step).
-  action?: { label: string; onPress: () => void };
+  action?: { label: string; onPress: () => void; icon?: IconName };
   icon?: ReactNode;
   // Lio instead of an icon: asleep for "nothing yet", the design's empty state.
   mascot?: MascotMood;
@@ -32,7 +33,7 @@ export function EmptyState({ title, description, action, icon, mascot }: EmptySt
       {action && (
         <Button
           title={action.label}
-          icon="add"
+          {...(action.icon ? { icon: action.icon } : {})}
           onPress={action.onPress}
           style={{ marginTop: spacing.sm, alignSelf: 'stretch' }}
         />

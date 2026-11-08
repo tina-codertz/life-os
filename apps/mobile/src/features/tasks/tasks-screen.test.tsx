@@ -1,5 +1,5 @@
 import type { PublicCategory, PublicTask, PublicUser } from '@life-os/shared';
-import { fireEvent, renderRouter, screen, waitFor, within } from 'expo-router/testing-library';
+import { act, fireEvent, renderRouter, screen, waitFor, within } from 'expo-router/testing-library';
 import { authStore } from '@/features/auth/auth-instance';
 import { apiError, calls, resetMockApi, routes } from '@/test/mock-auth-instance';
 import { addDays, localToday } from './dates';
@@ -58,6 +58,21 @@ async function openTasks() {
   routes['GET /categories'] = () => ({ status: 200, body: { data: [WORK] } });
   return renderRouter('src/app', { initialUrl: '/tasks' });
 }
+
+// A fake server that searches titles like the real one (case-insensitive).
+const searchable = () => {
+  const all = [task({ title: 'Pay rent' }), task({ title: 'Call mum' })];
+  routes['GET /tasks'] = (_b, path) => {
+    const q = new URLSearchParams(path.split('?')[1]).get('q')?.toLowerCase();
+    return page(q ? all.filter((t) => t.title.toLowerCase().includes(q)) : all);
+  };
+};
+
+// renderRouter runs Jest's fake timers: the search pause passes only when we move the clock.
+const wait = (ms: number) =>
+  act(async () => {
+    jest.advanceTimersByTime(ms);
+  });
 
 beforeEach(() => {
   resetMockApi();
@@ -202,5 +217,55 @@ describe('Tasks screen', () => {
     const toast = await screen.findByTestId('toast');
     await fireEvent.press(within(toast).getByRole('button', { name: 'Undo' }));
     expect(await screen.findByText('Pay rent')).toBeOnTheScreen();
+  });
+
+  describe('search', () => {
+    it('asks the server once, after a pause in typing', async () => {
+      searchable();
+      await openTasks();
+      await screen.findByText('Call mum');
+
+      await fireEvent.press(screen.getByRole('button', { name: 'Search tasks' }));
+      // Typed letter by letter, faster than the 300 ms pause.
+      for (const text of ['R', 'RE', 'REN', 'RENT']) {
+        await fireEvent.changeText(screen.getByLabelText('Search tasks'), text);
+        await wait(100);
+      }
+      expect(gets('/tasks').filter((r) => r.includes('q='))).toHaveLength(0);
+      await wait(300);
+
+      expect(await screen.findByText('Pay rent')).toBeOnTheScreen();
+      expect(screen.queryByText('Call mum')).toBeNull();
+      expect(gets('/tasks').filter((r) => r.includes('q='))).toEqual([
+        'GET /tasks?status=TODO&q=RENT',
+      ]);
+    });
+
+    it('says when nothing matches, and Clear search shows everything again', async () => {
+      searchable();
+      await openTasks();
+      await fireEvent.press(await screen.findByRole('button', { name: 'Search tasks' }));
+      await fireEvent.changeText(screen.getByLabelText('Search tasks'), 'zzz');
+      await wait(300);
+
+      expect(await screen.findByText('No tasks match “zzz”')).toBeOnTheScreen();
+      await fireEvent.press(screen.getByRole('button', { name: 'Clear search' }));
+      expect(await screen.findByText('Call mum')).toBeOnTheScreen();
+    });
+
+    it('closing search clears it', async () => {
+      searchable();
+      await openTasks();
+      await fireEvent.press(await screen.findByRole('button', { name: 'Search tasks' }));
+      await fireEvent.changeText(screen.getByLabelText('Search tasks'), 'rent');
+      await wait(300);
+      expect(await screen.findByText('Pay rent')).toBeOnTheScreen();
+      expect(screen.queryByText('Call mum')).toBeNull();
+
+      await fireEvent.press(screen.getByRole('button', { name: 'Close search' }));
+      await wait(300);
+      expect(screen.queryByPlaceholderText('Search tasks')).toBeNull();
+      expect(await screen.findByText('Call mum')).toBeOnTheScreen();
+    });
   });
 });

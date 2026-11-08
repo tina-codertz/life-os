@@ -192,6 +192,7 @@ Each module is built **end-to-end** (DB → API → tests → mobile → device 
 | M4 Backend foundation | Done | 2026-11-07 | 2026-11-08 | 4.1 done (logging, request ID, error + success envelopes); 4.2 done (Zod validation pipe, shared schemas); 4.3 done (test-DB harness, factories); 4.4 done (register, argon2id, login, JWT, global auth guard, GET /users/me); 4.5 done (sessions, refresh rotation, reuse detection, logout, logout-all); 4.6 done (email verification, password reset, Mailpit); 4.7 done (profile, settings, change password; change email deferred); 4.8 done (rate limits, Helmet, CORS, Swagger); 4.9 done (change email, EmailVerifiedGuard). Accepted 2026-11-08: register, login, refresh, logout and settings done by hand in Swagger and confirmed in the `Session` table. Per-email limits added the same day (10 failed logins/hour, 3 reset emails/hour) |
 | M5 Mobile foundation | Done | 2026-11-08 | 2026-11-08 | 5.1 done (theme, tokens, Text/Button/Card, Jest + RNTL, contrast tests); 5.2 done (route groups, Stack.Protected gate, native tabs, navigation tests); 5.3 done (HTTP client, ApiError, single-flight refresh); 5.4 done (Zustand auth store, SecureStore, launch restore; restart seen on the simulator); 5.5 done (login / register / forgot / reset forms, verify-email and confirm-email-change links); 5.6 done (TanStack Query, per-user persisted cache, NetInfo, offline banner, useMe; fixed a double-refresh bug from 5.4); 5.7 done (onboarding: profile + theme + skip; focus areas and first habit moved to Phase 6); 5.8 done (Toast, EmptyState, ErrorState, Skeleton, native sheets). Accepted 2026-11-08 on your device: register → onboarding (Dark) → Today; sign out and back in skips onboarding; light theme checked. Open (decided 2026-11-08, revisit before release): email links (`lifeos://…`) don't open in Expo Go, so verification can't be tapped through in development; fix with real app links in a development/production build (universal links over https), not a dev-only workaround |
 | M6a Tasks | Done | 2026-11-08 | 2026-11-08 | Tasks I Part 1 done (Category + Task tables, categories API); Part 2 done (task API: CRUD, filters, search, cursor pagination, soft delete/restore, complete/uncomplete); Part 3 done (mobile Tasks tab, form sheet, optimistic complete, delete + Undo; swipe gestures moved to week 13); **design refresh done 2026-11-08** (all finished screens restyled to the design export, ADR-020/021; due date = Today / Tomorrow / month calendar); **Part 4 done 2026-11-08** (onboarding step 2 = focus areas → categories; theme moved to Settings → Appearance as in the design; Lucide icons; done tasks show a **Done** badge). Sign-out confirmation added. Device check (pre-flight: API 114 unit + 129 e2e, shared 63, mobile 288 tests green). **Accepted 2026-11-08 on your device:** register → focus areas → Today; add with Today / Tomorrow / calendar / no date; complete (Done badge) and undo; edit; delete + Undo; pull to refresh; Appearance dark / light / system; restart keeps session, tasks and theme |
+| M6b Tasks II | In progress | 2026-11-08 | | **Part 1 done 2026-11-08:** the design's Time row (native picker; a time needs a date) and search on Tasks (design's search button, 300 ms pause, "no match" state). Next: Part 2 subtasks |
 | M6b Habits | Not started | | | |
 | M6c Goals | Not started | | | |
 | M6d Calendar | Not started | | | |
@@ -202,7 +203,7 @@ Each module is built **end-to-end** (DB → API → tests → mobile → device 
 Statuses: `Not started` → `In progress` → `In review` (code + tests done, awaiting your explanation/review) → `Done` (meets the Global DoD).
 
 ## Design export coverage (2026-11-08)
-The design export (`docs/Life OS — App Design (1).html`, local only) has 26 screens. How they map to the plan:
+The design export (`docs/Life OS — App Design (2).html`, local only) has 29 screens. How they map to the plan:
 
 | Design screen | Where it lands |
 |---|---|
@@ -211,7 +212,8 @@ The design export (`docs/Life OS — App Design (1).html`, local only) has 26 sc
 | Today dashboard, Habits quest path, Habit detail, Goals, Goal detail, Calendar day / week / month | Their phases (Tasks II → Habits → Goals → Calendar). The month grid already exists (`MonthCalendar`) |
 | Focus timer, Chest reward, Achievements, Lio profile, XP / levels | Gamification, v1.2 (ADR-011) |
 | Money, Add transaction, Budgets | Finance, v1.1 |
+| History: week, month, year (added in export 2, 2026-11-08) | **Tasks II Part 4** (tasks first; the Habits / Goals filters, streak and goal tiles, and XP badges fill in as those modules land) |
 | Insights, Notifications, Ask Lio | v2 / later phases |
 | Sign in "Email me a magic link" | Not planned: would need a new auth flow (magic-link tokens) |
-| Tasks header search / filter buttons, "3 left · 5 done" | Search: Tasks II (the API already supports `q`). Counts need a count endpoint |
+| Tasks header search / filter buttons, "3 left · 5 done" | **Search done** (Tasks II Part 1). Filter sheet and counts: later (counts need a count endpoint) |
 
