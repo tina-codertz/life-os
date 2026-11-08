@@ -3,6 +3,7 @@ import { StatusBar } from 'expo-status-bar';
 import { OfflineBanner } from '@/components/offline-banner';
 import { useEffect } from 'react';
 import { SessionProvider, useSession, areaFor } from '@/features/auth/session';
+import { useThemeFromSettings } from '@/features/users/use-theme-from-settings';
 import { QueryProvider } from '@/services/query-provider';
 import { ThemeProvider, useTheme } from '@/theme';
 
@@ -30,6 +31,7 @@ function RootNavigator() {
   const { colors } = useTheme();
   const session = useSession();
   const area = areaFor(session);
+  useThemeFromSettings();
 
   useEffect(() => {
     if (area) SplashScreen.hide();

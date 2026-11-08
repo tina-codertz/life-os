@@ -7,9 +7,10 @@ export const userKeys = {
   me: ['users', 'me'] as const,
 };
 
-export function useMe() {
+export function useMe({ enabled = true }: { enabled?: boolean } = {}) {
   return useQuery({
     queryKey: userKeys.me,
     queryFn: ({ signal }) => api().get<MeResponse>('/users/me', { signal }),
+    enabled,
   });
 }

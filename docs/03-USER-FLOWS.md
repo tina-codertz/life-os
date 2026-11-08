@@ -55,6 +55,8 @@ apps/mobile/src/app/
     └── event-form.tsx
 ```
 
+**Built in 5.7:** onboarding has **two steps for now**: `(onboarding)/profile` (name, pre-filled; time zone from the phone, editable, checked by the shared `timezoneSchema`) and `(onboarding)/theme` (System / Dark / Light, applied live). Finish saves settings (time zone, follow-device flag, week start from the phone, theme) and then `PATCH /users/me { displayName, onboardingCompleted: true }`; the gate opens Today. **Skip for now** still saves the phone's time zone and week start. **Focus areas (FR-ONB-002) and a first habit (FR-ONB-003) are deferred to Phase 6**: they need categories and habits, which don't exist yet. The saved theme is re-applied after sign-in (`useThemeFromSettings`), so it follows the user to a new phone.
+
 **Built in 5.5:** real Log in / Create account / Forgot password forms in `(auth)`. The email links live at the **root, outside the guards** (a change from the tree above, which had `reset-password` in `(auth)`): `reset-password`, `verify-email` and `confirm-email-change` must open whether or not the phone is signed in. Reset signs this phone out (the API ended every session).
 **Open UI issue:** on iOS 26 the five-tab bar truncates "Habits" and "Calendar" ("Hab…", "Cal…") on an iPhone 17; revisit labels or tab count in the layout pass.
 

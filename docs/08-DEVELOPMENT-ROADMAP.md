@@ -131,10 +131,10 @@ Each module is built **end-to-end** (DB → API → tests → mobile → device 
 
 | Wk | Module | Backend tasks | Mobile tasks | Key tests |
 |---|---|---|---|---|
-| 11 | **Tasks I** | Category + Task CRUD, filters, cursor pagination, soft delete/restore | Task list, filters, form sheet, swipe complete/delete, undo toast | IDOR test; pagination; validation |
+| 11 | **Tasks I** | Category + Task CRUD, filters, cursor pagination, soft delete/restore | Task list, filters, form sheet, swipe complete/delete, undo toast; **onboarding focus-areas step (FR-ONB-002, deferred from 5.7)** seeding categories | IDOR test; pagination; validation |
 | 12 | **Tasks II** | Subtasks, complete/uncomplete, recurrence `nextOccurrence()`, history | Subtasks UI, recurrence picker, history screen | Recurrence unit tests (month-end, leap year, weekly days) |
 | 13 | *Buffer / review* | Refactor + code review of Tasks | Polish, a11y pass | Coverage gaps closed |
-| 14 | **Habits I** | Habit + HabitSchedule CRUD, completions (idempotent), backfill rule | Habit list, check circle, form with frequency picker | Unique completion; 422 backfill |
+| 14 | **Habits I** | Habit + HabitSchedule CRUD, completions (idempotent), backfill rule | Habit list, check circle, form with frequency picker; **onboarding first-habit step (FR-ONB-003, deferred from 5.7)** | Unique completion; 422 backfill |
 | 15 | **Habits II** | Streak engine (pure function), stats, heatmap endpoint, nightly reconcile job | Habit detail, heatmap, stats, local reminders | **Streak test matrix:** DAILY/WEEKLY_DAYS/TIMES_PER_WEEK × TZ change × DST × schedule change |
 | 16 | **Goals** | Goal + Milestone CRUD, link tasks/habits, progress calc | Goals list/detail, milestones reorder, link sheet | Progress per mode |
 | 17 | **Calendar I** | Events CRUD, RRULE expansion (`rrule` lib, Proposed), `/calendar` merged range | Month view, day view | Expansion across DST; range limits |
@@ -190,7 +190,7 @@ Each module is built **end-to-end** (DB → API → tests → mobile → device 
 | M2 Design system v1 | Not started | | | |
 | M3 Repo + tooling | Done | 2026-11-04 | 2026-11-07 | 3.1–3.9 done; CI green on `main` |
 | M4 Backend foundation | Done | 2026-11-07 | 2026-11-08 | 4.1 done (logging, request ID, error + success envelopes); 4.2 done (Zod validation pipe, shared schemas); 4.3 done (test-DB harness, factories); 4.4 done (register, argon2id, login, JWT, global auth guard, GET /users/me); 4.5 done (sessions, refresh rotation, reuse detection, logout, logout-all); 4.6 done (email verification, password reset, Mailpit); 4.7 done (profile, settings, change password; change email deferred); 4.8 done (rate limits, Helmet, CORS, Swagger); 4.9 done (change email, EmailVerifiedGuard). Accepted 2026-11-08: register, login, refresh, logout and settings done by hand in Swagger and confirmed in the `Session` table. Per-email limits added the same day (10 failed logins/hour, 3 reset emails/hour) |
-| M5 Mobile foundation | In progress | 2026-11-08 | | 5.1 done (theme, tokens, Text/Button/Card, Jest + RNTL, contrast tests); 5.2 done (route groups, Stack.Protected gate, native tabs, navigation tests); 5.3 done (HTTP client, ApiError, single-flight refresh); 5.4 done (Zustand auth store, SecureStore, launch restore; restart seen on the simulator); 5.5 done (login / register / forgot / reset forms, verify-email and confirm-email-change links); 5.6 done (TanStack Query, per-user persisted cache, NetInfo, offline banner, useMe; fixed a double-refresh bug from 5.4); 5.7 onboarding next |
+| M5 Mobile foundation | In progress | 2026-11-08 | | 5.1 done (theme, tokens, Text/Button/Card, Jest + RNTL, contrast tests); 5.2 done (route groups, Stack.Protected gate, native tabs, navigation tests); 5.3 done (HTTP client, ApiError, single-flight refresh); 5.4 done (Zustand auth store, SecureStore, launch restore; restart seen on the simulator); 5.5 done (login / register / forgot / reset forms, verify-email and confirm-email-change links); 5.6 done (TanStack Query, per-user persisted cache, NetInfo, offline banner, useMe; fixed a double-refresh bug from 5.4); 5.7 done (onboarding: profile + theme + skip; focus areas and first habit moved to Phase 6); 5.8 remaining primitives next |
 | M6a Tasks | Not started | | | |
 | M6b Habits | Not started | | | |
 | M6c Goals | Not started | | | |

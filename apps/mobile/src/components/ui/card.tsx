@@ -10,6 +10,9 @@ export interface CardProps {
   // Makes the whole card tappable; give it an accessibilityLabel describing the action.
   onPress?: () => void;
   accessibilityLabel?: string;
+  // A tappable card is a button by default; 'radio' for one choice in a list (with `selected`).
+  accessibilityRole?: 'button' | 'radio';
+  accessibilityState?: { selected?: boolean; checked?: boolean; disabled?: boolean };
   style?: StyleProp<ViewStyle>;
   testID?: string;
 }
@@ -41,6 +44,8 @@ export function Card({
   variant = 'surface',
   onPress,
   accessibilityLabel,
+  accessibilityRole = 'button',
+  accessibilityState,
   style,
   testID,
 }: CardProps) {
@@ -56,8 +61,9 @@ export function Card({
   }
   return (
     <Pressable
-      accessibilityRole="button"
+      accessibilityRole={accessibilityRole}
       accessibilityLabel={accessibilityLabel}
+      {...(accessibilityState ? { accessibilityState } : {})}
       onPress={onPress}
       testID={testID}
       style={({ pressed }) => [...base, { opacity: pressed ? 0.85 : 1 }, style]}

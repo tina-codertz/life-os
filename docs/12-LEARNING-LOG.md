@@ -724,3 +724,26 @@ Node is pinned in `.node-version` and Bun in `packageManager`, so CI uses the sa
 3. Why retry a timeout but not a 404?
 4. The saved cache is per user in three ways. What does each one protect against?
 5. How could two parts of the app refreshing at once sign the user out, and why does making `refresh()` single-flight fix it?
+
+### 2026-11-08 — 5.7 Onboarding (profile + theme)
+**What was built:**
+- `(onboarding)/profile`: name pre-filled from sign-up; the phone's time zone, shown with "Change" (validated by the shared `timezoneSchema`); Continue / Skip for now. `(onboarding)/theme`: System / Dark / Light as radio cards, applied live; Finish / Back.
+- `features/onboarding/`: `deviceDefaults()` (time zone and week start from `expo-localization`, with UTC / Monday fallbacks), a small Zustand draft store for answers across screens, `finishOnboarding` / `skipOnboarding`.
+- `useThemeFromSettings()`: the server's saved theme is applied after sign-in.
+- `Card` can be a radio option (`accessibilityRole="radio"`, `selected`). Tabs now import from `expo-router/native-tabs` (the old `unstable-native-tabs` path was deprecated, as a test warning revealed).
+- **Deferred to Phase 6** (added to the Tasks I / Habits I rows): focus areas (FR-ONB-002) and a first habit (FR-ONB-003), which need categories and habits that don't exist yet.
+**Concepts:**
+- *Ask, don't make people type:* the phone knows the time zone and the first day of the week; onboarding shows them and lets the user correct them.
+- *Why the time zone matters:* "today", a habit's day and a task's due date are all decided in the user's zone (ADR-006). Even Skip saves it.
+- *Follow the device vs fixed:* if the user types a zone, `followDeviceTimezone` is off, so travelling won't silently move their days.
+- *Different numbering systems:* `expo-localization` counts Sunday = 1 … Saturday = 7; the API uses Sunday = 0 … Saturday = 6. One conversion, in one place, tested both ways.
+- *Order of saves:* settings first, then "onboarding completed". If the second call fails the user is still in onboarding and can press Finish again, and both calls are safe to repeat.
+- *Settings that follow the user:* the theme lives on the server; after signing in on a new phone the app applies it.
+- *Draft state:* answers spread over several screens are kept in a tiny store and sent once, so Back doesn't lose anything and Skip sends nothing extra.
+**Found while building:** a `mockReset()` in one test removed the phone mock for every test after it (order-dependent failure); now the original mock is restored in `finally`. Two lint rules disagreed about a cast in a test, so the mock now provides the library's real `Weekday` enum instead.
+**Checked:** 146 mobile tests (9 new): name and time zone pre-filled; full flow saves exactly `{ timezone, followDeviceTimezone, weekStartsOn: 1, theme: 'DARK' }` then `{ displayName, onboardingCompleted }` and lands on Today; theme applied live (`Appearance` called with `dark`); a typed zone turns off follow-device; an unknown zone is refused; Skip saves zone + week start only; unknown phone values → UTC and Sunday; a failed save keeps the user on the theme step; the server theme is applied after sign-in; no settings request while signed out. Probes: always following the phone, Skip saving nothing, the weekday off by one, the theme not applied live, theme sync removed: each fails a test. `expo-doctor` 20/20.
+**To learn:**
+1. Why does Skip still save the time zone?
+2. When the user types a time zone, why turn off "follow the device"?
+3. Why save the settings *before* marking onboarding complete?
+4. Why are focus areas and the first habit deferred instead of built now?

@@ -33,6 +33,7 @@ function mockFetch(...[url, init]: Parameters<FetchLike>): ReturnType<FetchLike>
     });
   }
   if (url.endsWith('/users/me') && init.method === 'PATCH') return reply(200, { data: user(true) });
+  if (url.endsWith('/users/me/settings')) return reply(200, { data: {} });
   if (url.endsWith('/auth/logout')) return reply(204);
   return reply(404, { error: { code: 'NOT_FOUND', message: 'nope', details: [], requestId: 'r' } });
 }
@@ -109,7 +110,7 @@ describe('auth gate', () => {
     await fireEvent.press(screen.getByRole('button', { name: 'Demo: new user' }));
     await waitFor(() => expect(router.getPathname()).toBe('/profile'));
 
-    await fireEvent.press(screen.getByRole('button', { name: 'Finish onboarding' }));
+    await fireEvent.press(screen.getByRole('button', { name: 'Skip for now' }));
     await waitFor(() => expect(router.getPathname()).toBe('/today'));
   });
 

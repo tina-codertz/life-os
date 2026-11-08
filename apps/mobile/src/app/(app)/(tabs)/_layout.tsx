@@ -1,4 +1,4 @@
-import { NativeTabs } from 'expo-router/unstable-native-tabs';
+import { NativeTabs } from 'expo-router/native-tabs';
 import { useTheme } from '@/theme';
 
 // Native tab bar (UITabBar / Material bottom navigation): docs/03's four tabs + More.
