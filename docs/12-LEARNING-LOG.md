@@ -1048,3 +1048,7 @@ The project owner added **History: week / month / year** to the design (`docs/Li
 1. Why did every test pass while the app crashed on the phone?
 2. How does the guard test stop this from happening again?
 
+### 2026-11-08 — M6b accepted on a real device
+After the Hermes fix, I checked Tasks II on my phone: a task with a time, search, subtasks (add, tick, remove, and "Complete the subtasks too?"), the highlighted card with Swipe to complete, a weekly repeat creating the next task, and History (Week, Month, Year, and the arrows). Everything works. **M6b Tasks II is Done**, so the whole Tasks module (FR-TASK) is finished.
+Still open (History, to discuss): what the design's calendar button on Week / Year should open, what Month's "5 weeks" badge means, and whether History should also open from Tasks.
+
