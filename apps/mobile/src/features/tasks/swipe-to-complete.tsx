@@ -65,9 +65,12 @@ export function SwipeToComplete({ label, onComplete }: { label: string; onComple
         if (event.nativeEvent.actionName === 'activate') onComplete();
       }}
       testID="swipe-to-complete"
+      // Measured here (same width as the track): the track's gesture handler would otherwise
+      // be the only thing on the view that knows about touches and layout at once.
+      onLayout={(e) => setWidth(e.nativeEvent.layout.width)}
     >
       <View
-        onLayout={(e) => setWidth(e.nativeEvent.layout.width)}
+        testID="swipe-track"
         {...pan.panHandlers}
         style={{
           height: KNOB + PAD * 2,

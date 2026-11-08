@@ -1052,3 +1052,27 @@ The project owner added **History: week / month / year** to the design (`docs/Li
 After the Hermes fix, I checked Tasks II on my phone: a task with a time, search, subtasks (add, tick, remove, and "Complete the subtasks too?"), the highlighted card with Swipe to complete, a weekly repeat creating the next task, and History (Week, Month, Year, and the arrows). Everything works. **M6b Tasks II is Done**, so the whole Tasks module (FR-TASK) is finished.
 Still open (History, to discuss): what the design's calendar button on Week / Year should open, what Month's "5 weeks" badge means, and whether History should also open from Tasks.
 
+### 2026-11-08 — Week 13: review and polish of Tasks
+**1. Code review** (an independent review agent read every Tasks file). Every finding was checked against the code and fixed, with a test that fails without the fix:
+- **Unsaved edits wiped:** in Edit, ticking a subtask refreshed the task and the form reloaded it, throwing away a typed title. The form now fills **once per task**.
+- **Two "next" tasks:** completing a repeating task from two devices at once could create two. Completing is now one conditional write (`TODO → DONE` only if still TODO), and only the request that flips it creates the next task. An e2e test fires two at once.
+- **Repeating subtasks:** a subtask could be given a repeat, and completing it made a stray top-level task. Now refused (400), with a guard.
+- **Top card limited to loaded tasks:** it only saw the 30 tasks loaded, so an old urgent overdue task could be missed. It now asks for "open tasks due by today" itself.
+- **Weekday picker vanishing:** in Weekly, ticking Mon–Fri turned it into "Weekdays" and hid the picker. The row now remembers the chip you chose.
+- **Stale interval saved:** "Every few days" could save an old number after an invalid entry. The typed text now goes to the form, so an invalid number blocks Save with a message.
+- **Stuck knob:** the swipe knob could stay halfway when the list took the gesture. It springs back on termination.
+- **Cleanups:** the calendar-day helpers now live once in `@life-os/shared` (API and app must agree on "today"); category icons are built from the focus-areas list; lint now **bans** `toSorted` & co. in app and shared code instead of suggesting them; `history()` builds its days in one pass.
+**2. Accessibility pass:** an audit test renders 13 screens and states and fails on any control a screen reader can't name. All pass. A probe (removing icon-button labels) fails 6.
+**3. Swipe on task rows:** right completes (or marks not done), left deletes with Undo, and a mostly vertical drag is left to scrolling. Completing still asks about open subtasks. Built like the card (PanResponder + Animated). A new test helper drives gestures like a finger.
+**4. Coverage:** mobile 92.6% lines / 84.5% branches. The card's swipe gesture is now tested (it was the biggest gap). The category name **race backstop** (two creates at once) is unit-tested, since e2e timing can't force the race.
+**Found along the way:**
+- Four tests passed for the wrong reason until probes showed it: the edit test checked before the refresh arrived; the weekday test only ran with Sunday ticked (today); the vertical-drag test's sideways part was too short to act anyway; and the fake server gave the same task new ids per request.
+- Getting gesture tests to work taught how PanResponder reads touches: it needs each touch's previous position, ignores an event it has already seen, and the testing library won't deliver events to a view whose gesture handler declines touches. So measuring and screen-reader actions now live on an outer view.
+**Checks:** shared 103, API 116 unit + 153 e2e, mobile 369. `bun run check` clean. Seen on the simulator with no errors.
+
+**To learn:**
+1. Why does `UPDATE … WHERE status = 'TODO'` stop two devices creating two next tasks, when "read, then check, then write" didn't?
+2. Why did resetting the form on every task refresh lose typed text, and why does "once per task id" fix it?
+3. Why is an automated accessibility audit useful even though it can't replace trying VoiceOver?
+4. Why must a swipe be measured from where the finger went down, and why does a vertical drag need to be left alone?
+

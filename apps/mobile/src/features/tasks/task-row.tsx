@@ -4,6 +4,7 @@ import { Icon, Text } from '@/components/ui';
 import { radius, spacing, type ThemeColors, useTheme } from '@/theme';
 import { parseRule, shortRule } from '@life-os/shared';
 import { formatDue, repeatsLabel } from './dates';
+import { SwipeRow } from './swipe-row';
 
 const PRIORITY_LABEL: Record<PublicTask['priority'], string | null> = {
   NONE: null,
@@ -56,92 +57,115 @@ export function TaskRow({ task, category, today, onToggle, onOpen, onDelete }: T
   const meta = [due?.text, category?.name, repeats, subtasks].filter(Boolean).join(' · ');
 
   return (
+    // The shadow sits outside; the swiping part is clipped to the rounded card inside.
     <View
       style={{
-        flexDirection: 'row',
-        alignItems: 'center',
-        gap: spacing.md,
-        padding: spacing.md,
         borderRadius: radius.lg + 2,
         borderCurve: 'continuous',
         backgroundColor: colors.bg.surface,
         boxShadow: shadows.md,
       }}
     >
-      <Pressable
-        accessibilityRole="checkbox"
-        accessibilityLabel={task.title}
-        accessibilityState={{ checked: done }}
-        accessibilityHint={done ? 'Marks the task as not done' : 'Marks the task as done'}
-        onPress={() => onToggle(!done)}
-        style={({ pressed }) => ({
-          width: 44,
-          height: 44,
-          borderRadius: radius.md + 1,
-          borderCurve: 'continuous',
-          alignItems: 'center',
-          justifyContent: 'center',
-          backgroundColor: done
-            ? colors.ink.fill
-            : category
-              ? colors.categoryTile[category.color]
-              : colors.tile.neutral,
-          transform: [{ scale: pressed ? 0.92 : 1 }],
-        })}
-      >
-        {done ? (
-          <Icon name="check" size={20} color={colors.ink.text} />
-        ) : (
-          <View
-            style={{
-              width: 20,
-              height: 20,
-              borderRadius: radius.full,
-              borderWidth: 2,
-              borderColor: colors.text.label,
-            }}
-          />
-        )}
-      </Pressable>
-      <Pressable
-        accessibilityRole="button"
-        accessibilityLabel={[task.title, ...details, done ? 'done' : null]
-          .filter(Boolean)
-          .join(', ')}
-        accessibilityHint="Opens the task to edit"
-        accessibilityActions={[
-          { name: 'toggle', label: done ? 'Mark not done' : 'Complete' },
-          { name: 'delete', label: 'Delete' },
-        ]}
-        onAccessibilityAction={(event) => {
-          if (event.nativeEvent.actionName === 'toggle') onToggle(!done);
-          if (event.nativeEvent.actionName === 'delete') onDelete();
+      <SwipeRow
+        right={{
+          label: done ? 'Not done' : 'Complete',
+          icon: 'check',
+          background: colors.ink.fill,
+          color: colors.ink.text,
+          onAction: () => onToggle(!done),
         }}
-        onPress={onOpen}
-        style={({ pressed }) => ({
-          flex: 1,
-          flexDirection: 'row',
-          alignItems: 'center',
-          gap: spacing.sm,
-          minHeight: 44,
-          opacity: pressed ? 0.6 : 1,
-        })}
+        left={{
+          label: 'Delete',
+          icon: 'trash',
+          background: colors.danger.fill,
+          color: colors.text.onAccent,
+          onAction: onDelete,
+        }}
       >
-        <View style={{ flex: 1, gap: spacing.xxs }}>
-          <Text variant="bodyStrong">{task.title}</Text>
-          {meta.length > 0 && (
-            <Text variant="caption" tone={due?.overdue ? 'danger' : 'secondary'}>
-              {meta}
-            </Text>
-          )}
+        <View
+          style={{
+            flexDirection: 'row',
+            alignItems: 'center',
+            gap: spacing.md,
+            padding: spacing.md,
+          }}
+        >
+          <Pressable
+            accessibilityRole="checkbox"
+            accessibilityLabel={task.title}
+            accessibilityState={{ checked: done }}
+            accessibilityHint={done ? 'Marks the task as not done' : 'Marks the task as done'}
+            onPress={() => onToggle(!done)}
+            style={({ pressed }) => ({
+              width: 44,
+              height: 44,
+              borderRadius: radius.md + 1,
+              borderCurve: 'continuous',
+              alignItems: 'center',
+              justifyContent: 'center',
+              backgroundColor: done
+                ? colors.ink.fill
+                : category
+                  ? colors.categoryTile[category.color]
+                  : colors.tile.neutral,
+              transform: [{ scale: pressed ? 0.92 : 1 }],
+            })}
+          >
+            {done ? (
+              <Icon name="check" size={20} color={colors.ink.text} />
+            ) : (
+              <View
+                style={{
+                  width: 20,
+                  height: 20,
+                  borderRadius: radius.full,
+                  borderWidth: 2,
+                  borderColor: colors.text.label,
+                }}
+              />
+            )}
+          </Pressable>
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel={[task.title, ...details, done ? 'done' : null]
+              .filter(Boolean)
+              .join(', ')}
+            accessibilityHint="Opens the task to edit"
+            accessibilityActions={[
+              { name: 'toggle', label: done ? 'Mark not done' : 'Complete' },
+              { name: 'delete', label: 'Delete' },
+            ]}
+            onAccessibilityAction={(event) => {
+              if (event.nativeEvent.actionName === 'toggle') onToggle(!done);
+              if (event.nativeEvent.actionName === 'delete') onDelete();
+            }}
+            onPress={onOpen}
+            style={({ pressed }) => ({
+              flex: 1,
+              flexDirection: 'row',
+              alignItems: 'center',
+              gap: spacing.sm,
+              minHeight: 44,
+              opacity: pressed ? 0.6 : 1,
+            })}
+          >
+            <View style={{ flex: 1, gap: spacing.xxs }}>
+              <Text variant="bodyStrong">{task.title}</Text>
+              {meta.length > 0 && (
+                <Text variant="caption" tone={due?.overdue ? 'danger' : 'secondary'}>
+                  {meta}
+                </Text>
+              )}
+            </View>
+            {/* A done task shows its status, not its priority (the design's green "Done" badge). */}
+            {done ? (
+              <Badge label="Done" bg={colors.success.soft} color={colors.success.default} />
+            ) : (
+              badge && priority && <Badge label={priority} bg={badge.bg} color={badge.color} />
+            )}
+          </Pressable>
         </View>
-        {/* A done task shows its status, not its priority (the design's green "Done" badge). */}
-        {done ? (
-          <Badge label="Done" bg={colors.success.soft} color={colors.success.default} />
-        ) : (
-          badge && priority && <Badge label={priority} bg={badge.bg} color={badge.color} />
-        )}
-      </Pressable>
+      </SwipeRow>
     </View>
   );
 }

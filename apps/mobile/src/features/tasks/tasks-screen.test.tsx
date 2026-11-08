@@ -1,6 +1,7 @@
 import type { PublicCategory, PublicTask, PublicUser } from '@life-os/shared';
 import { act, fireEvent, renderRouter, screen, waitFor, within } from 'expo-router/testing-library';
 import { Alert, type AlertButton } from 'react-native';
+import { layout, swipe } from '@/test/gestures';
 import { authStore } from '@/features/auth/auth-instance';
 import { apiError, calls, resetMockApi, routes } from '@/test/mock-auth-instance';
 import { addDays, localToday } from './dates';
@@ -93,6 +94,17 @@ async function tickAndGetDialog() {
 
 const dueToday = (o: Partial<PublicTask> = {}) =>
   task({ title: 'Ship MVP', dueDate: localToday(ZONE), dueTime: 600, ...o });
+
+// The row's frame, measured 300 pt wide, and the part that moves.
+async function rowFor(title: string) {
+  await screen.findByText(title);
+  const frames = screen.getAllByTestId('swipe-row-frame');
+  const rows = screen.getAllByTestId('swipe-row');
+  const i = rows.findIndex((r) => within(r).queryByText(title) !== null);
+  await layout(frames[i]!, 300);
+  // Fetched again: measuring re-renders the row with handlers that know its width.
+  return screen.getAllByTestId('swipe-row')[i]!;
+}
 
 beforeEach(() => {
   resetMockApi();
@@ -376,8 +388,27 @@ describe('Tasks screen', () => {
       routes['GET /tasks'] = () => page(items);
       routes['POST /tasks/t1/complete'] = () => ({ status: 200, body: { data: { task: {} } } });
       await openTasks();
-      const swipe = await screen.findByLabelText('Complete Ship MVP');
-      await fireEvent(swipe, 'accessibilityAction', { nativeEvent: { actionName: 'activate' } });
+      const bar = await screen.findByLabelText('Complete Ship MVP');
+      await fireEvent(bar, 'accessibilityAction', { nativeEvent: { actionName: 'activate' } });
+      await waitFor(() =>
+        expect(calls.filter((c) => c.route === 'POST /tasks/t1/complete')).toHaveLength(1),
+      );
+    });
+
+    it('the swipe itself: most of the way completes, a short drag springs back', async () => {
+      const items = [dueToday()];
+      routes['GET /tasks'] = () => page(items);
+      routes['POST /tasks/t1/complete'] = () => ({ status: 200, body: { data: { task: {} } } });
+      await openTasks();
+      await layout(await screen.findByTestId('swipe-to-complete'), 300); // 240 pt of travel
+      const track = screen.getByTestId('swipe-track'); // fresh handlers that know the width
+
+      await swipe(track, 120); // half way: not enough
+      await wait(300);
+      expect(calls.filter((c) => c.route === 'POST /tasks/t1/complete')).toHaveLength(0);
+
+      await swipe(screen.getByTestId('swipe-track'), 200); // over 70%
+      await wait(300);
       await waitFor(() =>
         expect(calls.filter((c) => c.route === 'POST /tasks/t1/complete')).toHaveLength(1),
       );
@@ -388,8 +419,8 @@ describe('Tasks screen', () => {
       routes['GET /tasks'] = () => page(items);
       const alert = jest.spyOn(Alert, 'alert').mockImplementation(() => undefined);
       await openTasks();
-      const swipe = await screen.findByLabelText('Complete Ship MVP');
-      await fireEvent(swipe, 'accessibilityAction', { nativeEvent: { actionName: 'activate' } });
+      const bar = await screen.findByLabelText('Complete Ship MVP');
+      await fireEvent(bar, 'accessibilityAction', { nativeEvent: { actionName: 'activate' } });
       expect(alert.mock.calls.at(-1)?.[0]).toBe('Complete the subtasks too?');
       alert.mockRestore();
     });
@@ -474,6 +505,57 @@ describe('Tasks screen', () => {
       await openTasks();
       await fireEvent.press(await screen.findByRole('checkbox', { name: 'Rent' }));
       expect(await screen.findByText('Done. The next one is due Mon 16 Nov.')).toBeOnTheScreen();
+    });
+  });
+
+  describe('swiping a row (week 13)', () => {
+    it('swiping right completes the task', async () => {
+      const items = [task({ title: 'Pay rent' })];
+      routes['GET /tasks'] = () => page(items);
+      routes['POST /tasks/t1/complete'] = () => ({ status: 200, body: { data: { task: {} } } });
+      await openTasks();
+      await swipe(await rowFor('Pay rent'), 200);
+      await wait(300); // the slide back finishes, then the action runs
+      await waitFor(() =>
+        expect(calls.filter((c) => c.route === 'POST /tasks/t1/complete')).toHaveLength(1),
+      );
+    });
+
+    it('swiping left deletes it, with Undo', async () => {
+      const items = [task({ title: 'Pay rent' })];
+      routes['GET /tasks'] = () => page(items);
+      routes['DELETE /tasks/t1'] = () => ({ status: 204 });
+      await openTasks();
+      await swipe(await rowFor('Pay rent'), -200);
+      await wait(300);
+      await waitFor(() => expect(calls.some((c) => c.route === 'DELETE /tasks/t1')).toBe(true));
+      expect(
+        within(await screen.findByTestId('toast')).getByRole('button', { name: 'Undo' }),
+      ).toBeOnTheScreen();
+    });
+
+    it('a short swipe, or a mostly vertical drag (scrolling), does nothing', async () => {
+      const items = [task({ title: 'Pay rent' })];
+      routes['GET /tasks'] = () => page(items);
+      await openTasks();
+      const row = await rowFor('Pay rent');
+      await swipe(row, 60); // 20% of the row: below the 35% needed
+      await swipe(row, 150, 400); // far enough sideways, but mostly down: a scroll
+      await wait(300);
+      expect(
+        calls.filter((c) => c.route.startsWith('POST') || c.route.startsWith('DELETE')),
+      ).toHaveLength(0);
+    });
+
+    it('swiping right on a task with open subtasks asks first, like ticking it', async () => {
+      const items = [task({ title: 'Ship MVP', subtaskCount: 2, subtasksDone: 0 })];
+      routes['GET /tasks'] = () => page(items);
+      const alert = jest.spyOn(Alert, 'alert').mockImplementation(() => undefined);
+      await openTasks();
+      await swipe(await rowFor('Ship MVP'), 200);
+      await wait(300);
+      expect(alert.mock.calls.at(-1)?.[0]).toBe('Complete the subtasks too?');
+      alert.mockRestore();
     });
   });
 });

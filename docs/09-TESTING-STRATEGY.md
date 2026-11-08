@@ -87,6 +87,12 @@ flowchart TB
 | Migrations | CI applies all migrations to an empty DB **and** to a DB restored from the last release's schema | Each PR touching `prisma/` |
 | Backups | Restore latest dump into a scratch container and run a smoke query | Monthly |
 
+### 2.x Checks added in week 13 (2026-11-08)
+- **Accessibility audit** (`apps/mobile/src/features/a11y-audit.test.tsx` + `src/test/a11y.ts`): renders 13 screens and states (auth, onboarding, Tasks with the card and search, New and Edit task with calendar, repeat and subtasks open, Settings, History ×3) and fails if any button, checkbox, radio, tab, switch or link has no name a screen reader can say. Removing the round icon buttons' labels fails 6 of them.
+- **Hermes guard** (`src/lib/hermes-compat.test.ts`) and lint (`no-restricted-properties` in `.oxlintrc.json`): app and shared code can't use array methods Expo Go's Hermes lacks (`toSorted`, `toReversed`, …). Jest runs on Node, which has them, so a passing test alone doesn't prove the phone can run it. Use `sorted()` / `reversed()` from `@/lib/arrays`.
+- **Gestures** (`src/test/gestures.ts`): `swipe(view, dx, dy)` drives a PanResponder like a finger (capture/bubble ask, grant, moves, release, with a touch history), and `layout(view, width)` gives a view its size. Used for the row swipe and the card's Swipe to complete.
+- **Real-device check stays part of done:** a screen is only done once it's been seen on the simulator or a phone (the toSorted crash passed every test).
+
 ## 3. Coverage targets
 | Area | Target |
 |---|---|
