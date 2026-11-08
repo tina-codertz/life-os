@@ -1,4 +1,4 @@
-import { API_PREFIX, type ApiErrorBody, type ApiErrorDetail } from '@life-os/shared';
+import { API_PREFIX, type ApiErrorBody, type ApiErrorDetail, type PageMeta } from '@life-os/shared';
 import { ApiError } from './api-error';
 
 // Where the client gets tokens. The auth store (5.4) implements this; the client never
@@ -15,6 +15,11 @@ export type FetchLike = (
   url: string,
   init: { method: string; headers: Record<string, string>; body?: string; signal: AbortSignal },
 ) => Promise<{ ok: boolean; status: number; text(): Promise<string> }>;
+
+export interface Paged<T> {
+  items: T[];
+  meta: PageMeta;
+}
 
 export interface RequestOptions {
   body?: unknown;
@@ -93,6 +98,7 @@ export function createHttpClient({
     method: string,
     path: string,
     options: RequestOptions = {},
+    shape: 'data' | 'page' = 'data',
   ): Promise<T> {
     const auth = options.auth ?? true;
     const sentToken = auth ? tokens.getAccessToken() : null;
@@ -109,12 +115,15 @@ export function createHttpClient({
     // shared types in packages/shared); the client can't check it. Bodies aren't validated
     // at runtime; that's a deliberate trust in our own API.
     // oxlint-disable-next-line typescript/no-unsafe-type-assertion
-    return parse(result) as T;
+    return parse(result, shape) as T;
   }
 
   return {
     request,
     get: <T>(path: string, options?: RequestOptions) => request<T>('GET', path, options),
+    // List endpoints: { data, meta } → { items, meta } (meta.nextCursor for the next page).
+    getPage: <T>(path: string, options?: RequestOptions) =>
+      request<Paged<T>>('GET', path, options, 'page'),
     post: <T>(path: string, body?: unknown, options?: RequestOptions) =>
       request<T>('POST', path, { ...options, body }),
     patch: <T>(path: string, body: unknown, options?: RequestOptions) =>
@@ -133,12 +142,18 @@ function isExpiredToken(result: RawResult): boolean {
   return result.status === 401 && errorBody(result.text)?.error.code === 'UNAUTHENTICATED';
 }
 
-function parse({ status, ok, text }: RawResult): unknown {
+function parse({ status, ok, text }: RawResult, shape: 'data' | 'page'): unknown {
   if (ok) {
     if (status === 204 || text === '') return undefined;
     const body: unknown = JSON.parse(text);
-    // Every success is { data } (docs/06). Pages ({ data, meta }) get their own helper in Phase 6.
-    if (typeof body === 'object' && body !== null && 'data' in body) return body.data;
+    // Every success is { data } (docs/06); a page adds { meta: { nextCursor, hasMore } }.
+    if (shape === 'page') {
+      if (isRecord(body) && Array.isArray(body['data']) && isPageMeta(body['meta'])) {
+        return { items: body['data'], meta: body['meta'] };
+      }
+    } else if (typeof body === 'object' && body !== null && 'data' in body) {
+      return body.data;
+    }
     throw new ApiError(status, 'HTTP_ERROR', 'Unexpected response from the server.');
   }
   const body = errorBody(text);
@@ -179,4 +194,12 @@ function isErrorDetail(value: unknown): value is ApiErrorDetail {
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null;
+}
+
+function isPageMeta(value: unknown): value is PageMeta {
+  return (
+    isRecord(value) &&
+    typeof value['hasMore'] === 'boolean' &&
+    (value['nextCursor'] === null || typeof value['nextCursor'] === 'string')
+  );
 }

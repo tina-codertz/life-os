@@ -46,6 +46,15 @@ describe.each([
     expect(contrast(fg, bg)).toBeGreaterThanOrEqual(4.5);
   });
 
+  it.each(Object.entries(colors.category))(
+    'category %s dot is visible (≥ 3:1) on every background',
+    (_category, color) => {
+      for (const bg of [colors.bg.canvas, colors.bg.surface, colors.bg.elevated]) {
+        expect(contrast(color, bg)).toBeGreaterThanOrEqual(3);
+      }
+    },
+  );
+
   it('success colour is readable on surfaces', () => {
     expect(contrast(colors.success.default, colors.bg.surface)).toBeGreaterThanOrEqual(4.5);
   });

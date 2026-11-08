@@ -1,3 +1,5 @@
+import type { CategoryColor } from '@life-os/shared';
+
 // Semantic colors from docs/07 §2.2. Components use these names, never hex values.
 // Contrast ratios are checked in colors.test.ts (WCAG AA).
 export interface ThemeColors {
@@ -8,6 +10,8 @@ export interface ThemeColors {
   success: { default: string; soft: string };
   danger: { text: string; fill: string };
   warning: { default: string };
+  // Category palette (CATEGORY_COLORS): dots and accents, ≥ 3:1 against surfaces (non-text).
+  category: Record<CategoryColor, string>;
 }
 
 export const darkColors: ThemeColors = {
@@ -20,6 +24,17 @@ export const darkColors: ThemeColors = {
   // (sheets), and white labels on #D9475F only 4.19:1. Both now pass AA on every background.
   danger: { text: '#EA6479', fill: '#C2334B' },
   warning: { default: '#F5B544' },
+  category: {
+    violet: '#8B7CFF',
+    blue: '#5AA9FF',
+    teal: '#3CC8C0',
+    green: '#8FB339',
+    amber: '#F5B544',
+    orange: '#FF8A4C',
+    red: '#EA6479',
+    pink: '#F27FB8',
+    gray: '#9A9AA3',
+  },
 };
 
 export const lightColors: ThemeColors = {
@@ -30,4 +45,15 @@ export const lightColors: ThemeColors = {
   success: { default: '#17784C', soft: 'rgba(23,120,76,0.10)' },
   danger: { text: '#C2334B', fill: '#C2334B' },
   warning: { default: '#9A6200' },
+  category: {
+    violet: '#5B3FE0',
+    blue: '#1F6FD1',
+    teal: '#0E8A84',
+    green: '#17784C',
+    amber: '#9A6200',
+    orange: '#C2510F',
+    red: '#C2334B',
+    pink: '#B8327A',
+    gray: '#5E5E68',
+  },
 };

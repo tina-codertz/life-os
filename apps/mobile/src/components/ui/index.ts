@@ -12,3 +12,4 @@ export {
   type ToastOptions,
   type ToastTone,
 } from './toast';
+export { Chip, type ChipProps } from './chip';

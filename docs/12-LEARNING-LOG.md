@@ -822,3 +822,33 @@ Done by me in Expo Go: registered with the real form, went through onboarding (n
 2. Why fetch one more row than the page size?
 3. Why store the due date as a `date` and the time as minutes, instead of one timestamp?
 4. Why should completing an already-completed task keep the original completion time?
+
+### 2026-11-08 — Tasks I Part 3: the Tasks screen
+**What was built (mobile):**
+- `(app)/(tabs)/tasks.tsx`: To do / Done / All chips, an infinite list (30 per page, more on scroll), pull to refresh, skeleton / error / empty states.
+- `features/tasks/task-row.tsx`: check circle (a `checkbox` for screen readers), title, due label + priority + category **in words**, accessibility actions "Complete" / "Delete".
+- `(app)/task-form.tsx`: a native form sheet to add and edit: title, notes, due (No date / Today / Tomorrow / Next week), priority, category; Delete in edit mode.
+- `features/tasks/queries.ts`: `useTasks` (infinite query + cursor), `useTask`, `useCategories`, create / update, **optimistic** complete with rollback, delete with an **Undo** toast.
+- `features/tasks/dates.ts`: "today" in the user's saved zone, calendar arithmetic, due labels. `useTimezone()`.
+- `Chip` primitive; category palette colours per theme; `http.getPage()` for `{ data, meta }` responses.
+- **Changed from the roadmap:** swipe gestures moved to week 13 (they need Reanimated + Gesture Handler, which don't run in our tests yet). The same actions exist as the check circle, the sheet's Delete, and screen-reader actions.
+**Concepts:**
+- *Optimistic update:* change the screen first, tell the server second; if it refuses, put the old state back and say so. The app feels instant on a slow network.
+- *Infinite query:* each page is fetched with the previous page's cursor; the list is all pages joined.
+- *Snapshot and rollback:* before changing the cache, keep a copy; on error, restore it.
+- *Undo instead of "Are you sure?":* deleting is instant and reversible (soft delete + restore), which is kinder than a confirmation dialog.
+- *"Today" is the user's today:* computed in their saved time zone, not the phone's clock zone, so a task due "today" matches the server's idea of today (ADR-006).
+- *Accessible rows:* the check is its own control with a checked state; the row's label reads "Pay rent, Today, High priority, Work"; screen readers get Complete / Delete as actions.
+**Found while building:**
+- **A test that passed for the wrong reason.** The "rollback on failure" test was green with the rollback *removed*: after the failure the list re-fetched and the fresh data put the task back anyway. Rollback matters exactly when that refetch can't happen (offline), so the test now makes every refetch hang and holds the server's answer; without the rollback it fails.
+- My first optimistic-update probe replaced code in a way that broke it, so its failures proved nothing; re-done as a clean no-op change, it fails 2 tests.
+- Two options were both called "None" (priority and category): a screen-reader user couldn't tell them apart. The category one is now "No category".
+- Test data used `c-work` as a category ID; the shared schema (correctly) refused it as not a UUID, so the form never sent. Real IDs in tests now.
+- The `autoFocus` lint rule (jsx-a11y): jumping focus on open can disorient screen-reader users, so the title field isn't focused automatically.
+- On the simulator a deep link to `/tasks` first showed Today; two new tests (a link during launch, a link to another tab while open) showed routing is right, and retrying worked: the first attempt coincided with Metro reloading the app.
+**Checked:** 210 mobile tests: date helpers (zones, leap year, DST, labels); list with labels in words; empty state → sheet; Done filter request; next page on scroll; complete ticks **before** the server answers; failed complete rolls back with a toast (with refetches hanging); error + retry; screen-reader Delete + Undo restores; create sends trimmed title, priority, category and tomorrow in the user's zone; empty title; edit pre-fills and PATCHes; Delete in the sheet + Undo; server field error on `categoryId`. Probes: no rollback, no-op optimistic change, no Undo: each fails tests. `expo-doctor` 20/20. Simulator against the real API: More shows the account, Tasks shows the empty state.
+**To learn:**
+1. What does an optimistic update risk, and how does the rollback limit that risk?
+2. Why was the first rollback test useless, and what made the new one trustworthy?
+3. Why offer Undo instead of an "Are you sure?" dialog?
+4. Why compute "today" in the user's saved time zone instead of the phone's?

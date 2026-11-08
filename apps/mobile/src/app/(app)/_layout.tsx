@@ -10,6 +10,7 @@ export default function AppLayout() {
       <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
       <Stack.Screen name="design-preview" options={{ title: 'Design system' }} />
       <Stack.Screen name="sheet-demo" options={sheetOptions()} />
+      <Stack.Screen name="task-form" options={sheetOptions([0.75, 1])} />
     </Stack>
   );
 }

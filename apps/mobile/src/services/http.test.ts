@@ -75,6 +75,24 @@ describe('http client: requests and responses', () => {
     });
   });
 
+  it('getPage returns items and the page meta', async () => {
+    const { fetch } = fakeFetch(() => ({
+      status: 200,
+      body: { data: [{ id: 't1' }], meta: { nextCursor: 'abc', hasMore: true } },
+    }));
+    const http = createHttpClient({ baseUrl: BASE, tokens: fakeTokens('t1').tokens, fetch });
+    await expect(http.getPage('/tasks')).resolves.toEqual({
+      items: [{ id: 't1' }],
+      meta: { nextCursor: 'abc', hasMore: true },
+    });
+  });
+
+  it('getPage refuses a response without valid meta', async () => {
+    const { fetch } = fakeFetch(() => ({ status: 200, body: { data: [] } }));
+    const http = createHttpClient({ baseUrl: BASE, tokens: fakeTokens('t1').tokens, fetch });
+    await expect(http.getPage('/tasks')).rejects.toMatchObject({ code: 'HTTP_ERROR' });
+  });
+
   it('returns undefined for 204 No Content', async () => {
     const { fetch } = fakeFetch(() => ({ status: 204 }));
     const http = createHttpClient({ baseUrl: BASE, tokens: fakeTokens('t1').tokens, fetch });

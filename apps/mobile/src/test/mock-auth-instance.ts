@@ -8,17 +8,22 @@ import { memorySessionStorage } from '@/features/auth/session-storage';
 // per test ("POST /auth/login": reply), read `calls` to see what was sent.
 
 export type Reply = { status: number; body?: unknown };
-export const routes: Record<string, (body: Record<string, unknown> | undefined) => Reply> = {};
+// A route key is "METHOD /path"; an exact match with the query string wins, otherwise the path
+// alone is tried. The handler also gets the full path, to check filters and cursors.
+export const routes: Record<
+  string,
+  (body: Record<string, unknown> | undefined, path: string) => Reply | Promise<Reply>
+> = {};
 export const calls: { route: string; body: Record<string, unknown> | undefined }[] = [];
 
 const fetch: FetchLike = async (url, init) => {
   const route = `${init.method} ${url.replace('http://api.test/api/v1', '')}`;
   const body = init.body ? (JSON.parse(init.body) as Record<string, unknown>) : undefined;
   calls.push({ route, body });
-  const handler = routes[route];
-  const reply = handler
-    ? handler(body)
-    : { status: 404, body: apiError('NOT_FOUND', `No fake route for ${route}`) };
+  const handler = routes[route] ?? routes[route.split('?')[0] ?? route];
+  const reply = await (handler
+    ? handler(body, route.slice(route.indexOf(' ') + 1))
+    : { status: 404, body: apiError('NOT_FOUND', `No fake route for ${route}`) });
   const text = reply.body === undefined ? '' : JSON.stringify(reply.body);
   return { ok: reply.status < 300, status: reply.status, text: async () => text };
 };
