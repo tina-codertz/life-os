@@ -8,7 +8,7 @@ const ICONS: Record<string, IconName> = {
   tasks: 'tasks',
   habits: 'flame',
   calendar: 'calendar',
-  more: 'more',
+  more: 'person',
 };
 
 // The design's floating dock: a white pill above the home indicator. The current tab is an ink
@@ -66,7 +66,7 @@ export function TabBar({ state, descriptors, emitter, navigateToTab, insets }: B
             })}
           >
             <Icon
-              name={ICONS[route.name] ?? 'more'}
+              name={ICONS[route.name] ?? 'person'}
               size={20}
               color={focused ? colors.ink.text : colors.text.label}
             />

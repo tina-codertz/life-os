@@ -1,5 +1,5 @@
-import { router } from 'expo-router';
-import { View } from 'react-native';
+import type { Theme } from '@life-os/shared';
+import { Alert, type AlertButton, Platform, View } from 'react-native';
 import { Screen } from '@/components/screen';
 import {
   Card,
@@ -11,29 +11,45 @@ import {
   Text,
 } from '@/components/ui';
 import { useSession } from '@/features/auth/session';
-import { useMe } from '@/features/users/queries';
+import { useMe, useSetTheme } from '@/features/users/queries';
 import { radius, spacing, useTheme } from '@/theme';
 
-const THEME_LABEL = { SYSTEM: 'Match phone', DARK: 'Dark', LIGHT: 'Light' } as const;
+const THEME_LABEL: Record<Theme, string> = { LIGHT: 'Light', DARK: 'Dark', SYSTEM: 'System' };
+// Light, Dark, System: the order people read the choice in.
+const THEME_ORDER: Theme[] = ['LIGHT', 'DARK', 'SYSTEM'];
 
-// The design's Settings screen: profile card, then preferences, then account actions. Only
-// rows that work today are shown; Goals, Insights, export and delete arrive with their phases.
-export default function More() {
+// Appearance uses the phone's own choice dialog (the design shows the row, not a picker).
+function chooseTheme(onChoose: (theme: Theme) => void) {
+  const buttons: AlertButton[] = THEME_ORDER.map((theme) => ({
+    text: THEME_LABEL[theme],
+    onPress: () => onChoose(theme),
+  }));
+  // Android dialogs hold at most three buttons and close on a tap outside; iOS adds Cancel.
+  if (Platform.OS === 'ios') buttons.push({ text: 'Cancel', style: 'cancel' });
+  Alert.alert('Appearance', undefined, buttons, { cancelable: true });
+}
+
+// The design's Settings screen: profile card, then preferences, then the account. Only rows
+// that work today are shown; Notifications, export, privacy and delete arrive with their phases.
+export default function Settings() {
   const { signOut } = useSession();
   const { colors } = useTheme();
   const me = useMe();
+  const setTheme = useSetTheme();
   const settings = me.data?.settings;
 
   return (
-    <Screen title="More" subtitle="Profile and preferences">
+    <Screen title="Settings" subtitle="Profile and preferences">
       <AccountCard me={me} />
       {settings && (
         <ListGroup>
           <ListRow
-            icon="palette"
+            icon="moon"
             tint={colors.tile.lavender}
             title="Appearance"
             value={THEME_LABEL[settings.theme]}
+            accessibilityHint="Choose light, dark or system"
+            onPress={() => chooseTheme((theme) => setTheme.mutate(theme))}
           />
           <ListRow
             icon="globe"
@@ -44,14 +60,6 @@ export default function More() {
         </ListGroup>
       )}
       <ListGroup>
-        {__DEV__ && (
-          <ListRow
-            icon="palette"
-            tint={colors.tile.sky}
-            title="Design system"
-            onPress={() => router.push('/design-preview')}
-          />
-        )}
         <ListRow icon="signOut" title="Sign out" tone="danger" onPress={() => void signOut()} />
       </ListGroup>
     </Screen>

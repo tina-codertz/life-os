@@ -45,7 +45,7 @@
 | 018 | One repo-wide oxlint + Prettier setup (not ESLint); Husky + lint-staged pre-commit | Proposed |
 | 019 | Authentication required by default (global guard + `@Public()`) | **Confirmed** |
 | 020 | Light playful visual direction (the Nov 2026 design export) | **Confirmed** (dark variant Proposed) |
-| 021 | Floating JS tab bar; platform icons via `expo-symbols`; Outfit font | Proposed |
+| 021 | Floating JS tab bar; the design's Lucide icons; Outfit font | Proposed |
 
 ---
 
@@ -167,10 +167,9 @@
 - **Alternatives:** Keep the dark glass design from the first export. It was replaced by this one. Make the app light-only like the design, which would drop the Appearance setting users already choose in onboarding.
 - **Consequences:** Dark mode stays, as a night version of the same roles (ink becomes near-white). The design doesn't specify it, so it is Proposed until reviewed on a device. The design's game features (XP, streak chests, achievements, Lio's moods), Money and Ask Lio stay in their planned later phases (ADR-011). Screens show only what works today.
 
-### ADR-021 — Floating JS tab bar; platform icons via `expo-symbols`; Outfit font
+### ADR-021 — Floating JS tab bar; the design's Lucide icons; Outfit font
 - **Status:** Proposed · 2026-11-08
 - **Context:** The design's tab bar is a floating white pill. The current tab is a black pill with its name, and the others show icons only. The native tab bar (`expo-router/native-tabs`, used since 5.3) can't take that shape. The design draws Lucide-style line icons and uses the Outfit font.
-- **Decision:** Use Expo Router's JS tabs (`expo-router/js-tabs`) with a custom `tabBar` (`src/components/tab-bar.tsx`). Each tab is announced as a tab with its name and selected state. Icons come from `expo-symbols`, which was already installed: SF Symbols on iOS and Material Symbols on Android, mapped once in `src/components/ui/icon.tsx`. This adds no icon library and the icons look native on each platform. Outfit is loaded with `expo-font` from `@expo-google-fonts/outfit`, using only the four weights in use. The splash screen stays up until the font is ready.
-- **Alternatives:** Keep the native tab bar (iOS 26 glass, but not the design, and it also truncated "Habits" / "Calendar"). Use `lucide-react-native` (exact design icons, but adds `react-native-svg` and a non-native look). Use the system font.
-- **Consequences:** We lose the native tab bar's automatic iOS 26 glass and its system behaviours. Ours has to keep accessibility and the safe area right by hand, and has tests. Icons differ slightly from the design's Lucide strokes. The iOS 26 tab-label truncation issue is gone.
-
+- **Decision:** Use Expo Router's JS tabs (`expo-router/js-tabs`) with a custom `tabBar` (`src/components/tab-bar.tsx`). Each tab is announced as a tab with its name and selected state. Icons are **Lucide, the design's own set** (`lucide-react-native` + `react-native-svg`, both in Expo Go), drawn with the design's 1.9 stroke. They're mapped by meaning in `src/components/ui/icon.tsx` and imported one by one, so only the icons in use are bundled. *(The first version used `expo-symbols` platform icons; the project owner asked for the design's icons on 2026-11-08.)* Outfit is loaded with `expo-font` from `@expo-google-fonts/outfit`, using only the four weights in use, and the splash screen stays up until the font is ready.
+- **Alternatives:** Keep the native tab bar (iOS 26 glass, but not the design, and it also truncated "Habits" / "Calendar"). Use platform symbols via `expo-symbols` (no extra dependency, native look, but not the design's icons). Use the system font.
+- **Consequences:** We lose the native tab bar's automatic iOS 26 glass and its system behaviours. Ours has to keep accessibility and the safe area right by hand, and has tests. Jest maps lucide's per-icon imports to its CommonJS build (`jest.config.js`). The iOS 26 tab-label truncation issue is gone.

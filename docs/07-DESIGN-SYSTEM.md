@@ -3,7 +3,7 @@
 | | |
 |---|---|
 | **Purpose** | Tokens, components and patterns so screens are composed from one system rather than designed in isolation |
-| **Status** | v0.3. **Light playful direction** from the Nov 2026 design export (ADR-020, Confirmed); Outfit font, floating tab bar and platform icons (ADR-021, Proposed); dark variant Proposed. All colours contrast-tested |
+| **Status** | v0.3. **Light playful direction** from the Nov 2026 design export (ADR-020, Confirmed); Outfit font, floating tab bar and the design's Lucide icons (ADR-021, Proposed); dark variant Proposed. All colours contrast-tested |
 | **Last updated** | 2026-11-08 |
 | **Related** | [03-User Flows](03-USER-FLOWS.md) · [11-Decisions](11-TECHNICAL-DECISIONS.md) (ADR-020, ADR-021) · design export `docs/Life OS — App Design (1).html` (local only, git-ignored) |
 
@@ -53,7 +53,7 @@ All ratios use the WCAG 2.x relative-luminance formula.
 | `tile.sky · lime · peach · lavender · rose · neutral` | `#D5E3EA · #E5EFC1 · #FBE2D2 · #E4E0FB · #FBDDE2 · #ECEEF3` | dark tints | icon tiles and chips |
 | `category.*` / `categoryTile.*` | strong dot / pastel tile per `CATEGORY_COLORS` | | category chips and task check tiles |
 
-Priority badges: Low = neutral tile + `text.label`, Medium = `accent.soft` + `accent.onSoft`, High = `danger.soft` + `danger.text`, Urgent = `danger.fill` + white. The word is always shown, so priority is never colour alone.
+Status: a done task shows a green **Done** badge where its priority was (no strike-through). Priority badges: Low = neutral tile + `text.label`, Medium = `accent.soft` + `accent.onSoft`, High = `danger.soft` + `danger.text`, Urgent = `danger.fill` + white. The word is always shown, so priority is never colour alone.
 
 **Implementation:** `apps/mobile/src/theme/` (`colors.ts`, `tokens.ts`, `theme.ts`, `theme-provider.tsx`, one entry point `@/theme`). `ThemeProvider` holds the preference (SYSTEM / DARK / LIGHT) and applies it with `Appearance.setColorScheme`. When the system scheme is unknown, it now falls back to **light**.
 
@@ -88,7 +88,7 @@ All text goes through `<Text variant tone>`. Font scaling is allowed up to 2×, 
 
 ## 5. Component inventory
 
-Primitives live in `src/components/ui/`, and feature components in `src/features/*/components/`. **Built in 5.1:** `Text`, `Button`, `Card`; **5.5:** `TextField` (label, error/helper read by screen readers, Show/Hide for passwords); **5.6:** `OfflineBanner` (pill under the status bar, announced, doesn't block taps); **5.8:** `Toast` (+ `useToast`, one at a time, 5 s, optional action, announced), `EmptyState`, `ErrorState` (plain-language message per error type, request ID to quote, retry), `Skeleton` / `SkeletonGroup` (after 150 ms, pulse off under Reduce Motion, hidden from screen readers, group announced as loading), native sheets. Motion uses React Native's `Animated` (opacity/transform on the native thread) and `useReducedMotion()` from `@/theme`; Reanimated is kept for gesture-heavy work later (Phase 6 swipe actions). **6.1:** `Chip` (radio / checkbox role, selected state announced, optional colour dot) and the category palette `colors.category.*` (≥ 3:1 on every surface, tested). **Design refresh (Nov 2026, ADR-020/021):** every primitive restyled, plus `Icon` (one map of SF Symbol / Material Symbol names), `IconTile`, `IconButton` (round white, or ink for the floating +), `ListGroup` / `ListRow` (settings-style rows), `SegmentedControl` (announced as tabs), `Mascot` (Lio, 6 moods; decorative or labelled), and app-level `Screen` / `ScreenHeader` / `ScreenWash`, `FormScreen` (with the Life OS logo row), `TabBar` (floating dock), `StepDots` (onboarding) and `MonthCalendar` (the due-date picker).
+Primitives live in `src/components/ui/`, and feature components in `src/features/*/components/`. **Built in 5.1:** `Text`, `Button`, `Card`; **5.5:** `TextField` (label, error/helper read by screen readers, Show/Hide for passwords); **5.6:** `OfflineBanner` (pill under the status bar, announced, doesn't block taps); **5.8:** `Toast` (+ `useToast`, one at a time, 5 s, optional action, announced), `EmptyState`, `ErrorState` (plain-language message per error type, request ID to quote, retry), `Skeleton` / `SkeletonGroup` (after 150 ms, pulse off under Reduce Motion, hidden from screen readers, group announced as loading), native sheets. Motion uses React Native's `Animated` (opacity/transform on the native thread) and `useReducedMotion()` from `@/theme`; Reanimated is kept for gesture-heavy work later (Phase 6 swipe actions). **6.1:** `Chip` (radio / checkbox role, selected state announced, optional colour dot) and the category palette `colors.category.*` (≥ 3:1 on every surface, tested). **Design refresh (Nov 2026, ADR-020/021):** every primitive restyled, plus `Icon` (one map of SF Symbol / Material Symbol names), `IconTile`, `IconButton`, a status badge on done tasks ("Done", `success.soft` + `success.default`) instead of struck-through text, (round white, or ink for the floating +), `ListGroup` / `ListRow` (settings-style rows), `SegmentedControl` (announced as tabs), `Mascot` (Lio, 6 moods; decorative or labelled), and app-level `Screen` / `ScreenHeader` / `ScreenWash`, `FormScreen` (with the Life OS logo row), `TabBar` (floating dock), `StepDots` (onboarding) and `MonthCalendar` (the due-date picker).
 
 | Component | Variants / props | States |
 |---|---|---|
@@ -148,7 +148,7 @@ Primitives live in `src/components/ui/`, and feature components in `src/features
 - Landscape: supported for Calendar week view only (Proposed). Other screens stay portrait.
 
 ## 9. Iconography & imagery
-- Icons: **SF Symbols on iOS, Material Symbols on Android** via `expo-symbols` (ADR-021), named by meaning in `components/ui/icon.tsx` (e.g. `calendar`, `tasks`, `flame`). They're close to the design's Lucide line icons and look native on each platform. Icons are decorative, so the button or row around them carries the label.
+- Icons: **Lucide**, the design's own set (`lucide-react-native` + `react-native-svg`, ADR-021), with the design's 1.9 stroke. They're named by meaning in `components/ui/icon.tsx` (e.g. `calendar`, `tasks`, `flame`), and each icon is imported on its own so only the ones used are bundled. Icons are decorative, so the button or row around them carries the label. Categories store a Lucide name (`briefcase`, `book-open`, …).
 - 20 pt default in rows and buttons, 17–24 pt in tiles.
 - **Lio the mascot** (`assets/mascot/`, from the design export): happy (welcome, sign-in logo), sleepy (empty states), planning ("coming soon"), excited, focused and celebrating (for later: focus timer, rewards). Marked decorative wherever the text beside it already says everything.
 - Category/habit icons are chosen from a curated subset (~60), with the stored name validated server-side.

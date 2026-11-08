@@ -12,8 +12,9 @@ export interface ChipProps {
   // A small colour dot before the label. Never the only signal: the label says it.
   dotColor?: string;
   icon?: IconName;
-  // One choice in a group ('radio', the default) or an on/off toggle ('checkbox').
-  role?: 'radio' | 'checkbox';
+  // 'single': one choice in a group (a radio, the default). 'multiple': an on/off toggle that
+  // can be combined with others (a checkbox).
+  mode?: 'single' | 'multiple';
 }
 
 const HEIGHT = 40;
@@ -27,9 +28,10 @@ export function Chip({
   tint,
   dotColor,
   icon,
-  role = 'radio',
+  mode = 'single',
 }: ChipProps) {
   const { colors } = useTheme();
+  const role = mode === 'single' ? 'radio' : 'checkbox';
   return (
     <Pressable
       accessibilityRole={role}

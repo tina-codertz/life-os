@@ -39,7 +39,7 @@ Each user story follows: *As a user, I want … so that …*, followed by accept
 
 | ID | Requirement |
 |---|---|
-| FR-ONB-001 | Collect display name, time zone (auto-detected, editable), theme preference |
+| FR-ONB-001 | Collect display name, time zone (auto-detected, editable). *(Theme moved to Settings → Appearance on 2026-11-08, following the design; FR-SET-002)* |
 | FR-ONB-002 | Choose 1–3 focus areas (e.g. Health, Work, Learning, Money) → seeds default task categories |
 | FR-ONB-003 | Optionally create a first habit from templates |
 | FR-ONB-004 | Onboarding can be skipped. `onboardingCompletedAt` is stored server-side |
@@ -202,7 +202,7 @@ FR-CAL-007 is **v2, maybe**.
 | ID | Requirement |
 |---|---|
 | FR-SET-001 | Edit profile (name, avatar later), change email, change password |
-| FR-SET-002 | Theme: system / dark / light |
+| FR-SET-002 | Theme: light / dark / system, in Settings → Appearance (the design's Settings screen); saved to the server and applied at once |
 | FR-SET-003 | Time zone (auto-follow device or fixed) and week start day |
 | FR-SET-004 | Notification preferences (habit reminders on/off, event reminders default) |
 | FR-SET-005 | Export all my data as JSON (async job, emailed link or in-app download) |

@@ -21,8 +21,8 @@ const schema = z.object({
   timezone: timezoneSchema,
 });
 
-// Onboarding step 1 of 2 (FR-ONB-001): name and time zone. Focus areas and a first habit
-// (FR-ONB-002/003) join in Phase 6, once categories and habits exist.
+// Onboarding step 1 of 2 (FR-ONB-001): name and time zone. Step 2 is focus areas
+// (FR-ONB-002); a first habit (FR-ONB-003) joins when habits exist.
 export default function OnboardingProfile() {
   const { user } = useSession();
   const { colors } = useTheme();
@@ -41,7 +41,7 @@ export default function OnboardingProfile() {
       timezone: values.timezone,
       followDeviceTimezone: values.timezone === device.timezone,
     });
-    router.push('/theme');
+    router.push('/focus');
   });
 
   async function skip() {

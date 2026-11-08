@@ -1,39 +1,71 @@
-import { type AndroidSymbol, type SFSymbol, SymbolView } from 'expo-symbols';
+import type { LucideIcon } from 'lucide-react-native';
+import ArrowRight from 'lucide-react-native/icons/arrow-right';
+import BookOpen from 'lucide-react-native/icons/book-open';
+import Briefcase from 'lucide-react-native/icons/briefcase';
+import Calendar from 'lucide-react-native/icons/calendar';
+import Check from 'lucide-react-native/icons/check';
+import ChevronLeft from 'lucide-react-native/icons/chevron-left';
+import ChevronRight from 'lucide-react-native/icons/chevron-right';
+import Clock from 'lucide-react-native/icons/clock';
+import Flag from 'lucide-react-native/icons/flag';
+import Flame from 'lucide-react-native/icons/flame';
+import Globe from 'lucide-react-native/icons/globe';
+import HeartPulse from 'lucide-react-native/icons/heart-pulse';
+import House from 'lucide-react-native/icons/house';
+import ListChecks from 'lucide-react-native/icons/list-checks';
+import Lock from 'lucide-react-native/icons/lock';
+import LogOut from 'lucide-react-native/icons/log-out';
+import Mail from 'lucide-react-native/icons/mail';
+import Moon from 'lucide-react-native/icons/moon';
+import Palette from 'lucide-react-native/icons/palette';
+import Plus from 'lucide-react-native/icons/plus';
+import RefreshCw from 'lucide-react-native/icons/refresh-cw';
+import Smartphone from 'lucide-react-native/icons/smartphone';
+import Sun from 'lucide-react-native/icons/sun';
+import Tag from 'lucide-react-native/icons/tag';
+import TextAlignStart from 'lucide-react-native/icons/text-align-start';
+import Trash from 'lucide-react-native/icons/trash';
+import TriangleExclamationPoint from 'lucide-react-native/icons/triangle-exclamation-point';
+import User from 'lucide-react-native/icons/user';
+import Wallet from 'lucide-react-native/icons/wallet';
+import X from 'lucide-react-native/icons/x';
 import { View } from 'react-native';
 import { useTheme } from '@/theme';
 
-// The design's line icons, drawn with the platform's own icon set: SF Symbols on iOS, Material
-// Symbols on Android. Screens name an icon by meaning; this map is the only place that knows
-// the platform names.
+// The design's line icons: Lucide, drawn with a 1.9 stroke as in the design export. Screens
+// name an icon by meaning; each icon is imported on its own so only these end up in the app.
 const ICONS = {
-  add: { ios: 'plus', android: 'add' },
-  calendar: { ios: 'calendar', android: 'calendar_month' },
-  check: { ios: 'checkmark', android: 'check' },
-  chevronLeft: { ios: 'chevron.left', android: 'chevron_left' },
-  chevronRight: { ios: 'chevron.right', android: 'chevron_right' },
-  close: { ios: 'xmark', android: 'close' },
-  clock: { ios: 'clock', android: 'schedule' },
-  flag: { ios: 'flag', android: 'flag' },
-  flame: { ios: 'flame', android: 'local_fire_department' },
-  globe: { ios: 'globe', android: 'public' },
-  home: { ios: 'house', android: 'home' },
-  lock: { ios: 'lock', android: 'lock' },
-  mail: { ios: 'envelope', android: 'mail' },
-  more: { ios: 'ellipsis', android: 'more_horiz' },
-  notes: { ios: 'text.alignleft', android: 'notes' },
-  palette: { ios: 'paintpalette', android: 'palette' },
-  moon: { ios: 'moon', android: 'dark_mode' },
-  person: { ios: 'person', android: 'person' },
-  phone: { ios: 'iphone', android: 'smartphone' },
-  refresh: { ios: 'arrow.clockwise', android: 'refresh' },
-  signOut: { ios: 'rectangle.portrait.and.arrow.right', android: 'logout' },
-  sun: { ios: 'sun.max', android: 'light_mode' },
-  tag: { ios: 'tag', android: 'sell' },
-  tasks: { ios: 'checklist', android: 'checklist' },
-  trash: { ios: 'trash', android: 'delete' },
-  warning: { ios: 'exclamationmark.triangle', android: 'warning' },
-  arrowRight: { ios: 'arrow.right', android: 'arrow_forward' },
-} as const satisfies Record<string, { ios: SFSymbol; android: AndroidSymbol }>;
+  add: Plus,
+  arrowRight: ArrowRight,
+  book: BookOpen,
+  briefcase: Briefcase,
+  calendar: Calendar,
+  check: Check,
+  chevronLeft: ChevronLeft,
+  chevronRight: ChevronRight,
+  clock: Clock,
+  close: X,
+  flag: Flag,
+  flame: Flame,
+  globe: Globe,
+  health: HeartPulse,
+  home: House,
+  lock: Lock,
+  mail: Mail,
+  moon: Moon,
+  notes: TextAlignStart,
+  palette: Palette,
+  person: User,
+  phone: Smartphone,
+  refresh: RefreshCw,
+  signOut: LogOut,
+  sun: Sun,
+  tag: Tag,
+  tasks: ListChecks,
+  trash: Trash,
+  wallet: Wallet,
+  warning: TriangleExclamationPoint,
+} as const satisfies Record<string, LucideIcon>;
 
 export type IconName = keyof typeof ICONS;
 
@@ -46,18 +78,14 @@ export interface IconProps {
 // Decorative: the button or row around it carries the label, so screen readers skip the icon.
 export function Icon({ name, size = 20, color }: IconProps) {
   const { colors } = useTheme();
+  const Glyph = ICONS[name];
   return (
     <View
       accessibilityElementsHidden
       importantForAccessibility="no-hide-descendants"
       pointerEvents="none"
     >
-      <SymbolView
-        name={ICONS[name]}
-        size={size}
-        tintColor={color ?? colors.text.primary}
-        weight="medium"
-      />
+      <Glyph size={size} color={color ?? colors.text.primary} strokeWidth={1.9} />
     </View>
   );
 }

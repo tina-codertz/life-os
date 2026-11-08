@@ -1,7 +1,6 @@
 import type { PublicUser } from '@life-os/shared';
 import { getCalendars, Weekday } from 'expo-localization';
 import { fireEvent, renderRouter, screen, waitFor } from 'expo-router/testing-library';
-import { Appearance } from 'react-native';
 import { authStore } from '@/features/auth/auth-instance';
 import { apiError, calls, resetMockApi, routes } from '@/test/mock-auth-instance';
 import { resetDraft } from './draft';
@@ -18,6 +17,7 @@ const NEW_USER: PublicUser = {
 };
 
 const press = (name: string) => fireEvent.press(screen.getByRole('button', { name }));
+const tick = (name: string) => fireEvent.press(screen.getByRole('checkbox', { name }));
 const bodies = (route: string) => calls.filter((c) => c.route === route).map((c) => c.body);
 
 // A new user, signed in; the fake API accepts the onboarding calls.
@@ -38,6 +38,7 @@ async function openOnboarding() {
     status: 200,
     body: { data: { user: NEW_USER, settings: { theme: 'SYSTEM' } } },
   });
+  routes['POST /categories'] = (body) => ({ status: 201, body: { data: { id: 'c1', ...body } } });
   return renderRouter('src/app', { initialUrl: '/' });
 }
 
@@ -54,32 +55,70 @@ describe('onboarding', () => {
     expect(screen.getByText('Africa/Dar_es_Salaam')).toBeOnTheScreen();
   });
 
-  it('collects name and theme, saves them, and lands on Today', async () => {
-    const setColorScheme = jest.spyOn(Appearance, 'setColorScheme');
+  it('collects name and focus areas, creates the categories, and lands on Today', async () => {
     const router = await openOnboarding();
 
     await fireEvent.changeText(screen.getByLabelText('What should we call you?'), 'Tina K');
     await press('Continue');
-    await waitFor(() => expect(router.getPathname()).toBe('/theme'));
+    await waitFor(() => expect(router.getPathname()).toBe('/focus'));
 
-    await fireEvent.press(screen.getByRole('radio', { name: 'Dark' }));
-    expect(screen.getByRole('radio', { name: 'Dark' })).toBeSelected();
-    expect(setColorScheme).toHaveBeenLastCalledWith('dark'); // applied live
+    await tick('Work');
+    await tick('Health');
+    expect(screen.getByRole('checkbox', { name: 'Work' })).toBeChecked();
 
     await press('Finish');
     await waitFor(() => expect(router.getPathname()).toBe('/today'));
+    // One category per area, in the list's order, with its colour and icon.
+    expect(bodies('POST /categories')).toEqual([
+      { name: 'Work', color: 'blue', icon: 'briefcase' },
+      { name: 'Health', color: 'green', icon: 'heart-pulse' },
+    ]);
     expect(bodies('PATCH /users/me/settings')).toEqual([
       {
         timezone: 'Africa/Dar_es_Salaam',
         followDeviceTimezone: true,
         weekStartsOn: 1, // the phone's Monday (expo-localization 2) in the API's numbering
-        theme: 'DARK',
       },
     ]);
     expect(bodies('PATCH /users/me')).toEqual([
       { displayName: 'Tina K', onboardingCompleted: true },
     ]);
-    setColorScheme.mockRestore();
+  });
+
+  it('allows at most 3 areas and needs at least 1', async () => {
+    await openOnboarding();
+    await press('Continue');
+    await screen.findByRole('checkbox', { name: 'Work' });
+
+    await press('Finish');
+    expect(await screen.findByRole('alert')).toHaveTextContent('Pick at least one area.');
+    expect(bodies('PATCH /users/me')).toHaveLength(0);
+
+    await tick('Work');
+    await tick('Learning');
+    await tick('Health');
+    await tick('Money');
+    expect(screen.getByRole('checkbox', { name: 'Money' })).not.toBeChecked();
+    expect(screen.getByRole('alert')).toHaveTextContent(/You can pick up to 3\./);
+
+    await tick('Work'); // untick one, then the fourth fits
+    await tick('Money');
+    expect(screen.getByRole('checkbox', { name: 'Money' })).toBeChecked();
+  });
+
+  it('a category that already exists (an earlier attempt) still finishes', async () => {
+    const router = await openOnboarding();
+    // After openOnboarding, which installs a succeeding POST /categories.
+    routes['POST /categories'] = () => ({
+      status: 409,
+      body: apiError('CATEGORY_NAME_TAKEN', 'You already have a category with this name.'),
+    });
+    await press('Continue');
+    await screen.findByRole('checkbox', { name: 'Work' });
+    await tick('Work');
+    await press('Finish');
+    await waitFor(() => expect(router.getPathname()).toBe('/today'));
+    expect(bodies('POST /categories')).toHaveLength(1);
   });
 
   it('a time zone typed by hand stops following the phone', async () => {
@@ -87,7 +126,9 @@ describe('onboarding', () => {
     await press('Change time zone');
     await fireEvent.changeText(screen.getByLabelText('Time zone'), 'europe/london');
     await press('Continue');
-    await fireEvent.press(await screen.findByRole('button', { name: 'Finish' }));
+    await screen.findByRole('checkbox', { name: 'Work' });
+    await tick('Work');
+    await press('Finish');
 
     await waitFor(() => expect(bodies('PATCH /users/me/settings')).toHaveLength(1));
     expect(bodies('PATCH /users/me/settings')[0]).toMatchObject({
@@ -139,17 +180,19 @@ describe('onboarding', () => {
     }
   });
 
-  it('keeps the user on the theme step if saving fails', async () => {
+  it('keeps the user on the focus step if saving fails', async () => {
     const router = await openOnboarding();
     routes['PATCH /users/me/settings'] = () => ({
       status: 503,
       body: apiError('SERVICE_UNAVAILABLE', 'The database is unavailable.'),
     });
     await press('Continue');
+    await screen.findByRole('checkbox', { name: 'Work' });
+    await tick('Work');
     await press('Finish');
 
     expect(await screen.findByRole('alert')).toHaveTextContent('The database is unavailable.');
-    expect(router.getPathname()).toBe('/theme');
+    expect(router.getPathname()).toBe('/focus');
     expect(authStore.getState().user?.onboardingCompletedAt).toBeNull();
   });
 });

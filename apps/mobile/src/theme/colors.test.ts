@@ -47,6 +47,7 @@ function textPairs(c: ThemeColors): [string, string, string][] {
     ['label on danger.fill', c.text.onAccent, c.danger.fill],
     ['accent.onSoft on accent.soft (Medium badge)', c.accent.onSoft, c.accent.soft],
     ['danger.text on danger.soft (High badge)', c.danger.text, c.danger.soft],
+    ['success.default on success.soft (Done badge)', c.success.default, c.success.soft],
     ['reward.text on reward.fill', c.reward.text, c.reward.fill],
   );
   return pairs;

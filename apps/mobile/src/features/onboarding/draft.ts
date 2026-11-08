@@ -1,6 +1,6 @@
-import type { Theme } from '@life-os/shared';
 import { createStore } from 'zustand/vanilla';
 import { useStore } from 'zustand';
+import type { FocusAreaKey } from './focus-areas';
 
 // Answers collected across the onboarding screens, sent together at the end (or not at all
 // if the user skips). In memory only: an interrupted onboarding simply starts again.
@@ -8,14 +8,14 @@ export interface OnboardingDraft {
   displayName: string | null;
   timezone: string | null;
   followDeviceTimezone: boolean;
-  theme: Theme;
+  focusAreas: FocusAreaKey[];
 }
 
 const EMPTY: OnboardingDraft = {
   displayName: null,
   timezone: null,
   followDeviceTimezone: true,
-  theme: 'SYSTEM',
+  focusAreas: [],
 };
 
 export const onboardingDraft = createStore<OnboardingDraft>()(() => EMPTY);

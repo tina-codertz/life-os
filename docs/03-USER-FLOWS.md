@@ -29,7 +29,7 @@ apps/mobile/src/app/
 │   ├── profile.tsx             # name + timezone
 │   ├── focus-areas.tsx
 │   ├── first-habit.tsx
-│   └── theme.tsx
+│   └── focus.tsx
 ├── (app)/
 │   ├── _layout.tsx             # Auth-protected
 │   ├── (tabs)/
@@ -55,7 +55,7 @@ apps/mobile/src/app/
     └── event-form.tsx
 ```
 
-**Built in 5.7:** onboarding has **two steps for now**: `(onboarding)/profile` (name, pre-filled; time zone from the phone, editable, checked by the shared `timezoneSchema`) and `(onboarding)/theme` (System / Dark / Light, applied live). Finish saves settings (time zone, follow-device flag, week start from the phone, theme) and then `PATCH /users/me { displayName, onboardingCompleted: true }`; the gate opens Today. **Skip for now** still saves the phone's time zone and week start. **Focus areas (FR-ONB-002) and a first habit (FR-ONB-003) are deferred to Phase 6**: they need categories and habits, which don't exist yet. The saved theme is re-applied after sign-in (`useThemeFromSettings`), so it follows the user to a new phone.
+**Built in 5.7, changed 2026-11-08:** onboarding has two steps: `(onboarding)/profile` (name, pre-filled; time zone from the phone, editable, checked by the shared `timezoneSchema`) and `(onboarding)/focus` (pick 1–3 focus areas, FR-ONB-002; each becomes a task category). The theme step was removed: the theme is chosen in **Settings → Appearance**, as in the design. Finish creates the categories, then saves settings (time zone, follow-device flag, week start from the phone) and then `PATCH /users/me { displayName, onboardingCompleted: true }`; the gate opens Today. **Skip for now** still saves the phone's time zone and week start. **A first habit (FR-ONB-003) waits for habits.** The saved theme is re-applied after sign-in (`useThemeFromSettings`), so it follows the user to a new phone.
 
 **Built in 5.5:** real Log in / Create account / Forgot password forms in `(auth)`. The email links live at the **root, outside the guards** (a change from the tree above, which had `reset-password` in `(auth)`): `reset-password`, `verify-email` and `confirm-email-change` must open whether or not the phone is signed in. Reset signs this phone out (the API ended every session).
 **Open UI issue:** on iOS 26 the five-tab bar truncates "Habits" and "Calendar" ("Hab…", "Cal…") on an iPhone 17; revisit labels or tab count in the layout pass.
@@ -122,7 +122,7 @@ sequenceDiagram
   M->>A: POST /auth/register
   A-->>M: 201 {accessToken, refreshToken, user}
   M->>M: Save tokens (SecureStore), set auth store
-  M-->>U: Onboarding: timezone (auto), focus areas, first habit, theme
+  M-->>U: Onboarding: name, timezone (auto), focus areas (first habit later)
   M->>A: PATCH /users/me {timezone, onboardingCompletedAt}
   M->>A: POST /habits (optional)
   M-->>U: Today (empty states + CTAs)

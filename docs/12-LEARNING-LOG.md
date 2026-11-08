@@ -883,3 +883,25 @@ Done by me in Expo Go: registered with the real form, went through onboarding (n
 4. Why is the splash screen held until the font has loaded, and what would the user see otherwise?
 5. A custom tab bar loses what the native one gave for free. Name two things we had to rebuild by hand.
 6. In the month grid, why are the days before the 1st `null` instead of the previous month's days?
+
+### 2026-11-08 — Tasks I Part 4: focus areas; theme in Settings; design icons; Done badge
+**Your requests:** use the design's icons; mark completed tasks with a status, not a line through the text; go on with the original plan (focus areas); put the theme choice (light / dark / system) in Settings, as the design shows; add no design of my own.
+**What changed:**
+- **Icons:** Lucide, the set the design uses (`lucide-react-native` + `react-native-svg`), with the design's 1.9 stroke. Each icon is imported on its own.
+- **Done tasks:** a green **Done** badge where the priority badge was. No strike-through, and the title stays full strength.
+- **Settings** (the 5th tab, as the design's "Settings · Profile and preferences"): **Appearance** shows Light / Dark / System. Tapping it opens the phone's own choice dialog, because the design shows the row but no picker. The choice is saved to the server and applied at once; if saving fails, the old theme comes back and a toast says so. The dev-only "Design system" row is gone from Settings.
+- **Onboarding step 2 is now focus areas** (FR-ONB-002): pick 1–3 of Work, Learning, Health, Personal, Money, Home. Each becomes a category with its colour and icon. The theme step was removed (the theme is in Settings now). It uses the design's category chips, because the design has no screen for this step.
+- `Chip` takes `mode="single" | "multiple"` (radio or checkbox) instead of a `role` prop.
+**Concepts:**
+- *Status beats decoration:* "Done" in words reads the same for everyone. Strike-through text is harder to read and says nothing to a screen reader.
+- *Idempotent seeding:* if Finish fails halfway, pressing it again shouldn't stop on "name taken" for categories made the first time. So that error counts as success.
+- *Native choice dialog:* when the design shows a row but no picker, the platform's own dialog adds no new look.
+- *Optimistic setting with rollback:* the theme changes in the cache first, and comes back if the server refuses.
+**Found while building:** two tests that passed for the wrong reason, caught by probes. (1) The Appearance rollback test passed without the rollback: the app re-read the old theme from the server anyway. The test now blocks that re-read. (2) The "category already exists" test never reached the 409: the test helper overwrote the fake reply. It's now set afterwards, and the test checks a category was attempted.
+**Checks:** 287 mobile tests pass. Probes (rollback, "name taken" handling, the 3-area limit, the Done badge) each make a test fail. `bun run check` is clean. On the simulator, the Lucide icons and Settings match the design.
+
+**To learn:**
+1. Why is a "Done" badge more accessible than strike-through text?
+2. Why must creating the focus-area categories be safe to repeat?
+3. Why did the first rollback test pass even without the rollback, and how does blocking the re-read fix it?
+4. Why import each Lucide icon from its own file instead of `from 'lucide-react-native'`?

@@ -55,7 +55,6 @@ export function TaskRow({ task, category, today, onToggle, onOpen, onDelete }: T
         borderCurve: 'continuous',
         backgroundColor: colors.bg.surface,
         boxShadow: shadows.md,
-        opacity: done ? 0.75 : 1,
       }}
     >
       <Pressable
@@ -118,34 +117,37 @@ export function TaskRow({ task, category, today, onToggle, onOpen, onDelete }: T
         })}
       >
         <View style={{ flex: 1, gap: spacing.xxs }}>
-          <Text
-            variant="bodyStrong"
-            tone={done ? 'secondary' : 'primary'}
-            style={done ? { textDecorationLine: 'line-through' } : undefined}
-          >
-            {task.title}
-          </Text>
+          <Text variant="bodyStrong">{task.title}</Text>
           {meta.length > 0 && (
             <Text variant="caption" tone={due?.overdue ? 'danger' : 'secondary'}>
               {meta}
             </Text>
           )}
         </View>
-        {badge && priority && (
-          <View
-            style={{
-              backgroundColor: badge.bg,
-              borderRadius: radius.sm,
-              paddingHorizontal: spacing.sm + 2,
-              paddingVertical: spacing.xs + 1,
-            }}
-          >
-            <Text variant="label" style={{ color: badge.color, fontSize: 12, lineHeight: 16 }}>
-              {priority}
-            </Text>
-          </View>
+        {/* A done task shows its status, not its priority (the design's green "Done" badge). */}
+        {done ? (
+          <Badge label="Done" bg={colors.success.soft} color={colors.success.default} />
+        ) : (
+          badge && priority && <Badge label={priority} bg={badge.bg} color={badge.color} />
         )}
       </Pressable>
+    </View>
+  );
+}
+
+function Badge({ label, bg, color }: { label: string; bg: string; color: string }) {
+  return (
+    <View
+      style={{
+        backgroundColor: bg,
+        borderRadius: radius.sm,
+        paddingHorizontal: spacing.sm + 2,
+        paddingVertical: spacing.xs + 1,
+      }}
+    >
+      <Text variant="label" style={{ color, fontSize: 12, lineHeight: 16 }}>
+        {label}
+      </Text>
     </View>
   );
 }

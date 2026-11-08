@@ -100,6 +100,10 @@ describe('Tasks screen', () => {
 
     await fireEvent.press(screen.getByRole('radio', { name: 'Done' }));
     expect(await screen.findByText('Finished')).toBeOnTheScreen();
+    // Done shows as a status badge on the row, not as struck-through text.
+    const row = screen.getByRole('button', { name: /^Finished/ });
+    expect(within(row).getByText('Done')).toBeOnTheScreen();
+    expect(screen.getByText('Finished')).not.toHaveStyle({ textDecorationLine: 'line-through' });
     expect(gets('/tasks')).toContain('GET /tasks?status=DONE');
   });
 
