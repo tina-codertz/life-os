@@ -37,6 +37,19 @@ export interface ThemeColors {
     fill: [string, string, string, string, string];
     text: [string, string, string, string, string];
   };
+  // The habits quest path (circles with a darker "shade" under them) and the 🔥 chip.
+  quest: {
+    done: string;
+    doneIcon: string;
+    doneShade: string;
+    idle: string;
+    idleShade: string;
+    giftIcon: string;
+    lockIcon: string;
+    todayShade: string;
+    ring: string;
+  };
+  flame: string;
 }
 
 export const lightColors: ThemeColors = {
@@ -106,6 +119,19 @@ export const lightColors: ThemeColors = {
     fill: ['#F1F2F5', '#EEF5D6', '#DCEAA8', '#BCD66C', '#4F7A1A'],
     text: ['#0F0F14', '#0F0F14', '#0F0F14', '#0F0F14', '#FFFFFF'],
   },
+  // Design values; the gift, lock and flame are a little darker so their icons reach 3:1.
+  quest: {
+    done: '#2FA866',
+    doneIcon: '#FFFFFF',
+    doneShade: '#1D7A47',
+    idle: '#E9EBF2',
+    idleShade: '#CDD1DE',
+    giftIcon: '#B87708',
+    lockIcon: '#6B7180',
+    todayShade: '#3E3BC2',
+    ring: 'rgba(90,87,238,0.14)',
+  },
+  flame: '#D2690F',
 };
 
 // The design is light only; this is its night version, built from the same roles.
@@ -171,4 +197,16 @@ export const darkColors: ThemeColors = {
     fill: ['#23242D', '#2C3320', '#3B4A1F', '#52692A', '#9CC24A'],
     text: ['#F4F5F9', '#F4F5F9', '#F4F5F9', '#F4F5F9', '#0F0F14'],
   },
+  quest: {
+    done: '#5FD38D',
+    doneIcon: '#0F1015',
+    doneShade: '#3E9E64',
+    idle: '#2C2E3A',
+    idleShade: '#1F2029',
+    giftIcon: '#F2C46B',
+    lockIcon: '#A0A4B2',
+    todayShade: '#3E3BC2',
+    ring: 'rgba(169,166,255,0.18)',
+  },
+  flame: '#F5A65B',
 };

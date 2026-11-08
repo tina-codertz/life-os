@@ -1,0 +1,2 @@
+-- AlterTable
+ALTER TABLE "Habit" ADD COLUMN     "goalDays" SMALLINT NOT NULL DEFAULT 21;

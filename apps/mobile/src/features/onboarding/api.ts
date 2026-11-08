@@ -1,9 +1,10 @@
-import type { PublicCategory, PublicSettings, PublicUser } from '@life-os/shared';
+import type { PublicCategory, PublicHabit, PublicSettings, PublicUser } from '@life-os/shared';
 import { api, authStore } from '@/features/auth/auth-instance';
 import { isApiError } from '@/services/api-error';
 import type { DeviceDefaults } from './device-defaults';
 import { type OnboardingDraft, resetDraft } from './draft';
 import { FOCUS_AREAS, type FocusAreaKey } from './focus-areas';
+import { HABIT_TEMPLATES, type HabitTemplateKey } from './habit-templates';
 
 // FR-ONB-002: one category per chosen focus area. A name that already exists counts as done,
 // so pressing Finish again after a failure doesn't stop on the categories made the first time.
@@ -37,13 +38,24 @@ async function complete(
   resetDraft();
 }
 
-// Categories first, then settings and profile: onboarding only counts as finished once
+// FR-ONB-003: the first habit from its template. Skipped if a habit of that name already
+// exists, so pressing Finish again after a failure doesn't make a second one.
+async function createFirstHabit(key: HabitTemplateKey | null): Promise<void> {
+  const template = HABIT_TEMPLATES.find((t) => t.key === key);
+  if (!template) return;
+  const existing = await api().get<PublicHabit[]>('/habits');
+  if (existing.some((h) => h.name === template.habit.name)) return;
+  await api().post<PublicHabit>('/habits', template.habit);
+}
+
+// Categories and the first habit first, then settings and profile: onboarding only counts as finished once
 // everything the user chose exists. The theme isn't asked here; it's in Settings → Appearance.
 export async function finishOnboarding(
   draft: OnboardingDraft,
   device: DeviceDefaults,
 ): Promise<void> {
   await seedCategories(draft.focusAreas);
+  await createFirstHabit(draft.firstHabit);
   await complete(
     {
       timezone: draft.timezone ?? device.timezone,

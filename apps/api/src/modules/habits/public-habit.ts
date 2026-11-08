@@ -78,6 +78,7 @@ export function toPublicHabit(
     color: paletteColor(habit.color),
     targetCount: habit.targetCount,
     unit: habit.unit,
+    goalDays: habit.goalDays,
     startDate: fromDbDate(habit.startDate),
     archivedAt: habit.archivedAt?.toISOString() ?? null,
     sortOrder: habit.sortOrder,

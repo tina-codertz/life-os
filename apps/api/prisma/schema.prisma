@@ -179,6 +179,7 @@ model Habit {
   icon        String?   @db.VarChar(40) // a Lucide icon name, e.g. "book-open"
   color       String    @db.VarChar(20) // a palette name (CATEGORY_COLORS), not hex
   targetCount Int       @default(1) @db.SmallInt // FR-HAB-009, e.g. 8 glasses
+  goalDays    Int       @default(21) @db.SmallInt // the quest path's challenge: "Day 12 of 21"
   unit        String?   @db.VarChar(20)
   startDate   DateTime  @db.Date // the user's local day; nothing before it is "missed"
   archivedAt  DateTime? @db.Timestamptz(3)

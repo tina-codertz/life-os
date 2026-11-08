@@ -85,6 +85,7 @@ describe('Habits (e2e)', () => {
         color: 'violet',
         targetCount: 1,
         unit: null,
+        goalDays: 21,
         startDate: today(),
         archivedAt: null,
         sortOrder: 0,

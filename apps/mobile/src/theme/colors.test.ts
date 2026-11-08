@@ -67,6 +67,17 @@ describe.each([
     expect(contrast(fg, bg)).toBeGreaterThanOrEqual(4.5);
   });
 
+  // Icons that carry meaning need 3:1 (WCAG 1.4.11): the path's circles and the 🔥 chip.
+  it.each([
+    ['tick on a done circle', colors.quest.doneIcon, colors.quest.done],
+    ['gift on a future circle', colors.quest.giftIcon, colors.quest.idle],
+    ['lock on a future circle', colors.quest.lockIcon, colors.quest.idle],
+    ['star on today', colors.text.onAccent, colors.accent.fill],
+    ['flame on a chip', colors.flame, colors.bg.surface],
+  ])('%s ≥ 3:1', (_icon, fg, bg) => {
+    expect(contrast(fg, bg)).toBeGreaterThanOrEqual(3);
+  });
+
   it.each(Object.entries(colors.category))(
     'category %s dot is visible (≥ 3:1) on every background',
     (_category, color) => {

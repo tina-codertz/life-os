@@ -35,12 +35,36 @@ import Trophy from 'lucide-react-native/icons/trophy';
 import User from 'lucide-react-native/icons/user';
 import Wallet from 'lucide-react-native/icons/wallet';
 import X from 'lucide-react-native/icons/x';
+import Zap from 'lucide-react-native/icons/zap';
+import Target from 'lucide-react-native/icons/target';
+import Star from 'lucide-react-native/icons/star';
+import SlidersHorizontal from 'lucide-react-native/icons/sliders-horizontal';
+import Pencil from 'lucide-react-native/icons/pencil';
+import Music from 'lucide-react-native/icons/music';
+import Gift from 'lucide-react-native/icons/gift';
+import Footprints from 'lucide-react-native/icons/footprints';
+import Dumbbell from 'lucide-react-native/icons/dumbbell';
+import Droplet from 'lucide-react-native/icons/droplet';
+import Brain from 'lucide-react-native/icons/brain';
+import Archive from 'lucide-react-native/icons/archive';
 import { View } from 'react-native';
 import { useTheme } from '@/theme';
 
 // The design's line icons: Lucide, drawn with a 1.9 stroke as in the design export. Screens
 // name an icon by meaning; each icon is imported on its own so only these end up in the app.
 const ICONS = {
+  archive: Archive,
+  brain: Brain,
+  droplet: Droplet,
+  dumbbell: Dumbbell,
+  footprints: Footprints,
+  gift: Gift,
+  music: Music,
+  pencil: Pencil,
+  sliders: SlidersHorizontal,
+  star: Star,
+  target: Target,
+  zap: Zap,
   add: Plus,
   arrowRight: ArrowRight,
   book: BookOpen,

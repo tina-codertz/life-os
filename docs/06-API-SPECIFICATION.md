@@ -225,6 +225,7 @@ Built in 6.1 Part 1: `GET` (ordered by `sortOrder`, then name), `POST` (`201`), 
   - Every habit carries `streak: { current, best, unit }` (unit is `weeks` for N-times-a-week), worked out by the **shared streak engine** (`packages/shared/src/habits/streaks.ts`).
   - Check-in answers `201 { completion, streak }`; undo answers `200 { completion: null, streak }`.
   - `GET /habits/:id/days?from&to` (up to 93 days) gives each day's `state`: `done`, `missed`, `open` (an unused day of an N-times-a-week habit), `off`, `today`, `upcoming` or `before-start`, with its `count`. This replaces the planned `/completions?from&to` labels.
+- **Habits I step 2c:** every habit has `goalDays` (the challenge length: 7, 21, 30 or 66; default 21; migration `add_habit_goal_days`). It's sent on create / PATCH and returned on every habit.
 - **Still Habits II:** `/stats`, reminders, and caching streaks on the habit with a nightly reconcile (for now they're computed on each read).
 
 ### Progress (XP and the overall streak; Habits I step 2b, gamification pieces brought forward)

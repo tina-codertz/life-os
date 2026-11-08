@@ -57,7 +57,7 @@ export default function OnboardingProfile() {
 
   return (
     <FormScreen title="Welcome to Life OS" intro="Two quick questions, then you're in.">
-      <StepDots step={1} of={2} />
+      <StepDots step={1} of={3} />
       <Controller
         control={control}
         name="displayName"

@@ -1,6 +1,7 @@
 import { createStore } from 'zustand/vanilla';
 import { useStore } from 'zustand';
 import type { FocusAreaKey } from './focus-areas';
+import type { HabitTemplateKey } from './habit-templates';
 
 // Answers collected across the onboarding screens, sent together at the end (or not at all
 // if the user skips). In memory only: an interrupted onboarding simply starts again.
@@ -9,6 +10,7 @@ export interface OnboardingDraft {
   timezone: string | null;
   followDeviceTimezone: boolean;
   focusAreas: FocusAreaKey[];
+  firstHabit: HabitTemplateKey | null;
 }
 
 const EMPTY: OnboardingDraft = {
@@ -16,6 +18,7 @@ const EMPTY: OnboardingDraft = {
   timezone: null,
   followDeviceTimezone: true,
   focusAreas: [],
+  firstHabit: null,
 };
 
 export const onboardingDraft = createStore<OnboardingDraft>()(() => EMPTY);

@@ -94,6 +94,7 @@ export class HabitsService {
         color: input.color,
         targetCount: input.targetCount ?? 1,
         unit: input.unit || null,
+        goalDays: input.goalDays ?? 21,
         startDate: toDbDate(startDate),
         sortOrder: existing,
         schedules: {
@@ -115,6 +116,7 @@ export class HabitsService {
     if (input.color !== undefined) data.color = input.color;
     if (input.targetCount !== undefined) data.targetCount = input.targetCount;
     if (input.unit !== undefined) data.unit = input.unit || null;
+    if (input.goalDays !== undefined) data.goalDays = input.goalDays;
     if (input.sortOrder !== undefined) data.sortOrder = input.sortOrder;
 
     if (input.schedule) {

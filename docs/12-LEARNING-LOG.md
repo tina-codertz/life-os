@@ -1140,3 +1140,23 @@ Still open (History, to discuss): what the design's calendar button on Week / Ye
 1. Why store XP as a list of awards instead of one number per user?
 2. Why must the XP award be in the same transaction as completing the task?
 
+### 2026-11-08 — Habits I step 2c: the Habits tab, the habit sheet, the first habit
+**What was built:**
+- **Habits tab** (design's quest screen):
+  - 🔥 streak and ⚡ XP chips from `/progress`; a chip per habit to switch between them.
+  - The purple card: "READ 20 MIN · DAY 12 OF 21", how often, and an edit button.
+  - The **quest path** (`buildPath` in `features/habits/quest.ts`): the last 3 past days, today, and the next 2 due days. Ahead it shows what the streak would reach: 🎁 every 7th day and on the challenge's last day, 🔒 otherwise.
+  - Tap today: check in at once (optimistic), toast "Day 13! +5 XP" with Undo. A count habit adds one per tap ("4 of 8 glasses"). A missed day in the last week can be marked done; undoing a done day asks first.
+- **Habit sheet** (like New task): name, icon, colour, How often (daily / some days / N times a week), Target, Challenge (7 / 21 / 30 / 66 days). Editing sends the schedule only if it changed, because each change starts a new schedule version.
+- **Onboarding step 3:** pick a first habit from five templates, or skip.
+- API: `goalDays` on the habit.
+**Concepts:**
+- *Optimistic update with rollback:* the tick appears before the server answers; if the server refuses, the saved copy is put back and its reason is shown.
+- *Projection:* the path's future circles aren't stored anywhere; they're worked out from today's streak plus the schedule.
+**Found while building:** a rest day was counted toward the projected streak (fixed, tested); the rollback test passed for the wrong reason until React Query's timer-based updates were flushed in the test.
+**Checks:** quest 10, Habits screen 9, habit sheet 5, onboarding 12, a11y audit 16 screens; mobile 409, API 116 unit + 176 e2e, shared 131; check clean. Seen on the simulator: empty state and the sheet.
+
+**To learn:**
+1. Why does the app show the tick before the server has answered, and what has to happen if the server says no?
+2. Why does editing a habit send the schedule only when it changed?
+

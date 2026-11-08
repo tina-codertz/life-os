@@ -13,6 +13,9 @@ export const MAX_HABITS = 50;
 export const MAX_HABIT_TARGET = 100;
 // FR-HAB-002: a missed check-in can be added for up to this many days back.
 export const HABIT_BACKFILL_DAYS = 7;
+// The quest path's challenge length ("Day 12 of 21"); the sheet offers these.
+export const HABIT_GOAL_DAYS = [7, 21, 30, 66] as const;
+const goalDays = z.number().int().min(1).max(365);
 
 const name = z
   .string()
@@ -62,6 +65,7 @@ export const createHabitSchema = z.object({
   // FR-HAB-009: e.g. 8 glasses of water; a day counts once `count` reaches it.
   targetCount: z.number().int().min(1).max(MAX_HABIT_TARGET).optional(),
   unit: z.string().trim().max(20).nullable().optional(),
+  goalDays: goalDays.optional(),
   startDate: localDateSchema.optional(),
   schedule: habitScheduleSchema,
 });
@@ -74,6 +78,7 @@ export const updateHabitSchema = z.strictObject({
   color: color.optional(),
   targetCount: z.number().int().min(1).max(MAX_HABIT_TARGET).optional(),
   unit: z.string().trim().max(20).nullable().optional(),
+  goalDays: goalDays.optional(),
   schedule: habitScheduleSchema.optional(),
   sortOrder: z.number().int().min(0).max(10_000).optional(),
 });
@@ -131,6 +136,7 @@ export interface PublicHabit {
   color: CategoryColor;
   targetCount: number;
   unit: string | null;
+  goalDays: number;
   startDate: string;
   archivedAt: string | null;
   sortOrder: number;

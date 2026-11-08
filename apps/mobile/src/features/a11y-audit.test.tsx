@@ -84,6 +84,33 @@ function serve(onboarded = true) {
       },
     },
   });
+  const habit = {
+    id: 'h1',
+    name: 'Read 20 min',
+    icon: 'book-open',
+    color: 'violet',
+    targetCount: 1,
+    unit: null,
+    goalDays: 21,
+    startDate: '2026-10-01',
+    archivedAt: null,
+    sortOrder: 0,
+    schedule: { frequency: 'DAILY' },
+    dueToday: true,
+    today: null,
+    streak: { current: 3, best: 3, unit: 'days' },
+    createdAt: '2026-10-01T00:00:00.000Z',
+    updatedAt: '2026-10-01T00:00:00.000Z',
+  };
+  routes['GET /habits'] = () => ({ status: 200, body: { data: [habit] } });
+  routes['GET /habits/h1/days'] = () => ({
+    status: 200,
+    body: { data: [{ date: TODAY, state: 'today', count: 0 }] },
+  });
+  routes['GET /progress'] = () => ({
+    status: 200,
+    body: { data: { xp: 1240, streak: { current: 3, best: 3 } } },
+  });
   routes['GET /tasks/history'] = () => {
     const days: HistoryDay[] = [{ date: TODAY, count: 1, tasks: [TASKS[2] as PublicTask] }];
     return { status: 200, body: { data: { from: TODAY, to: TODAY, total: 1, days } } };
@@ -155,6 +182,29 @@ describe('every control can be named by a screen reader', () => {
   it('Settings', async () => {
     await open('/more');
     await screen.findByText('tina@example.com');
+    expect(unnamedControls()).toEqual([]);
+  });
+
+  it('Habits: chips, the card and the quest path', async () => {
+    await open('/habits');
+    await screen.findByTestId('quest-today');
+    expect(unnamedControls()).toEqual([]);
+  });
+
+  it('Habit sheet, with some days and a target', async () => {
+    await open('/habits');
+    await act(async () => appRouter.push('/habit-form'));
+    await fireEvent.press(await screen.findByRole('radio', { name: 'Some days' }));
+    await fireEvent.changeText(screen.getByLabelText('How many a day?'), '8');
+    expect(unnamedControls()).toEqual([]);
+  });
+
+  it('Onboarding: first habit', async () => {
+    await open('/profile', 'new');
+    await press('Continue');
+    await fireEvent.press(await screen.findByRole('checkbox', { name: 'Work' }));
+    await press('Continue');
+    await screen.findByRole('radio', { name: 'Walk' });
     expect(unnamedControls()).toEqual([]);
   });
 

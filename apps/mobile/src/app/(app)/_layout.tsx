@@ -24,6 +24,7 @@ export default function AppLayout() {
       />
       <Stack.Screen name="sheet-demo" options={sheetOptions([0.5, 1], colors.bg.elevated)} />
       <Stack.Screen name="task-form" options={sheetOptions([0.85, 1], colors.bg.elevated)} />
+      <Stack.Screen name="habit-form" options={sheetOptions([0.9, 1], colors.bg.elevated)} />
     </Stack>
   );
 }

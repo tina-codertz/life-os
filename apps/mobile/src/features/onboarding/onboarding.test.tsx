@@ -18,6 +18,11 @@ const NEW_USER: PublicUser = {
 
 const press = (name: string) => fireEvent.press(screen.getByRole('button', { name }));
 const tick = (name: string) => fireEvent.press(screen.getByRole('checkbox', { name }));
+// From the focus step: Continue to the first-habit step, then Finish there.
+async function continueAndFinish() {
+  await press('Continue');
+  await fireEvent.press(await screen.findByRole('button', { name: 'Finish' }));
+}
 const bodies = (route: string) => calls.filter((c) => c.route === route).map((c) => c.body);
 
 // A new user, signed in; the fake API accepts the onboarding calls.
@@ -39,7 +44,17 @@ async function openOnboarding() {
     body: { data: { user: NEW_USER, settings: { theme: 'SYSTEM' } } },
   });
   routes['POST /categories'] = (body) => ({ status: 201, body: { data: { id: 'c1', ...body } } });
+  routes['GET /habits'] = () => ({ status: 200, body: { data: [] } });
+  routes['POST /habits'] = (body) => ({ status: 201, body: { data: { id: 'h1', ...body } } });
   return renderRouter('src/app', { initialUrl: '/' });
+}
+
+async function toFirstHabit() {
+  await openOnboarding();
+  await press('Continue');
+  await tick(await screen.findByRole('checkbox', { name: 'Work' }).then(() => 'Work'));
+  await press('Continue');
+  await screen.findByRole('radio', { name: 'Drink water' });
 }
 
 beforeEach(() => {
@@ -66,7 +81,7 @@ describe('onboarding', () => {
     await tick('Health');
     expect(screen.getByRole('checkbox', { name: 'Work' })).toBeChecked();
 
-    await press('Finish');
+    await continueAndFinish();
     await waitFor(() => expect(router.getPathname()).toBe('/today'));
     // One category per area, in the list's order, with its colour and icon.
     expect(bodies('POST /categories')).toEqual([
@@ -90,7 +105,7 @@ describe('onboarding', () => {
     await press('Continue');
     await screen.findByRole('checkbox', { name: 'Work' });
 
-    await press('Finish');
+    await press('Continue');
     expect(await screen.findByRole('alert')).toHaveTextContent('Pick at least one area.');
     expect(bodies('PATCH /users/me')).toHaveLength(0);
 
@@ -116,7 +131,7 @@ describe('onboarding', () => {
     await press('Continue');
     await screen.findByRole('checkbox', { name: 'Work' });
     await tick('Work');
-    await press('Finish');
+    await continueAndFinish();
     await waitFor(() => expect(router.getPathname()).toBe('/today'));
     expect(bodies('POST /categories')).toHaveLength(1);
   });
@@ -128,7 +143,7 @@ describe('onboarding', () => {
     await press('Continue');
     await screen.findByRole('checkbox', { name: 'Work' });
     await tick('Work');
-    await press('Finish');
+    await continueAndFinish();
 
     await waitFor(() => expect(bodies('PATCH /users/me/settings')).toHaveLength(1));
     expect(bodies('PATCH /users/me/settings')[0]).toMatchObject({
@@ -180,7 +195,7 @@ describe('onboarding', () => {
     }
   });
 
-  it('keeps the user on the focus step if saving fails', async () => {
+  it('keeps the user on the last step if saving fails', async () => {
     const router = await openOnboarding();
     routes['PATCH /users/me/settings'] = () => ({
       status: 503,
@@ -189,10 +204,56 @@ describe('onboarding', () => {
     await press('Continue');
     await screen.findByRole('checkbox', { name: 'Work' });
     await tick('Work');
-    await press('Finish');
+    await continueAndFinish();
 
     expect(await screen.findByRole('alert')).toHaveTextContent('The database is unavailable.');
-    expect(router.getPathname()).toBe('/focus');
+    expect(router.getPathname()).toBe('/first-habit');
     expect(authStore.getState().user?.onboardingCompletedAt).toBeNull();
+  });
+
+  describe('first habit (FR-ONB-003)', () => {
+    it('a chosen template becomes the first habit', async () => {
+      await toFirstHabit();
+      await fireEvent.press(screen.getByRole('radio', { name: 'Drink water' }));
+      await press('Finish');
+      await waitFor(() => expect(bodies('POST /habits')).toHaveLength(1));
+      expect(bodies('POST /habits')[0]).toEqual({
+        name: 'Drink water',
+        icon: 'droplet',
+        color: 'blue',
+        targetCount: 8,
+        unit: 'glasses',
+        schedule: { frequency: 'DAILY' },
+      });
+    });
+
+    it('"Skip this step" finishes without a habit', async () => {
+      const router = await (async () => {
+        const r = await openOnboarding();
+        await press('Continue');
+        await screen.findByRole('checkbox', { name: 'Work' });
+        await tick('Work');
+        await press('Continue');
+        await screen.findByRole('radio', { name: 'Walk' });
+        await fireEvent.press(screen.getByRole('radio', { name: 'Walk' }));
+        return r;
+      })();
+      await press('Skip this step');
+      await waitFor(() => expect(router.getPathname()).toBe('/today'));
+      expect(bodies('POST /habits')).toHaveLength(0);
+    });
+
+    it('pressing Finish again after a failure doesn\u2019t make a second habit', async () => {
+      await toFirstHabit();
+      // The habit was created on an earlier attempt that failed later on.
+      routes['GET /habits'] = () => ({
+        status: 200,
+        body: { data: [{ id: 'h1', name: 'Read 20 min' }] },
+      });
+      await fireEvent.press(screen.getByRole('radio', { name: 'Read 20 min' }));
+      await press('Finish');
+      await waitFor(() => expect(bodies('PATCH /users/me')).toHaveLength(1));
+      expect(bodies('POST /habits')).toHaveLength(0);
+    });
   });
 });
