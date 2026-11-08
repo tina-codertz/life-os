@@ -1,6 +1,6 @@
 import { router } from 'expo-router';
 import { PlaceholderScreen } from '@/components/placeholder-screen';
-import { Button, Card, Text } from '@/components/ui';
+import { Button, Card, ErrorState, Skeleton, SkeletonGroup, Text } from '@/components/ui';
 import { useSession } from '@/features/auth/session';
 import { useMe } from '@/features/users/queries';
 
@@ -28,23 +28,24 @@ function AccountCard({ me }: { me: ReturnType<typeof useMe> }) {
     if (me.error) {
       return (
         <Card>
-          <Text tone="danger" accessibilityRole="alert">
-            Couldn't load your account.
-          </Text>
-          <Button
-            title="Try again"
-            variant="secondary"
-            size="sm"
-            onPress={() => void me.refetch()}
-          />
+          <ErrorState error={me.error} onRetry={() => void me.refetch()} retrying={me.isFetching} />
+        </Card>
+      );
+    }
+    if (me.fetchStatus === 'paused') {
+      return (
+        <Card>
+          <Text tone="secondary">Waiting for a connection…</Text>
         </Card>
       );
     }
     return (
       <Card>
-        <Text tone="secondary">
-          {me.fetchStatus === 'paused' ? 'Waiting for a connection…' : 'Loading…'}
-        </Text>
+        <SkeletonGroup label="Loading your account">
+          <Skeleton width="50%" height={22} />
+          <Skeleton width="70%" />
+          <Skeleton width="40%" height={12} />
+        </SkeletonGroup>
       </Card>
     );
   }

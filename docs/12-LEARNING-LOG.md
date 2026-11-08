@@ -747,3 +747,30 @@ Node is pinned in `.node-version` and Bun in `packageManager`, so CI uses the sa
 2. When the user types a time zone, why turn off "follow the device"?
 3. Why save the settings *before* marking onboarding complete?
 4. Why are focus areas and the first habit deferred instead of built now?
+
+### 2026-11-08 — 5.8 Toast, EmptyState, ErrorState, Skeleton, sheets
+**What was built:** in `apps/mobile/src/components/`:
+- `ui/toast.tsx`: `ToastProvider` (root layout) + `useToast()`; info / success / error; optional action (Undo); one at a time, 5 s, the newest replaces the oldest; announced to screen readers; fades in, instantly under Reduce Motion.
+- `ui/empty-state.tsx`, `ui/error-state.tsx` (plain words per error type: offline, timeout, server; the request ID to quote; Try again).
+- `ui/skeleton.tsx`: `Skeleton` (line / circle / block) and `SkeletonGroup`.
+- `sheet.ts`: `sheetOptions()` for native form sheets; a demo sheet route from the design preview.
+- `theme/use-reduced-motion.ts`; More's account card now uses Skeleton and ErrorState; the design preview shows everything.
+**Concepts:**
+- *Four states, now with parts:* loading → `Skeleton`, error → `ErrorState`, empty → `EmptyState`, content. Every data screen in Phase 6 is built from these.
+- *Don't flash a loading state:* a skeleton appears only if loading takes over 150 ms; most cached screens never show one.
+- *Native first:* a sheet is the platform's own (iOS sheet / Android bottom sheet), presented as a route: gestures, accessibility and size handling come for free.
+- *Accessible feedback:* toasts are announced (`announceForAccessibility`); skeletons are hidden from screen readers, and their group says "Loading" and "busy" once; errors use `role="alert"`.
+- *Reduce Motion:* a system setting some people need (motion sickness, vestibular disorders). Animations become instant when it's on.
+- *Animate cheaply:* opacity and transform with `useNativeDriver` run on the native thread, so they stay smooth while JavaScript is busy loading.
+**Found while building:**
+- Reanimated wouldn't run in Jest: `setUpTests()` needs the native worklet runtime, the worklets resolver hit an unsupported call, and the full mocks failed on a CSS handler. After three attempts I stopped patching and reconsidered: these two animations don't need Reanimated at all. React Native's built-in `Animated` does it, works in Jest as is, and keeps Reanimated for real gesture work later.
+- React Compiler lint rules: create `Animated.Value`s with `useState(() => …)`, not by reading `useRef(...).current` during render.
+- RNTL skips elements hidden from screen readers by default; tests for the (deliberately hidden) skeleton must say `includeHiddenElements`.
+**Checked:** 160 mobile tests (14 new): EmptyState with and without action; ErrorState's four messages, request ID, retry, custom message; Skeleton appears at 150 ms not 149, hidden from screen readers, group busy; Toast shown, announced, gone after 5 s, Undo runs and closes, a new toast replaces the old with its own full 5 s, clear error outside the provider. Probes: no 150 ms delay; toast not announced: each fails a test. Lint, typecheck, `expo-doctor` clean.
+**Phase 5 code complete. M5 status: In review**, pending the device check: fresh install → register → onboarding → empty Today, in both themes.
+**To learn:**
+1. Why wait 150 ms before showing a skeleton?
+2. Why is a skeleton hidden from screen readers while its group is announced?
+3. Why present a sheet as a native route instead of drawing one in JavaScript?
+4. What does Reduce Motion change, and who needs it?
+5. When the testing setup kept failing, why was "don't use Reanimated here" a better fix than a fourth mock?

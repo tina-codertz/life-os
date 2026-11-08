@@ -1,6 +1,7 @@
 import { SplashScreen, Stack } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { OfflineBanner } from '@/components/offline-banner';
+import { ToastProvider } from '@/components/ui';
 import { useEffect } from 'react';
 import { SessionProvider, useSession, areaFor } from '@/features/auth/session';
 import { useThemeFromSettings } from '@/features/users/use-theme-from-settings';
@@ -16,7 +17,9 @@ export default function RootLayout() {
     <ThemeProvider>
       <SessionProvider>
         <QueryProvider>
-          <RootNavigator />
+          <ToastProvider>
+            <RootNavigator />
+          </ToastProvider>
         </QueryProvider>
       </SessionProvider>
     </ThemeProvider>

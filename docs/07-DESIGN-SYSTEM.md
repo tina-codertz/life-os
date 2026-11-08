@@ -84,7 +84,7 @@ All text goes through a `<Text variant="body" tone="secondary">` primitive. Font
 
 ## 5. Component inventory
 
-Primitives live in `src/components/ui/`, and feature components in `src/features/*/components/`. **Built in 5.1:** `Text`, `Button`, `Card`; **5.5:** `TextField` (label, error/helper read by screen readers, Show/Hide for passwords); **5.6:** `OfflineBanner` (pill under the status bar, announced, doesn't block taps). The rest in 5.8.
+Primitives live in `src/components/ui/`, and feature components in `src/features/*/components/`. **Built in 5.1:** `Text`, `Button`, `Card`; **5.5:** `TextField` (label, error/helper read by screen readers, Show/Hide for passwords); **5.6:** `OfflineBanner` (pill under the status bar, announced, doesn't block taps); **5.8:** `Toast` (+ `useToast`, one at a time, 5 s, optional action, announced), `EmptyState`, `ErrorState` (plain-language message per error type, request ID to quote, retry), `Skeleton` / `SkeletonGroup` (after 150 ms, pulse off under Reduce Motion, hidden from screen readers, group announced as loading), native sheets. Motion uses React Native's `Animated` (opacity/transform on the native thread) and `useReducedMotion()` from `@/theme`; Reanimated is kept for gesture-heavy work later (Phase 6 swipe actions).
 
 | Component | Variants / props | States |
 |---|---|---|
@@ -104,7 +104,7 @@ Primitives live in `src/components/ui/`, and feature components in `src/features
 | `ProgressBar` | value, tone | |
 | `StreakBadge` | count, flame icon | active, broken |
 | `HabitHeatmap` | weeks, data | done / missed / unscheduled / future |
-| `BottomSheet` | snap points | (library: `@gorhom/bottom-sheet`, Proposed) |
+| `BottomSheet` | snap points | **Decided in 5.8: native form sheets** presented as routes (`sheetOptions()` in `src/components/sheet.ts`: `presentation: 'formSheet'`, grabber, detents), not `@gorhom/bottom-sheet`: the platform's own sheet, no JS look-alike |
 | `Dialog` / `ConfirmDialog` | destructive flag | |
 | `Toast` | info / success / error, action | |
 | `EmptyState` | icon, title, description, CTA | |

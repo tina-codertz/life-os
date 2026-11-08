@@ -3,3 +3,4 @@ export { darkColors, lightColors, type ThemeColors } from './colors';
 export { darkTheme, lightTheme, type ColorScheme, type Theme } from './theme';
 export { ThemeProvider, useTheme, useThemePreference } from './theme-provider';
 export * from './tokens';
+export { useReducedMotion } from './use-reduced-motion';
