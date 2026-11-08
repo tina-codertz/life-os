@@ -36,7 +36,7 @@ export default function ResetPassword() {
         <Text tone="danger" accessibilityRole="alert">
           This link is incomplete. Open it again from the email.
         </Text>
-        <Button title="Continue" onPress={() => router.replace('/')} />
+        <Button title="Continue" size="lg" onPress={() => router.replace('/')} />
       </FormScreen>
     );
   }
@@ -45,9 +45,9 @@ export default function ResetPassword() {
     return (
       <FormScreen title="Password changed">
         <Text accessibilityLiveRegion="polite">
-          You've been logged out everywhere. Log in with your new password.
+          You've been logged out everywhere. Sign in with your new password.
         </Text>
-        <Button title="Log in" onPress={() => router.replace('/login')} />
+        <Button title="Sign in" size="lg" onPress={() => router.replace('/login')} />
       </FormScreen>
     );
   }
@@ -60,6 +60,7 @@ export default function ResetPassword() {
         render={({ field, fieldState }) => (
           <TextField
             label="New password"
+            icon="lock"
             value={field.value}
             onChangeText={field.onChange}
             onBlur={field.onBlur}
@@ -80,6 +81,7 @@ export default function ResetPassword() {
       )}
       <Button
         title="Save password"
+        size="lg"
         loading={formState.isSubmitting}
         onPress={() => void submit()}
       />

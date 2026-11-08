@@ -1,6 +1,7 @@
 import { ActivityIndicator, Pressable, type StyleProp, View, type ViewStyle } from 'react-native';
 import { MIN_TOUCH_TARGET, radius, spacing, type Theme, useTheme } from '@/theme';
-import { Text, type TextTone } from './text';
+import { Icon, type IconName } from './icon';
+import { Text, type TextTone, toneColor } from './text';
 
 export type ButtonVariant = 'primary' | 'secondary' | 'ghost' | 'destructive';
 export type ButtonSize = 'sm' | 'md' | 'lg';
@@ -10,6 +11,8 @@ export interface ButtonProps {
   onPress?: () => void;
   variant?: ButtonVariant;
   size?: ButtonSize;
+  // An icon after the title, e.g. "Sign in →" or "Create task ✓".
+  icon?: IconName;
   disabled?: boolean;
   loading?: boolean;
   // Layout only (margins, flex, width). Colours come from the variant.
@@ -17,17 +20,26 @@ export interface ButtonProps {
   testID?: string;
 }
 
-const VARIANT: Record<ButtonVariant, (theme: Theme) => { bg: string; tone: TextTone }> = {
-  primary: ({ colors }) => ({ bg: colors.accent.fill, tone: 'onAccent' }),
-  secondary: ({ colors }) => ({ bg: colors.accent.soft, tone: 'accent' }),
+// primary: the ink pill, one per screen. secondary: a white pill with a soft shadow.
+// ghost: a text link. destructive: red, for deleting.
+const VARIANT: Record<
+  ButtonVariant,
+  (theme: Theme) => { bg: string; tone: TextTone; shadow?: string }
+> = {
+  primary: ({ colors }) => ({ bg: colors.ink.fill, tone: 'onInk' }),
+  secondary: ({ colors, shadows }) => ({
+    bg: colors.bg.surface,
+    tone: 'primary',
+    shadow: shadows.sm,
+  }),
   ghost: () => ({ bg: 'transparent', tone: 'accent' }),
   destructive: ({ colors }) => ({ bg: colors.danger.fill, tone: 'onAccent' }),
 };
 
 const SIZES = {
-  sm: { minHeight: 36, paddingHorizontal: spacing.md },
-  md: { minHeight: MIN_TOUCH_TARGET, paddingHorizontal: spacing.lg },
-  lg: { minHeight: 52, paddingHorizontal: spacing.xl },
+  sm: { minHeight: 40, paddingHorizontal: spacing.lg },
+  md: { minHeight: 52, paddingHorizontal: spacing.xl },
+  lg: { minHeight: 56, paddingHorizontal: spacing.xl },
 } as const;
 
 export function Button({
@@ -35,14 +47,16 @@ export function Button({
   onPress,
   variant = 'primary',
   size = 'md',
+  icon,
   disabled = false,
   loading = false,
   style,
   testID,
 }: ButtonProps) {
   const theme = useTheme();
-  const { bg, tone } = VARIANT[variant](theme);
+  const { bg, tone, shadow } = VARIANT[variant](theme);
   const inactive = disabled || loading;
+  const contentColor = toneColor(tone, theme.colors);
 
   return (
     <Pressable
@@ -58,26 +72,30 @@ export function Button({
       style={({ pressed }) => [
         {
           ...SIZES[size],
+          flexDirection: 'row',
+          gap: spacing.sm,
           backgroundColor: bg,
-          borderRadius: radius.md,
-          borderCurve: 'continuous',
+          borderRadius: radius.full,
           alignItems: 'center',
           justifyContent: 'center',
-          opacity: disabled ? 0.4 : pressed ? 0.75 : 1,
+          ...(shadow && shadow !== 'none' ? { boxShadow: shadow } : {}),
+          opacity: disabled ? 0.4 : pressed ? 0.8 : 1,
+          transform: [{ scale: pressed ? 0.98 : 1 }],
         },
         style,
       ]}
     >
       {loading ? (
         <View accessibilityElementsHidden importantForAccessibility="no-hide-descendants">
-          <ActivityIndicator
-            color={theme.colors.text[tone === 'onAccent' ? 'onAccent' : 'primary']}
-          />
+          <ActivityIndicator color={contentColor} />
         </View>
       ) : (
-        <Text variant={size === 'sm' ? 'callout' : 'bodyStrong'} tone={tone}>
-          {title}
-        </Text>
+        <>
+          <Text variant={size === 'sm' ? 'label' : 'bodyStrong'} tone={tone}>
+            {title}
+          </Text>
+          {icon && <Icon name={icon} size={18} color={contentColor} />}
+        </>
       )}
     </Pressable>
   );

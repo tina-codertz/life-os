@@ -852,3 +852,34 @@ Done by me in Expo Go: registered with the real form, went through onboarding (n
 2. Why was the first rollback test useless, and what made the new one trustworthy?
 3. Why offer Undo instead of an "Are you sure?" dialog?
 4. Why compute "today" in the user's saved time zone instead of the phone's?
+
+### 2026-11-08 — Design refresh: every finished screen matches the design export
+**What changed (mobile):**
+- **Theme** (`src/theme/`): the design's light palette (canvas, blue wash, white cards, ink buttons, violet highlights, pastel tiles), a night version of it, the Outfit type ramp, bigger radii, soft blue-grey shadows. When the system scheme is unknown, the app now falls back to light.
+- **Font:** Outfit, 4 weights, loaded before the splash screen hides (`app/_layout.tsx`).
+- **Icons:** `Icon` draws SF Symbols on iOS and Material Symbols on Android through `expo-symbols`, from one name map.
+- **New parts:** `IconTile`, `IconButton`, `ListGroup` / `ListRow`, `SegmentedControl`, `Mascot` (Lio), `Screen` / `ScreenHeader` / `ScreenWash`, `TabBar`, `StepDots`, `MonthCalendar`.
+- **Tab bar:** the design's floating white dock. The current tab is a black pill with its name, the others are icons. It's built on Expo Router's JS tabs because the native tab bar can't take that shape (ADR-021).
+- **Screens restyled:** Welcome (Lio splash), Sign in / Create account (with a switch between them), Forgot / Reset password, the email-link screens, both onboarding steps (page dots, icon cards), Tasks (white rows, check tile in the category's pastel, priority badges, floating +), the New task sheet, More (laid out like the design's Settings), and the Today / Habits / Calendar "coming soon" cards.
+- **Your date flow:** Due date has **Today** and **Tomorrow** chips and a **Pick a date** chip that opens a month calendar. Past days can't be picked, the week starts on your setting, and choosing a day closes the calendar. "Remove due date" clears it.
+- **Wording:** "Log in" became "Sign in", as in the design.
+**Concepts:**
+- *Design tokens absorb a redesign:* most of the new look came from changing `colors.ts` / `tokens.ts`, because components only use token names. Screens changed where the layout changed, not for colours.
+- *Contrast is a test, not a promise:* four of the design's colours failed WCAG AA in places. The test found them, and the theme uses slightly darker values (07 §2.1).
+- *Font files per weight:* with custom fonts, each weight is its own file, so styles name the file (`Outfit_600SemiBold`) instead of `fontWeight`. Android can't fake a bold.
+- *Hold the splash screen:* the app stays on the splash until both the session and the font are ready, so text never jumps from the system font to Outfit.
+- *Custom tab bar, same accessibility:* each tab is announced as a tab with its name and "selected". The icons are decorative because the name carries the meaning.
+- *Calendar grid maths:* the number of blanks before the 1st is `(weekday of the 1st − week start + 7) % 7`, and the date maths runs in UTC so daylight saving can't shift a day.
+**Checks:**
+- 280 mobile tests pass, including 115 contrast checks, 6 new calendar-maths tests, 3 new due-date flow tests and the Sign in / Create account switch.
+- Probes: (1) leaving the calendar open after picking, (2) letting past days be picked, (3) ignoring the week start, (4) "Remove due date" not clearing. Each makes a test fail.
+- `bun run check` is clean and `expo-doctor` passes 20 of 20. On the simulator, Calendar, Tasks, New task and More match the design.
+**Not built (the screens or the API aren't there yet; see 08 "Design export coverage"):** the Time, Repeat and Subtasks rows, Tasks search / filter buttons and counts, the magic-link sign-in, the onboarding intro cards, and all gamification (XP, chests, achievements).
+
+**To learn:**
+1. Why did most of the redesign happen by editing two token files, and what would it have cost if screens had used hex colours directly?
+2. The design's green `#1E8A4F` looks fine on screen, so why does the app use `#17784C`? What does 4.5:1 protect?
+3. Why does each Outfit weight need its own font name, instead of `fontWeight: '600'`?
+4. Why is the splash screen held until the font has loaded, and what would the user see otherwise?
+5. A custom tab bar loses what the native one gave for free. Name two things we had to rebuild by hand.
+6. In the month grid, why are the days before the 1st `null` instead of the previous month's days?

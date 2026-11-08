@@ -6,14 +6,15 @@ import { Controller } from 'react-hook-form';
 import { View } from 'react-native';
 import { z } from 'zod';
 import { FormScreen } from '@/components/form-screen';
-import { Button, Card, Text, TextField } from '@/components/ui';
+import { Button, Card, IconTile, Text, TextField } from '@/components/ui';
 import { useSession } from '@/features/auth/session';
 import { applyApiError, useZodForm } from '@/features/forms/zod-form';
 import { skipOnboarding } from '@/features/onboarding/api';
 import { deviceDefaults } from '@/features/onboarding/device-defaults';
 import { updateDraft } from '@/features/onboarding/draft';
+import { StepDots } from '@/features/onboarding/step-dots';
 import { userKeys } from '@/features/users/queries';
-import { spacing } from '@/theme';
+import { spacing, useTheme } from '@/theme';
 
 const schema = z.object({
   displayName: registerSchema.shape.displayName,
@@ -24,6 +25,7 @@ const schema = z.object({
 // (FR-ONB-002/003) join in Phase 6, once categories and habits exist.
 export default function OnboardingProfile() {
   const { user } = useSession();
+  const { colors } = useTheme();
   const device = useMemo(() => deviceDefaults(), []);
   const queryClient = useQueryClient();
   const [editingZone, setEditingZone] = useState(false);
@@ -55,15 +57,14 @@ export default function OnboardingProfile() {
 
   return (
     <FormScreen title="Welcome to Life OS" intro="Two quick questions, then you're in.">
-      <Text variant="overline" tone="secondary">
-        Step 1 of 2
-      </Text>
+      <StepDots step={1} of={2} />
       <Controller
         control={control}
         name="displayName"
         render={({ field, fieldState }) => (
           <TextField
             label="What should we call you?"
+            icon="person"
             value={field.value}
             onChangeText={field.onChange}
             onBlur={field.onBlur}
@@ -80,6 +81,7 @@ export default function OnboardingProfile() {
           editingZone ? (
             <TextField
               label="Time zone"
+              icon="globe"
               value={field.value}
               onChangeText={field.onChange}
               onBlur={field.onBlur}
@@ -89,21 +91,25 @@ export default function OnboardingProfile() {
               autoCorrect={false}
             />
           ) : (
-            <Card variant="outlined">
-              <View style={{ gap: spacing.xs }}>
-                <Text variant="callout" tone="secondary">
-                  Time zone (from your phone)
-                </Text>
-                <Text variant="bodyStrong">{field.value}</Text>
-                <Text variant="caption" tone="secondary">
-                  Used to decide what "today" means for your tasks and habits.
-                </Text>
+            <Card>
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.md }}>
+                <IconTile icon="globe" tint={colors.tile.lime} />
+                <View style={{ flex: 1, gap: spacing.xxs }}>
+                  <Text variant="label" tone="label">
+                    Time zone (from your phone)
+                  </Text>
+                  <Text variant="bodyStrong">{field.value}</Text>
+                </View>
               </View>
+              <Text variant="caption" tone="secondary">
+                Used to decide what "today" means for your tasks and habits.
+              </Text>
               <Button
                 title="Change time zone"
                 variant="ghost"
                 size="sm"
                 onPress={() => setEditingZone(true)}
+                style={{ alignSelf: 'flex-start', paddingHorizontal: 0 }}
               />
             </Card>
           )
@@ -114,7 +120,13 @@ export default function OnboardingProfile() {
           {formState.errors.root['server'].message}
         </Text>
       )}
-      <Button title="Continue" disabled={skipping} onPress={() => void next()} />
+      <Button
+        title="Continue"
+        size="lg"
+        icon="arrowRight"
+        disabled={skipping}
+        onPress={() => void next()}
+      />
       <Button title="Skip for now" variant="ghost" loading={skipping} onPress={() => void skip()} />
     </FormScreen>
   );

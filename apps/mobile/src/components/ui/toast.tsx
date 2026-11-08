@@ -70,7 +70,7 @@ export function useToast(): (options: ToastOptions) => void {
 }
 
 function ToastView({ toast, onDismiss }: { toast: ShownToast; onDismiss: () => void }) {
-  const { colors } = useTheme();
+  const { colors, shadows } = useTheme();
   const insets = useSafeAreaInsets();
   const toneColor = {
     info: colors.text.primary,
@@ -92,12 +92,12 @@ function ToastView({ toast, onDismiss }: { toast: ShownToast; onDismiss: () => v
 
   return (
     <Animated.View
-      // Sits above the native tab bar (~49 pt) and the home indicator.
+      // Sits above the floating tab bar (68 pt + 20 pt margin) and the home indicator.
       style={{
         position: 'absolute',
-        left: spacing.lg,
-        right: spacing.lg,
-        bottom: insets.bottom + 64,
+        left: spacing.gutter,
+        right: spacing.gutter,
+        bottom: insets.bottom + 100,
         opacity: appear,
         transform: [
           { translateY: appear.interpolate({ inputRange: [0, 1], outputRange: [12, 0] }) },
@@ -114,12 +114,12 @@ function ToastView({ toast, onDismiss }: { toast: ShownToast; onDismiss: () => v
           minHeight: MIN_TOUCH_TARGET,
           paddingLeft: spacing.lg,
           paddingRight: toast.action ? spacing.xs : spacing.lg,
-          borderRadius: radius.md,
+          borderRadius: radius.lg,
           borderCurve: 'continuous',
-          backgroundColor: colors.bg.elevated,
+          backgroundColor: colors.bg.surface,
           borderLeftWidth: 4,
           borderLeftColor: toneColor,
-          boxShadow: '0 4px 12px rgba(0, 0, 0, 0.18)',
+          boxShadow: shadows.lg,
         }}
       >
         <Text style={{ flex: 1, paddingVertical: spacing.sm }}>{toast.message}</Text>

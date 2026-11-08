@@ -35,16 +35,23 @@ describe('Button', () => {
   });
 
   it.each([
-    ['primary', 'DARK', darkColors.accent.fill],
+    // The ink pill: near-black in light mode, near-white in dark mode.
+    ['primary', 'DARK', darkColors.ink.fill],
     ['destructive', 'DARK', darkColors.danger.fill],
-    ['primary', 'LIGHT', lightColors.accent.fill],
+    ['primary', 'LIGHT', lightColors.ink.fill],
   ] as const)('%s variant in %s uses the theme fill', async (variant, theme, fill) => {
     await renderWithTheme(<Button title="Go" variant={variant} />, theme);
     expect(screen.getByRole('button', { name: 'Go' })).toHaveStyle({ backgroundColor: fill });
   });
 
-  it('is at least 44 pt tall at the default size', async () => {
+  it('is comfortably over 44 pt tall at the default size', async () => {
     await renderWithTheme(<Button title="Tall" />);
-    expect(screen.getByRole('button', { name: 'Tall' })).toHaveStyle({ minHeight: 44 });
+    expect(screen.getByRole('button', { name: 'Tall' })).toHaveStyle({ minHeight: 52 });
+  });
+
+  it('small buttons still get a 44 pt tap area', async () => {
+    await renderWithTheme(<Button title="Small" size="sm" />);
+    // 40 pt tall + 2 pt of hit slop above and below.
+    expect(screen.getByRole('button', { name: 'Small' }).props.hitSlop).toBe(2);
   });
 });

@@ -8,9 +8,12 @@ export default function AppLayout() {
   return (
     <Stack screenOptions={{ contentStyle: { backgroundColor: colors.bg.canvas } }}>
       <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
-      <Stack.Screen name="design-preview" options={{ title: 'Design system' }} />
-      <Stack.Screen name="sheet-demo" options={sheetOptions()} />
-      <Stack.Screen name="task-form" options={sheetOptions([0.75, 1])} />
+      <Stack.Screen
+        name="design-preview"
+        options={{ title: 'Design system', headerTintColor: colors.text.primary }}
+      />
+      <Stack.Screen name="sheet-demo" options={sheetOptions([0.5, 1], colors.bg.elevated)} />
+      <Stack.Screen name="task-form" options={sheetOptions([0.85, 1], colors.bg.elevated)} />
     </Stack>
   );
 }

@@ -1,20 +1,34 @@
 import { Pressable, View } from 'react-native';
 import { MIN_TOUCH_TARGET, radius, spacing, useTheme } from '@/theme';
+import { Icon, type IconName } from './icon';
 import { Text } from './text';
 
 export interface ChipProps {
   label: string;
   selected: boolean;
   onPress: () => void;
-  // A small colour dot before the label (category colour). Never the only signal: the label says it.
+  // Background when not selected: a pastel (category, priority) or the default grey.
+  tint?: string;
+  // A small colour dot before the label. Never the only signal: the label says it.
   dotColor?: string;
+  icon?: IconName;
   // One choice in a group ('radio', the default) or an on/off toggle ('checkbox').
   role?: 'radio' | 'checkbox';
 }
 
-// Compact choice for filters and pickers (docs/07 Chip). Selected chips use the accent; the
-// state is also announced (`selected` / `checked`), not just shown by colour.
-export function Chip({ label, selected, onPress, dotColor, role = 'radio' }: ChipProps) {
+const HEIGHT = 40;
+
+// Compact choice for filters and pickers (docs/07 Chip): a pill that turns ink when selected.
+// The state is also announced (`selected` / `checked`), not just shown by colour.
+export function Chip({
+  label,
+  selected,
+  onPress,
+  tint,
+  dotColor,
+  icon,
+  role = 'radio',
+}: ChipProps) {
   const { colors } = useTheme();
   return (
     <Pressable
@@ -24,18 +38,16 @@ export function Chip({ label, selected, onPress, dotColor, role = 'radio' }: Chi
         role === 'radio' ? { selected, checked: selected } : { checked: selected }
       }
       onPress={onPress}
-      hitSlop={(MIN_TOUCH_TARGET - 34) / 2}
+      hitSlop={(MIN_TOUCH_TARGET - HEIGHT) / 2}
       style={({ pressed }) => ({
         flexDirection: 'row',
         alignItems: 'center',
-        gap: spacing.xs,
-        minHeight: 34,
-        paddingHorizontal: spacing.md,
+        gap: spacing.xs + 2,
+        minHeight: HEIGHT,
+        paddingHorizontal: spacing.lg,
         borderRadius: radius.full,
-        backgroundColor: selected ? colors.accent.soft : colors.bg.subtle,
-        borderWidth: 1,
-        borderColor: selected ? colors.accent.default : 'transparent',
-        opacity: pressed ? 0.75 : 1,
+        backgroundColor: selected ? colors.ink.fill : (tint ?? colors.bg.subtle),
+        opacity: pressed ? 0.8 : 1,
       })}
     >
       {dotColor && (
@@ -43,7 +55,10 @@ export function Chip({ label, selected, onPress, dotColor, role = 'radio' }: Chi
           style={{ width: 8, height: 8, borderRadius: radius.full, backgroundColor: dotColor }}
         />
       )}
-      <Text variant="callout" tone={selected ? 'accent' : 'primary'}>
+      {icon && (
+        <Icon name={icon} size={16} color={selected ? colors.ink.text : colors.text.primary} />
+      )}
+      <Text variant="calloutStrong" tone={selected ? 'onInk' : 'primary'}>
         {label}
       </Text>
     </Pressable>

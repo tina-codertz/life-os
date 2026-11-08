@@ -30,7 +30,7 @@ export default function ForgotPassword() {
           If {sentTo} has a Life OS account, we've sent a link to reset the password. It works for 1
           hour.
         </Text>
-        <Button title="Back to log in" onPress={() => router.replace('/login')} />
+        <Button title="Back to sign in" size="lg" onPress={() => router.replace('/login')} />
       </FormScreen>
     );
   }
@@ -46,6 +46,7 @@ export default function ForgotPassword() {
         render={({ field, fieldState }) => (
           <TextField
             label="Email"
+            icon="mail"
             value={field.value}
             onChangeText={field.onChange}
             onBlur={field.onBlur}
@@ -64,7 +65,13 @@ export default function ForgotPassword() {
           {formState.errors.root['server'].message}
         </Text>
       )}
-      <Button title="Send link" loading={formState.isSubmitting} onPress={() => void submit()} />
+      <Button
+        title="Send link"
+        size="lg"
+        icon="arrowRight"
+        loading={formState.isSubmitting}
+        onPress={() => void submit()}
+      />
     </FormScreen>
   );
 }

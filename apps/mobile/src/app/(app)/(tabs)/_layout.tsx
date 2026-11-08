@@ -1,31 +1,24 @@
-import { NativeTabs } from 'expo-router/native-tabs';
+import { type BottomTabBarProps, Tabs } from 'expo-router/js-tabs';
+import { TabBar } from '@/components/tab-bar';
 import { useTheme } from '@/theme';
 
-// Native tab bar (UITabBar / Material bottom navigation): docs/03's four tabs + More.
+// A plain function (not a component defined inside TabsLayout), so it isn't recreated per render.
+const renderTabBar = (props: BottomTabBarProps) => <TabBar {...props} />;
+
+// The design's floating tab bar (components/tab-bar.tsx) over docs/03's four tabs + More.
+// A JS tab navigator, because the native tab bar can't take this shape.
 export default function TabsLayout() {
   const { colors } = useTheme();
   return (
-    <NativeTabs tintColor={colors.accent.default}>
-      <NativeTabs.Trigger name="today">
-        <NativeTabs.Trigger.Icon sf="sun.max" md="today" />
-        <NativeTabs.Trigger.Label>Today</NativeTabs.Trigger.Label>
-      </NativeTabs.Trigger>
-      <NativeTabs.Trigger name="tasks">
-        <NativeTabs.Trigger.Icon sf="checklist" md="checklist" />
-        <NativeTabs.Trigger.Label>Tasks</NativeTabs.Trigger.Label>
-      </NativeTabs.Trigger>
-      <NativeTabs.Trigger name="habits">
-        <NativeTabs.Trigger.Icon sf="repeat" md="repeat" />
-        <NativeTabs.Trigger.Label>Habits</NativeTabs.Trigger.Label>
-      </NativeTabs.Trigger>
-      <NativeTabs.Trigger name="calendar">
-        <NativeTabs.Trigger.Icon sf="calendar" md="calendar_month" />
-        <NativeTabs.Trigger.Label>Calendar</NativeTabs.Trigger.Label>
-      </NativeTabs.Trigger>
-      <NativeTabs.Trigger name="more">
-        <NativeTabs.Trigger.Icon sf="ellipsis.circle" md="more_horiz" />
-        <NativeTabs.Trigger.Label>More</NativeTabs.Trigger.Label>
-      </NativeTabs.Trigger>
-    </NativeTabs>
+    <Tabs
+      tabBar={renderTabBar}
+      screenOptions={{ headerShown: false, sceneStyle: { backgroundColor: colors.bg.canvas } }}
+    >
+      <Tabs.Screen name="today" options={{ title: 'Today' }} />
+      <Tabs.Screen name="tasks" options={{ title: 'Tasks' }} />
+      <Tabs.Screen name="habits" options={{ title: 'Habits' }} />
+      <Tabs.Screen name="calendar" options={{ title: 'Calendar' }} />
+      <Tabs.Screen name="more" options={{ title: 'More' }} />
+    </Tabs>
   );
 }

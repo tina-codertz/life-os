@@ -6,8 +6,8 @@ import { spacing } from '@/theme';
 // A native form sheet (opened from the design preview), the pattern for task/habit forms.
 export default function SheetDemo() {
   return (
-    <View style={{ padding: spacing.lg, gap: spacing.md }}>
-      <Text variant="title2" accessibilityRole="header">
+    <View style={{ padding: spacing.gutter, paddingTop: spacing.xl, gap: spacing.md }}>
+      <Text variant="title1" accessibilityRole="header">
         Native sheet
       </Text>
       <Text tone="secondary">

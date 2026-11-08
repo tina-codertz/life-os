@@ -4,7 +4,7 @@
 |---|---|
 | **Purpose** | Records *why* decisions were made, with alternatives and trade-offs |
 | **Status** | Living document |
-| **Last updated** | 2026-11-07 |
+| **Last updated** | 2026-11-08 |
 
 **Status values:** `Confirmed` (agreed by the project owner) · `Proposed` (recommended, awaiting review) · `Superseded`.
 
@@ -31,7 +31,7 @@
 | 004 | JWT access + rotating opaque refresh tokens | Confirmed |
 | 005 | Money as integer minor units (BigInt) | Confirmed |
 | 006 | UTC instants + local-date columns for day logic | Confirmed |
-| 007 | Violet/indigo primary accent; green reserved for success | **Confirmed** |
+| 007 | Violet/indigo primary accent; green reserved for success | Superseded by ADR-020 |
 | 008 | Self-hosted single VPS with Docker Compose + Caddy | **Confirmed** |
 | 009 | Zod schemas shared between mobile and API | Confirmed |
 | 010 | Online-first with persisted query cache (no offline sync in MVP) | Confirmed |
@@ -43,6 +43,9 @@
 | 016 | Commit directly to `main`; no branch protection or PRs for now | **Confirmed** |
 | 017 | API uses NestJS 12 defaults: ESM, Vitest, oxlint; `shared` has no build step | Proposed |
 | 018 | One repo-wide oxlint + Prettier setup (not ESLint); Husky + lint-staged pre-commit | Proposed |
+| 019 | Authentication required by default (global guard + `@Public()`) | **Confirmed** |
+| 020 | Light playful visual direction (the Nov 2026 design export) | **Confirmed** (dark variant Proposed) |
+| 021 | Floating JS tab bar; platform icons via `expo-symbols`; Outfit font | Proposed |
 
 ---
 
@@ -86,7 +89,7 @@
 - **Consequences:** History stays correct across travel and DST. The server needs the user's timezone (settings + `X-Timezone`).
 
 ### ADR-007 — Violet/indigo accent
-- **Status:** Confirmed · 2026-11-03
+- **Status:** Superseded by ADR-020 · was Confirmed 2026-11-03
 - **Decision:** Brand accent `#8B7CFF` (dark) / `#5B3FE0` (light). `#8FB339` is reassigned to the success role. See [07](07-DESIGN-SYSTEM.md).
 
 ### ADR-008 — Self-hosted single VPS
@@ -156,3 +159,18 @@
 - **Decision:** Register `JwtAuthGuard` as a global `APP_GUARD`. Routes opt *out* with `@Public()` (currently `HealthController`, `AuthController`). The guard only verifies the token (no DB lookup); endpoints that load the user treat a missing or deleted account as `401`.
 - **Alternatives:** `@UseGuards()` per controller (explicit, but fails open when forgotten); Passport (`@nestjs/passport` + `passport-jwt`: more indirection for one strategy).
 - **Consequences:** Forgetting `@Public()` on a route that should be open gives a visible 401 in tests (fails closed). A deleted account's token works on routes that don't load the user until it expires (≤ 15 min); 4.5's sessions make revocation immediate.
+
+### ADR-020 — Light playful visual direction (the Nov 2026 design export)
+- **Status:** Confirmed · 2026-11-08 (the light theme follows the design). The dark variant is **Proposed**.
+- **Context:** The project owner exported a full app design (`docs/Life OS — App Design (1).html`, 26 screens, kept locally and git-ignored because it's 7.6 MB of bundled fonts and images) and asked for every finished screen to match it. It replaces the dark-first violet look of ADR-007.
+- **Decision:** The look is light-first: a pale canvas `#F3F4F9` with a soft blue wash at the top, white cards with soft blue-grey shadows, and near-black "ink" `#0F0F14` pill buttons for the main action. Violet `#5A57EE` → `#7C5CE8` is used for links and highlights; pastel tiles (sky, lime, peach, lavender, rose) back icons and chips by meaning. The font is Outfit, and Lio the mascot appears in empty states and the welcome screen. Token values are in [07](07-DESIGN-SYSTEM.md) §2. Four design colours were darkened slightly to pass WCAG AA (tested in `colors.test.ts`): success `#1E8A4F` → `#17784C`, danger text `#D2405B` → `#B42F4A`, and violet on lavender `#5A57EE` → `#4744C9` (badges only). Grey `#6B6F7B` text is never placed on the darker chips and tiles.
+- **Alternatives:** Keep the dark glass design from the first export. It was replaced by this one. Make the app light-only like the design, which would drop the Appearance setting users already choose in onboarding.
+- **Consequences:** Dark mode stays, as a night version of the same roles (ink becomes near-white). The design doesn't specify it, so it is Proposed until reviewed on a device. The design's game features (XP, streak chests, achievements, Lio's moods), Money and Ask Lio stay in their planned later phases (ADR-011). Screens show only what works today.
+
+### ADR-021 — Floating JS tab bar; platform icons via `expo-symbols`; Outfit font
+- **Status:** Proposed · 2026-11-08
+- **Context:** The design's tab bar is a floating white pill. The current tab is a black pill with its name, and the others show icons only. The native tab bar (`expo-router/native-tabs`, used since 5.3) can't take that shape. The design draws Lucide-style line icons and uses the Outfit font.
+- **Decision:** Use Expo Router's JS tabs (`expo-router/js-tabs`) with a custom `tabBar` (`src/components/tab-bar.tsx`). Each tab is announced as a tab with its name and selected state. Icons come from `expo-symbols`, which was already installed: SF Symbols on iOS and Material Symbols on Android, mapped once in `src/components/ui/icon.tsx`. This adds no icon library and the icons look native on each platform. Outfit is loaded with `expo-font` from `@expo-google-fonts/outfit`, using only the four weights in use. The splash screen stays up until the font is ready.
+- **Alternatives:** Keep the native tab bar (iOS 26 glass, but not the design, and it also truncated "Habits" / "Calendar"). Use `lucide-react-native` (exact design icons, but adds `react-native-svg` and a non-native look). Use the system font.
+- **Consequences:** We lose the native tab bar's automatic iOS 26 glass and its system behaviours. Ours has to keep accessibility and the safe area right by hand, and has tests. Icons differ slightly from the design's Lucide strokes. The iOS 26 tab-label truncation issue is gone.
+

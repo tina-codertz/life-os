@@ -3,7 +3,10 @@
 module.exports = {
   preset: 'jest-expo',
   // Metro resolves the tsconfig "@/…" alias itself; Jest needs it spelled out.
-  moduleNameMapper: { '^@/(.*)$': '<rootDir>/src/$1' },
+  moduleNameMapper: {
+    '^@/assets/(.*)$': '<rootDir>/assets/$1',
+    '^@/(.*)$': '<rootDir>/src/$1',
+  },
   testMatch: ['<rootDir>/src/**/*.test.{ts,tsx}'],
   setupFiles: ['<rootDir>/jest.setup.js'],
 };

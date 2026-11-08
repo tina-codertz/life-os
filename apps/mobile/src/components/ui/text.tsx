@@ -1,7 +1,8 @@
 import { Text as RNText, type TextProps as RNTextProps } from 'react-native';
 import { type ThemeColors, type TextVariant, typography, useTheme } from '@/theme';
 
-export type TextTone = 'primary' | 'secondary' | 'accent' | 'success' | 'danger' | 'onAccent';
+export type TextTone =
+  'primary' | 'secondary' | 'label' | 'accent' | 'success' | 'danger' | 'onAccent' | 'onInk';
 
 export interface TextProps extends RNTextProps {
   variant?: TextVariant;
@@ -12,11 +13,18 @@ export interface TextProps extends RNTextProps {
 const TONE_COLOR: Record<TextTone, (colors: ThemeColors) => string> = {
   primary: (c) => c.text.primary,
   secondary: (c) => c.text.secondary,
+  label: (c) => c.text.label,
   accent: (c) => c.accent.default,
   success: (c) => c.success.default,
   danger: (c) => c.danger.text,
   onAccent: (c) => c.text.onAccent,
+  onInk: (c) => c.ink.text,
 };
+
+// For things drawn next to text in the same colour (icons, spinners).
+export function toneColor(tone: TextTone, colors: ThemeColors): string {
+  return TONE_COLOR[tone](colors);
+}
 
 // All text in the app goes through this: sizes from the type ramp, colours from the theme.
 // Text scales with the user's font-size setting, up to 2× (docs/07 §3); layouts must wrap.

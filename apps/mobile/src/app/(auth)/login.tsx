@@ -3,10 +3,13 @@ import { router } from 'expo-router';
 import { useRef } from 'react';
 import { Controller } from 'react-hook-form';
 import { FormScreen } from '@/components/form-screen';
+import { View } from 'react-native';
 import { Button, Text, TextField, type TextFieldHandle } from '@/components/ui';
 import { login } from '@/features/auth/auth-api';
+import { AuthSwitch } from '@/features/auth/auth-switch';
 import { useSession } from '@/features/auth/session';
 import { applyApiError, useZodForm } from '@/features/forms/zod-form';
+import { spacing } from '@/theme';
 
 const schema = loginSchema.omit({ deviceName: true });
 
@@ -28,13 +31,15 @@ export default function Login() {
   });
 
   return (
-    <FormScreen title="Log in" intro="Welcome back.">
+    <FormScreen title="Welcome back" intro="Sign in to pick up where you left off." brand>
+      <AuthSwitch current="login" />
       <Controller
         control={control}
         name="email"
         render={({ field, fieldState }) => (
           <TextField
             label="Email"
+            icon="mail"
             value={field.value}
             onChangeText={field.onChange}
             onBlur={field.onBlur}
@@ -55,6 +60,7 @@ export default function Login() {
           <TextField
             ref={passwordRef}
             label="Password"
+            icon="lock"
             value={field.value}
             onChangeText={field.onChange}
             onBlur={field.onBlur}
@@ -72,16 +78,21 @@ export default function Login() {
           {formState.errors.root['server'].message}
         </Text>
       )}
-      <Button title="Log in" loading={formState.isSubmitting} onPress={() => void submit()} />
+      <View style={{ alignItems: 'flex-end', marginTop: -spacing.sm }}>
+        <Button
+          title="Forgot password?"
+          variant="ghost"
+          size="sm"
+          onPress={() => router.push('/forgot-password')}
+          style={{ paddingHorizontal: 0 }}
+        />
+      </View>
       <Button
-        title="Forgot password?"
-        variant="ghost"
-        onPress={() => router.push('/forgot-password')}
-      />
-      <Button
-        title="No account yet? Create one"
-        variant="ghost"
-        onPress={() => router.replace('/register')}
+        title="Sign in"
+        size="lg"
+        icon="arrowRight"
+        loading={formState.isSubmitting}
+        onPress={() => void submit()}
       />
     </FormScreen>
   );

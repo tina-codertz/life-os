@@ -1,7 +1,7 @@
 import type { PublicCategory, PublicTask } from '@life-os/shared';
 import { Pressable, View } from 'react-native';
-import { Text } from '@/components/ui';
-import { MIN_TOUCH_TARGET, radius, spacing, useTheme } from '@/theme';
+import { Icon, Text } from '@/components/ui';
+import { radius, spacing, type ThemeColors, useTheme } from '@/theme';
 import { formatDue } from './dates';
 
 const PRIORITY_LABEL: Record<PublicTask['priority'], string | null> = {
@@ -10,6 +10,17 @@ const PRIORITY_LABEL: Record<PublicTask['priority'], string | null> = {
   MEDIUM: 'Medium',
   HIGH: 'High',
   URGENT: 'Urgent',
+};
+
+// The coloured badge on the right of a row. The word is always there; colour only adds to it.
+const PRIORITY_BADGE: Record<
+  Exclude<PublicTask['priority'], 'NONE'>,
+  (c: ThemeColors) => { bg: string; color: string }
+> = {
+  LOW: (c) => ({ bg: c.tile.neutral, color: c.text.label }),
+  MEDIUM: (c) => ({ bg: c.accent.soft, color: c.accent.onSoft }),
+  HIGH: (c) => ({ bg: c.danger.soft, color: c.danger.text }),
+  URGENT: (c) => ({ bg: c.danger.fill, color: c.text.onAccent }),
 };
 
 export interface TaskRowProps {
@@ -21,22 +32,30 @@ export interface TaskRowProps {
   onDelete: () => void;
 }
 
-// One task: a check circle (its own button), then title and details (tap to edit). Screen
+// One task as a white card (the design's task rows): a check tile in the category's pastel
+// (its own button), then title and details (tap to edit), then the priority badge. Screen
 // readers also get "Complete" / "Delete" as actions on the row.
 export function TaskRow({ task, category, today, onToggle, onOpen, onDelete }: TaskRowProps) {
-  const { colors } = useTheme();
+  const { colors, shadows } = useTheme();
   const done = task.status === 'DONE';
   const due = task.dueDate ? formatDue(task.dueDate, today, task.dueTime, done) : null;
   const priority = PRIORITY_LABEL[task.priority];
+  const badge = task.priority === 'NONE' ? null : PRIORITY_BADGE[task.priority](colors);
   const details = [due?.text, priority && `${priority} priority`, category?.name].filter(Boolean);
+  const meta = [due?.text, category?.name].filter(Boolean).join(' · ');
 
   return (
     <View
       style={{
         flexDirection: 'row',
         alignItems: 'center',
-        gap: spacing.sm,
-        paddingVertical: spacing.xs,
+        gap: spacing.md,
+        padding: spacing.md,
+        borderRadius: radius.lg + 2,
+        borderCurve: 'continuous',
+        backgroundColor: colors.bg.surface,
+        boxShadow: shadows.md,
+        opacity: done ? 0.75 : 1,
       }}
     >
       <Pressable
@@ -45,31 +64,34 @@ export function TaskRow({ task, category, today, onToggle, onOpen, onDelete }: T
         accessibilityState={{ checked: done }}
         accessibilityHint={done ? 'Marks the task as not done' : 'Marks the task as done'}
         onPress={() => onToggle(!done)}
-        style={{
-          width: MIN_TOUCH_TARGET,
-          height: MIN_TOUCH_TARGET,
+        style={({ pressed }) => ({
+          width: 44,
+          height: 44,
+          borderRadius: radius.md + 1,
+          borderCurve: 'continuous',
           alignItems: 'center',
           justifyContent: 'center',
-        }}
+          backgroundColor: done
+            ? colors.ink.fill
+            : category
+              ? colors.categoryTile[category.color]
+              : colors.tile.neutral,
+          transform: [{ scale: pressed ? 0.92 : 1 }],
+        })}
       >
-        <View
-          style={{
-            width: 24,
-            height: 24,
-            borderRadius: radius.full,
-            borderWidth: 2,
-            borderColor: done ? colors.success.default : colors.text.secondary,
-            backgroundColor: done ? colors.success.default : 'transparent',
-            alignItems: 'center',
-            justifyContent: 'center',
-          }}
-        >
-          {done && (
-            <Text variant="caption" tone="onAccent" importantForAccessibility="no">
-              ✓
-            </Text>
-          )}
-        </View>
+        {done ? (
+          <Icon name="check" size={20} color={colors.ink.text} />
+        ) : (
+          <View
+            style={{
+              width: 20,
+              height: 20,
+              borderRadius: radius.full,
+              borderWidth: 2,
+              borderColor: colors.text.label,
+            }}
+          />
+        )}
       </Pressable>
       <Pressable
         accessibilityRole="button"
@@ -88,60 +110,39 @@ export function TaskRow({ task, category, today, onToggle, onOpen, onDelete }: T
         onPress={onOpen}
         style={({ pressed }) => ({
           flex: 1,
-          gap: 2,
-          paddingVertical: spacing.xs,
+          flexDirection: 'row',
+          alignItems: 'center',
+          gap: spacing.sm,
+          minHeight: 44,
           opacity: pressed ? 0.6 : 1,
         })}
       >
-        <Text
-          tone={done ? 'secondary' : 'primary'}
-          style={done ? { textDecorationLine: 'line-through' } : undefined}
-        >
-          {task.title}
-        </Text>
-        {details.length > 0 && (
+        <View style={{ flex: 1, gap: spacing.xxs }}>
+          <Text
+            variant="bodyStrong"
+            tone={done ? 'secondary' : 'primary'}
+            style={done ? { textDecorationLine: 'line-through' } : undefined}
+          >
+            {task.title}
+          </Text>
+          {meta.length > 0 && (
+            <Text variant="caption" tone={due?.overdue ? 'danger' : 'secondary'}>
+              {meta}
+            </Text>
+          )}
+        </View>
+        {badge && priority && (
           <View
             style={{
-              flexDirection: 'row',
-              flexWrap: 'wrap',
-              alignItems: 'center',
-              gap: spacing.xs,
+              backgroundColor: badge.bg,
+              borderRadius: radius.sm,
+              paddingHorizontal: spacing.sm + 2,
+              paddingVertical: spacing.xs + 1,
             }}
           >
-            {due && (
-              <Text variant="caption" tone={due.overdue ? 'danger' : 'secondary'}>
-                {due.text}
-              </Text>
-            )}
-            {priority && (
-              <Text
-                variant="caption"
-                tone={
-                  task.priority === 'URGENT' || task.priority === 'HIGH' ? 'accent' : 'secondary'
-                }
-              >
-                {due ? '· ' : ''}
-                {priority} priority
-              </Text>
-            )}
-            {category && (
-              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
-                <Text variant="caption" tone="secondary">
-                  {due || priority ? '· ' : ''}
-                </Text>
-                <View
-                  style={{
-                    width: 8,
-                    height: 8,
-                    borderRadius: radius.full,
-                    backgroundColor: colors.category[category.color],
-                  }}
-                />
-                <Text variant="caption" tone="secondary">
-                  {category.name}
-                </Text>
-              </View>
-            )}
+            <Text variant="label" style={{ color: badge.color, fontSize: 12, lineHeight: 16 }}>
+              {priority}
+            </Text>
           </View>
         )}
       </Pressable>

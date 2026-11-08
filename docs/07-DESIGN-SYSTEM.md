@@ -3,88 +3,92 @@
 | | |
 |---|---|
 | **Purpose** | Tokens, components and patterns so screens are composed from one system rather than designed in isolation |
-| **Status** | v0.2. Accent direction **Confirmed** (violet/indigo); colour values implemented in 5.1 and contrast-tested (two dark reds adjusted); Inter font still **Proposed** (system font for now) |
-| **Last updated** | 2026-11-03 |
-| **Related** | [03-User Flows](03-USER-FLOWS.md) · [11-Decisions](11-TECHNICAL-DECISIONS.md) (ADR-007) |
+| **Status** | v0.3. **Light playful direction** from the Nov 2026 design export (ADR-020, Confirmed); Outfit font, floating tab bar and platform icons (ADR-021, Proposed); dark variant Proposed. All colours contrast-tested |
+| **Last updated** | 2026-11-08 |
+| **Related** | [03-User Flows](03-USER-FLOWS.md) · [11-Decisions](11-TECHNICAL-DECISIONS.md) (ADR-020, ADR-021) · design export `docs/Life OS — App Design (1).html` (local only, git-ignored) |
 
 ---
 
 ## 1. Principles
-1. **Dark-first, light-equal.** Design in dark, then verify every component in light. Both ship in MVP.
-2. **Semantic tokens only in components.** Components use `colors.text.secondary`, never `#8E8E96`.
-3. **Hierarchy through surfaces, not lines.** Layered surfaces (background → surface → elevated) replace most borders.
-4. **One accent.** Violet means "primary action / brand". Green means *progress/success only*. Red means *error/destructive only*.
-5. **Motion with purpose.** Short (150–250 ms) and disabled under Reduce Motion.
+1. **Light-first, dark-equal.** The design is light. Every component also gets a dark version built from the same roles, and both ship.
+2. **Semantic tokens only in components.** Components use `colors.text.secondary`, never `#6B6F7B`.
+3. **Soft and friendly.** A pale canvas with a blue wash at the top, white cards with soft shadows, big rounded corners, and pill buttons. Depth comes from shadows in light mode and lighter surfaces in dark mode, not lines.
+4. **Ink for action, colour for meaning.** The main action is a near-black "ink" pill. Violet marks links and highlights, pastel tiles group things by meaning (tasks sky, habits lime, focus peach, learning lavender), green means progress only, and red means error or destructive only.
+5. **Motion with purpose.** Short (150–250 ms), a slight scale on press, and none under Reduce Motion.
 
 ## 2. Color tokens
 
-### 2.1 Palette review
-| Brief value | Verdict |
-|---|---|
-| Background `#0E0E12`, Surface `#1C1C22`, Elevated `#26262E` | ✅ keep, good layering |
-| Primary text `#FFFFFF` | ✅ 19.3:1 on background. Use `#F5F5F7` for long text to reduce glare (Proposed) |
-| Secondary text `#8E8E96` | ⚠️ passes AA on bg (5.9) and surface (5.2), but only 4.6 on elevated. Bump to `#9A9AA3` (5.4 on elevated) |
-| Accent `#8FB339` (green) | 🔁 moved to the **success** role (7.0:1 on surface). Brand accent becomes violet (Confirmed) |
-| Error `#D9475F` | ⚠️ 4.05:1 on surface, which fails AA for text. Use `#E5566E` for text on dark (4.75); keep `#D9475F` for fills |
+### 2.1 Where the values come from
+The light values are the design export's. Four were darkened slightly because the contrast test failed them:
 
-All ratios were computed with the WCAG 2.x relative-luminance formula.
+| Design value | Problem | Used instead |
+|---|---|---|
+| Success `#1E8A4F` | 3.98:1 on the canvas | `#17784C` |
+| Danger text `#D2405B` | 3.58:1 on its own pink tile | `#B42F4A` (fill stays `#C2334B`) |
+| Violet `#5A57EE` on lavender (Medium badge) | 4.06:1 | `accent.onSoft` `#4744C9` |
+| Muted grey `#6B6F7B` on grey chips `#ECEEF3` | 4.32:1 | grey text is never put on chips or tiles; `text.label` `#4F5560` is used there |
+
+All ratios use the WCAG 2.x relative-luminance formula.
 
 ### 2.2 Semantic tokens
 
-| Token | Dark | Light | Notes / contrast |
+| Token | Light | Dark | Use |
 |---|---|---|---|
-| `bg.canvas` | `#0E0E12` | `#F7F7FA` | |
-| `bg.surface` | `#1C1C22` | `#FFFFFF` | cards |
-| `bg.elevated` | `#26262E` | `#FFFFFF` + shadow | sheets, menus |
-| `bg.subtle` | `#16161B` | `#EFEFF4` | inputs, chips |
-| `border.subtle` | `#2E2E37` | `#E3E3EA` | dividers when needed |
-| `text.primary` | `#F5F5F7` | `#0E0E12` | 18:1 / 18:1 |
-| `text.secondary` | `#9A9AA3` | `#5E5E68` | ≥ 5.4 / 6.0 |
-| `text.inverse` | `#0E0E12` | `#FFFFFF` | |
-| `accent.default` | `#8B7CFF` | `#5B3FE0` | text/icons: 5.2 on surface / 6.1 on canvas |
-| `accent.fill` | `#6D4EF2` | `#5B3FE0` | button bg; white label 5.2 / 6.5 |
-| `accent.soft` | `rgba(139,124,255,0.16)` | `rgba(91,63,224,0.10)` | selected chips, progress track |
-| `success.default` | `#8FB339` | `#17784C` | progress, streaks: 7.0 / 5.5 |
-| `success.soft` | `rgba(143,179,57,0.16)` | `rgba(23,120,76,0.10)` | |
-| `danger.text` | `#EA6479` | `#C2334B` | ≥ 4.72 on every dark background (was `#E5566E`: 4.21 on elevated) / 5.4 |
-| `danger.fill` | `#C2334B` | `#C2334B` | destructive buttons; white label 5.43 (dark was `#D9475F`: 4.19, fails AA) |
-| `warning.default` | `#F5B544` | `#9A6200` | budget 80% alert: 9.4 / 5.1 |
-| `priority.urgent/high/medium/low` | danger / warning / accent / text.secondary | same mapping | always paired with an icon or label, never color alone |
+| `bg.canvas` | `#F3F4F9` | `#0F1015` | app background |
+| `bg.wash` | `#D3DFEF` | `#1B2233` | the gradient at the top of each screen (`ScreenWash`) |
+| `bg.surface` | `#FFFFFF` | `#1A1B23` | cards, inputs, tab bar |
+| `bg.elevated` | `#F8F9FC` | `#20212A` | sheets |
+| `bg.subtle` | `#ECEEF3` | `#272934` | unselected chips, skeletons |
+| `border.subtle` | `#E3E5EC` | `#2C2E3A` | outlines when needed |
+| `text.primary` | `#0F0F14` | `#F4F5F9` | |
+| `text.secondary` | `#6B6F7B` | `#A0A4B2` | captions; only on canvas / surface / elevated |
+| `text.label` | `#4F5560` | `#C2C5D0` | field labels; text on tiles and chips |
+| `ink.fill` / `ink.text` | `#0F0F14` / `#FFFFFF` | `#F4F5F9` / `#0F0F14` | primary button, selected chip, current tab |
+| `accent.default` | `#5A57EE` | `#A9A6FF` | links, highlights |
+| `accent.fill` → `fillEnd` | `#5A57EE` → `#7C5CE8` | same | hero gradient (avatar, quest cards) |
+| `accent.soft` / `onSoft` | `#E4E0FB` / `#4744C9` | `#2B2950` / `#C9C7FF` | Medium badge |
+| `success.default` / `soft` | `#17784C` / `#DDF1E4` | `#5FD38D` / `#1D3328` | progress only |
+| `danger.text` / `fill` / `soft` | `#B42F4A` / `#C2334B` / `#FBDDE2` | `#FF8A9C` / `#C2334B` / `#3D2128` | errors, delete, High badge |
+| `reward.fill` / `text` | `#F6C85F` / `#3A2A00` | same | XP and badges (gamification, later) |
+| `tile.sky · lime · peach · lavender · rose · neutral` | `#D5E3EA · #E5EFC1 · #FBE2D2 · #E4E0FB · #FBDDE2 · #ECEEF3` | dark tints | icon tiles and chips |
+| `category.*` / `categoryTile.*` | strong dot / pastel tile per `CATEGORY_COLORS` | | category chips and task check tiles |
 
-**Implementation (5.1):** `apps/mobile/src/theme/` (`colors.ts`, `tokens.ts`, `theme.ts`, `theme-provider.tsx`, one entry point `@/theme`). `darkTheme` and `lightTheme` have the same shape (`text.onAccent` added for labels on fills). `ThemeProvider` holds the preference (SYSTEM / DARK / LIGHT, the shared `THEMES`) and applies it with `Appearance.setColorScheme`, so native UI (status bar, keyboard, alerts) follows too; `useTheme()` returns the active theme. Until settings sync (5.6/5.7) the preference lives in memory.
+Priority badges: Low = neutral tile + `text.label`, Medium = `accent.soft` + `accent.onSoft`, High = `danger.soft` + `danger.text`, Urgent = `danger.fill` + white. The word is always shown, so priority is never colour alone.
 
-**Contrast is tested, not just documented:** `colors.test.ts` checks every text colour on every background, and labels on fills, against WCAG AA (4.5:1) in both themes. It caught the two dark-mode reds above.
+**Implementation:** `apps/mobile/src/theme/` (`colors.ts`, `tokens.ts`, `theme.ts`, `theme-provider.tsx`, one entry point `@/theme`). `ThemeProvider` holds the preference (SYSTEM / DARK / LIGHT) and applies it with `Appearance.setColorScheme`. When the system scheme is unknown, it now falls back to **light**.
+
+**Contrast is tested, not just documented:** `colors.test.ts` checks every text colour on every background, tile and chip, and every label on a fill, against WCAG AA (4.5:1) in both themes. That's 115 checks.
 
 ## 3. Typography
 
-**Proposed font:** Inter (via `expo-font`), with SF/Roboto as fallback. Numerals use `fontVariant: ['tabular-nums']` for stats and money.
+**Font: Outfit** (ADR-021), weights 400 / 500 / 600 / 700 loaded with `expo-font` before the splash screen hides. Each style names its font file (`fonts.*` in `tokens.ts`), because Android can't make a bold from the regular file.
 
 | Token | Size / line height | Weight | Use |
 |---|---|---|---|
-| `display` | 34 / 40 | 700 | Today greeting, big numbers |
-| `title1` | 28 / 34 | 700 | Screen titles |
-| `title2` | 22 / 28 | 600 | Section headers |
-| `title3` | 18 / 24 | 600 | Card titles |
-| `body` | 16 / 22 | 400 | Default |
-| `bodyStrong` | 16 / 22 | 600 | List item titles |
-| `callout` | 14 / 20 | 400 | Secondary info |
-| `caption` | 12 / 16 | 500 | Meta, labels |
-| `overline` | 11 / 14 | 600, +0.5 tracking, uppercase | Group labels |
+| `hero` | 48 / 52, −2 tracking | 700 | Welcome "Life OS" |
+| `display` | 34 / 38, −1 | 700 | Screen titles ("Tasks", "Welcome back") |
+| `title1` | 26 / 30, −0.6 | 700 | Sheet titles ("New task") |
+| `title2` | 22 / 28, −0.5 | 700 | Names, section heads |
+| `title3` | 18 / 24 | 700 | Card titles, empty / error titles |
+| `body` | 16 / 22 | 500 | Default |
+| `bodyStrong` | 16 / 22 | 600 | Row titles, button labels |
+| `callout` / `calloutStrong` | 15 / 20 | 500 / 600 | Row values / chips, tabs |
+| `label` | 14 / 18 | 600 | Field labels, small buttons |
+| `caption` | 13 / 18 | 400 | Meta ("Tomorrow · Work") |
+| `overline` | 13 / 16, +1, uppercase | 700 | Group labels |
 
-All text goes through a `<Text variant="body" tone="secondary">` primitive. Font scaling is allowed (`maxFontSizeMultiplier` 2.0), and layouts must wrap rather than truncate critical info.
+All text goes through `<Text variant tone>`. Font scaling is allowed up to 2×, and layouts wrap.
 
 ## 4. Spacing, radius, elevation
 
-- **Spacing (4-pt):** `xxs 2 · xs 4 · sm 8 · md 12 · lg 16 · xl 24 · 2xl 32 · 3xl 48`. Screen gutter = `lg` (16).
-- **Radius:** `sm 8` (chips, inputs) · `md 12` (buttons) · `lg 16` (cards) · `xl 24` (sheets) · `full` (avatars, check circles).
-- **Elevation:**
-  - Dark: elevation = lighter surface (`bg.elevated`), shadows nearly invisible.
-  - Light: `shadow.sm` (y1 blur3 8% black), `shadow.md` (y4 blur12 10%), `shadow.lg` (y8 blur24 12%).
-- **Touch target:** ≥ 44×44 pt (use `hitSlop` for small icons).
+- **Spacing (4-pt):** `xxs 2 · xs 4 · sm 8 · md 12 · lg 16 · gutter 20 · xl 24 · xxl 32 · xxxl 48`. Screen gutter = `gutter` (20), as in the design.
+- **Radius:** `sm 10` (badges) · `md 14` (icon tiles) · `lg 22` (inputs, task rows) · `xl 26` (cards, list groups) · `sheet 34` · `full` (buttons, chips, tab bar, avatars).
+- **Elevation (light):** `sm` `0 6px 16px rgba(40,50,90,.10)` (inputs, round buttons) · `md` `0 12px 32px rgba(40,50,90,.10)` (cards) · `lg` `0 12px 32px rgba(40,50,90,.16)` (tab bar, floating +). Dark: lighter surfaces, with a shadow only on `lg`.
+- **Touch target:** ≥ 44×44 pt (40 pt chips and small buttons get `hitSlop`).
 
 ## 5. Component inventory
 
-Primitives live in `src/components/ui/`, and feature components in `src/features/*/components/`. **Built in 5.1:** `Text`, `Button`, `Card`; **5.5:** `TextField` (label, error/helper read by screen readers, Show/Hide for passwords); **5.6:** `OfflineBanner` (pill under the status bar, announced, doesn't block taps); **5.8:** `Toast` (+ `useToast`, one at a time, 5 s, optional action, announced), `EmptyState`, `ErrorState` (plain-language message per error type, request ID to quote, retry), `Skeleton` / `SkeletonGroup` (after 150 ms, pulse off under Reduce Motion, hidden from screen readers, group announced as loading), native sheets. Motion uses React Native's `Animated` (opacity/transform on the native thread) and `useReducedMotion()` from `@/theme`; Reanimated is kept for gesture-heavy work later (Phase 6 swipe actions). **6.1:** `Chip` (radio / checkbox role, selected state announced, optional colour dot) and the category palette `colors.category.*` (≥ 3:1 on every surface, tested).
+Primitives live in `src/components/ui/`, and feature components in `src/features/*/components/`. **Built in 5.1:** `Text`, `Button`, `Card`; **5.5:** `TextField` (label, error/helper read by screen readers, Show/Hide for passwords); **5.6:** `OfflineBanner` (pill under the status bar, announced, doesn't block taps); **5.8:** `Toast` (+ `useToast`, one at a time, 5 s, optional action, announced), `EmptyState`, `ErrorState` (plain-language message per error type, request ID to quote, retry), `Skeleton` / `SkeletonGroup` (after 150 ms, pulse off under Reduce Motion, hidden from screen readers, group announced as loading), native sheets. Motion uses React Native's `Animated` (opacity/transform on the native thread) and `useReducedMotion()` from `@/theme`; Reanimated is kept for gesture-heavy work later (Phase 6 swipe actions). **6.1:** `Chip` (radio / checkbox role, selected state announced, optional colour dot) and the category palette `colors.category.*` (≥ 3:1 on every surface, tested). **Design refresh (Nov 2026, ADR-020/021):** every primitive restyled, plus `Icon` (one map of SF Symbol / Material Symbol names), `IconTile`, `IconButton` (round white, or ink for the floating +), `ListGroup` / `ListRow` (settings-style rows), `SegmentedControl` (announced as tabs), `Mascot` (Lio, 6 moods; decorative or labelled), and app-level `Screen` / `ScreenHeader` / `ScreenWash`, `FormScreen` (with the Life OS logo row), `TabBar` (floating dock), `StepDots` (onboarding) and `MonthCalendar` (the due-date picker).
 
 | Component | Variants / props | States |
 |---|---|---|
@@ -144,8 +148,9 @@ Primitives live in `src/components/ui/`, and feature components in `src/features
 - Landscape: supported for Calendar week view only (Proposed). Other screens stay portrait.
 
 ## 9. Iconography & imagery
-- One icon set: **Lucide** (`lucide-react-native`) *(Proposed: consistent stroke style, tree-shakeable)*.
-- 24 pt default, 1.75 stroke.
+- Icons: **SF Symbols on iOS, Material Symbols on Android** via `expo-symbols` (ADR-021), named by meaning in `components/ui/icon.tsx` (e.g. `calendar`, `tasks`, `flame`). They're close to the design's Lucide line icons and look native on each platform. Icons are decorative, so the button or row around them carries the label.
+- 20 pt default in rows and buttons, 17–24 pt in tiles.
+- **Lio the mascot** (`assets/mascot/`, from the design export): happy (welcome, sign-in logo), sleepy (empty states), planning ("coming soon"), excited, focused and celebrating (for later: focus timer, rewards). Marked decorative wherever the text beside it already says everything.
 - Category/habit icons are chosen from a curated subset (~60), with the stored name validated server-side.
 
 ## 10. Inspiration references (from brief)

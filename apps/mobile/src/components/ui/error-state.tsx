@@ -1,7 +1,8 @@
 import { View } from 'react-native';
 import { isApiError } from '@/services/api-error';
-import { spacing } from '@/theme';
+import { spacing, useTheme } from '@/theme';
 import { Button } from './button';
+import { IconTile } from './icon-tile';
 import { Text } from './text';
 
 export interface ErrorStateProps {
@@ -15,19 +16,36 @@ export interface ErrorStateProps {
 // Shown in place of content that failed to load: never a blank screen (docs/07 §6). The text
 // says what happened in plain words; for offline it says so, since retrying won't help yet.
 export function ErrorState({ error, message, onRetry, retrying = false }: ErrorStateProps) {
+  const { colors } = useTheme();
   return (
-    <View style={{ alignItems: 'center', gap: spacing.sm, paddingVertical: spacing.xl }}>
-      <Text variant="title3" style={{ textAlign: 'center' }} accessibilityRole="alert">
-        {message ?? describe(error)}
-      </Text>
-      {isApiError(error) && error.requestId && (
-        // Something a user can quote in a bug report; it finds the exact log line (4.1).
-        <Text variant="caption" tone="secondary" selectable>
-          Reference: {error.requestId}
-        </Text>
-      )}
+    <View style={{ gap: spacing.md, paddingVertical: spacing.sm }}>
+      <View style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.md }}>
+        <IconTile
+          icon="warning"
+          tint={colors.danger.soft}
+          iconColor={colors.danger.text}
+          size={48}
+        />
+        <View style={{ flex: 1, gap: spacing.xxs }}>
+          <Text variant="title3" accessibilityRole="alert">
+            {message ?? describe(error)}
+          </Text>
+          {isApiError(error) && error.requestId && (
+            // Something a user can quote in a bug report; it finds the exact log line (4.1).
+            <Text variant="caption" tone="secondary" selectable>
+              Reference: {error.requestId}
+            </Text>
+          )}
+        </View>
+      </View>
       {onRetry && (
-        <Button title="Try again" variant="secondary" loading={retrying} onPress={onRetry} />
+        <Button
+          title="Try again"
+          variant="secondary"
+          icon="refresh"
+          loading={retrying}
+          onPress={onRetry}
+        />
       )}
     </View>
   );

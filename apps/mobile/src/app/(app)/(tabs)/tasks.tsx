@@ -3,11 +3,13 @@ import { router } from 'expo-router';
 import { useMemo, useState } from 'react';
 import { ActivityIndicator, FlatList, RefreshControl, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { ScreenHeader, ScreenWash, TAB_BAR_SPACE } from '@/components/screen';
 import {
-  Button,
+  Card,
   Chip,
   EmptyState,
   ErrorState,
+  IconButton,
   Skeleton,
   SkeletonGroup,
   Text,
@@ -58,18 +60,14 @@ export default function Tasks() {
   );
 
   const header = (
-    <View style={{ gap: spacing.md, paddingBottom: spacing.sm }}>
-      <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
-        <Text variant="title1" accessibilityRole="header">
-          Tasks
-        </Text>
-        <Button title="New task" size="sm" onPress={() => openTask()} />
-      </View>
+    <View style={{ gap: spacing.md, paddingBottom: spacing.xs }}>
+      <ScreenHeader title="Tasks" />
       <View accessibilityRole="radiogroup" style={{ flexDirection: 'row', gap: spacing.sm }}>
         {FILTERS.map((f) => (
           <Chip
             key={f.value}
             label={f.label}
+            tint={colors.bg.surface}
             selected={filter === f.value}
             onPress={() => setFilter(f.value)}
           />
@@ -89,66 +87,94 @@ export default function Tasks() {
       />
     );
   } else if (tasks.data === undefined && tasks.fetchStatus === 'paused') {
-    empty = <Text tone="secondary">Waiting for a connection…</Text>;
+    empty = (
+      <Card>
+        <Text tone="secondary">Waiting for a connection…</Text>
+      </Card>
+    );
   } else if (tasks.data === undefined) {
     empty = (
       <SkeletonGroup label="Loading tasks">
         {[0, 1, 2, 3].map((i) => (
-          <Skeleton key={i} shape="block" height={48} />
+          <Skeleton key={i} shape="block" height={68} />
         ))}
       </SkeletonGroup>
     );
   } else {
     empty = (
-      <EmptyState
-        {...EMPTY[filter]}
-        {...(filter !== 'DONE' ? { action: { label: 'New task', onPress: () => openTask() } } : {})}
-      />
+      <Card>
+        <EmptyState
+          {...EMPTY[filter]}
+          mascot="sleepy"
+          {...(filter !== 'DONE'
+            ? { action: { label: 'New task', onPress: () => openTask() } }
+            : {})}
+        />
+      </Card>
     );
   }
 
   return (
-    <FlatList
-      testID="task-list"
-      data={items}
-      keyExtractor={(task) => task.id}
-      renderItem={({ item }) => (
-        <TaskRow
-          task={item}
-          category={item.categoryId ? categoryById.get(item.categoryId) : undefined}
-          today={today}
-          onToggle={(done) => toggle.mutate({ id: item.id, done })}
-          onOpen={() => openTask(item)}
-          onDelete={() => remove.mutate(item)}
-        />
-      )}
-      ListHeaderComponent={header}
-      ListEmptyComponent={empty}
-      ListFooterComponent={
-        tasks.isFetchingNextPage ? (
-          <ActivityIndicator
-            accessibilityLabel="Loading more tasks"
-            color={colors.accent.default}
+    <View style={{ flex: 1, backgroundColor: colors.bg.canvas }}>
+      <ScreenWash />
+      <FlatList
+        testID="task-list"
+        data={items}
+        keyExtractor={(task) => task.id}
+        renderItem={({ item }) => (
+          <TaskRow
+            task={item}
+            category={item.categoryId ? categoryById.get(item.categoryId) : undefined}
+            today={today}
+            onToggle={(done) => toggle.mutate({ id: item.id, done })}
+            onOpen={() => openTask(item)}
+            onDelete={() => remove.mutate(item)}
           />
-        ) : undefined
-      }
-      onEndReached={() => {
-        if (tasks.hasNextPage && !tasks.isFetchingNextPage) void tasks.fetchNextPage();
-      }}
-      onEndReachedThreshold={0.5}
-      refreshControl={
-        <RefreshControl
-          refreshing={tasks.isRefetching && !tasks.isFetchingNextPage}
-          onRefresh={() => void tasks.refetch()}
-          tintColor={colors.accent.default}
+        )}
+        ListHeaderComponent={header}
+        ListEmptyComponent={empty}
+        ListFooterComponent={
+          tasks.isFetchingNextPage ? (
+            <ActivityIndicator
+              accessibilityLabel="Loading more tasks"
+              color={colors.text.secondary}
+            />
+          ) : undefined
+        }
+        onEndReached={() => {
+          if (tasks.hasNextPage && !tasks.isFetchingNextPage) void tasks.fetchNextPage();
+        }}
+        onEndReachedThreshold={0.5}
+        refreshControl={
+          <RefreshControl
+            refreshing={tasks.isRefetching && !tasks.isFetchingNextPage}
+            onRefresh={() => void tasks.refetch()}
+            tintColor={colors.text.secondary}
+          />
+        }
+        contentContainerStyle={{
+          paddingTop: insets.top + spacing.md,
+          // Room for the floating "+" above the tab bar, so the last row can scroll clear.
+          paddingBottom: insets.bottom + TAB_BAR_SPACE + 72,
+          paddingHorizontal: spacing.gutter,
+          gap: spacing.md,
+        }}
+      />
+      <View
+        style={{
+          position: 'absolute',
+          right: spacing.gutter,
+          bottom: Math.max(insets.bottom, spacing.gutter) + 68 + spacing.lg,
+        }}
+      >
+        <IconButton
+          icon="add"
+          variant="ink"
+          size={56}
+          accessibilityLabel="New task"
+          onPress={() => openTask()}
         />
-      }
-      contentInsetAdjustmentBehavior="automatic"
-      contentContainerStyle={{
-        paddingTop: insets.top + spacing.lg,
-        paddingBottom: insets.bottom + spacing.xxxl,
-        paddingHorizontal: spacing.lg,
-      }}
-    />
+      </View>
+    </View>
   );
 }

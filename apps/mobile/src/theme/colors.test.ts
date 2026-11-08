@@ -16,24 +16,38 @@ function contrast(a: string, b: string): number {
 
 // Every text-on-background pair the components actually use.
 function textPairs(c: ThemeColors): [string, string, string][] {
-  const backgrounds = {
-    canvas: c.bg.canvas,
-    surface: c.bg.surface,
-    elevated: c.bg.elevated,
-    subtle: c.bg.subtle,
-  };
   const pairs: [string, string, string][] = [];
+  // Screens, cards and sheets: all text colours.
+  const backgrounds = { canvas: c.bg.canvas, surface: c.bg.surface, elevated: c.bg.elevated };
   for (const [bgName, bg] of Object.entries(backgrounds)) {
     pairs.push(
       [`text.primary on ${bgName}`, c.text.primary, bg],
       [`text.secondary on ${bgName}`, c.text.secondary, bg],
+      [`text.label on ${bgName}`, c.text.label, bg],
       [`accent.default on ${bgName}`, c.accent.default, bg],
       [`danger.text on ${bgName}`, c.danger.text, bg],
+      [`success.default on ${bgName}`, c.success.default, bg],
     );
   }
+  // Pastel tiles and unselected chips: primary and label text only (secondary is too light).
+  const tiles = { ...c.tile, subtle: c.bg.subtle };
+  for (const [name, bg] of Object.entries(tiles)) {
+    pairs.push(
+      [`text.primary on tile.${name}`, c.text.primary, bg],
+      [`text.label on tile.${name}`, c.text.label, bg],
+    );
+  }
+  for (const [name, bg] of Object.entries(c.categoryTile)) {
+    pairs.push([`text.primary on categoryTile.${name}`, c.text.primary, bg]);
+  }
   pairs.push(
-    ['button label on accent.fill', c.text.onAccent, c.accent.fill],
-    ['button label on danger.fill', c.text.onAccent, c.danger.fill],
+    ['ink button label', c.ink.text, c.ink.fill],
+    ['label on accent.fill (hero)', c.text.onAccent, c.accent.fill],
+    ['label on accent.fillEnd (hero)', c.text.onAccent, c.accent.fillEnd],
+    ['label on danger.fill', c.text.onAccent, c.danger.fill],
+    ['accent.onSoft on accent.soft (Medium badge)', c.accent.onSoft, c.accent.soft],
+    ['danger.text on danger.soft (High badge)', c.danger.text, c.danger.soft],
+    ['reward.text on reward.fill', c.reward.text, c.reward.fill],
   );
   return pairs;
 }
@@ -54,12 +68,8 @@ describe.each([
       }
     },
   );
-
-  it('success colour is readable on surfaces', () => {
-    expect(contrast(colors.success.default, colors.bg.surface)).toBeGreaterThanOrEqual(4.5);
-  });
 });
 
-it('catches a failing pair (the original dark danger fill)', () => {
-  expect(contrast('#FFFFFF', '#D9475F')).toBeLessThan(4.5);
+it('catches a failing pair (the design’s muted grey on a chip)', () => {
+  expect(contrast('#6B6F7B', '#ECEEF3')).toBeLessThan(4.5);
 });

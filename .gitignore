@@ -33,3 +33,6 @@ android/
 
 # Prisma generated client
 apps/api/src/generated/
+
+# Design exports (large, bundled fonts and images): kept locally, not in the repo
+docs/*.html

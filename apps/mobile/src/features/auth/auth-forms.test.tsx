@@ -26,12 +26,12 @@ const openRegister = () => renderRouter('src/app', { initialUrl: '/register' });
 
 beforeEach(() => resetMockApi());
 
-describe('Log in', () => {
+describe('Sign in', () => {
   const open = openLogin;
 
   it('shows the shared schema messages and sends nothing while invalid', async () => {
     await open();
-    await press('Log in');
+    await press('Sign in');
     expect(await screen.findByText('Enter a valid email address.')).toBeOnTheScreen();
     expect(screen.getByText('Enter your password.')).toBeOnTheScreen();
     expect(sent('POST /auth/login')).toHaveLength(0);
@@ -43,7 +43,7 @@ describe('Log in', () => {
 
     await type('Email', '  Tina@Example.com ');
     await type('Password', 'correct horse battery');
-    await press('Log in');
+    await press('Sign in');
 
     await waitFor(() => expect(router.getPathname()).toBe('/today'));
     expect(sent('POST /auth/login')[0]?.body).toMatchObject({
@@ -62,7 +62,7 @@ describe('Log in', () => {
 
     await type('Email', 'tina@example.com');
     await type('Password', 'not my password');
-    await press('Log in');
+    await press('Sign in');
 
     expect(await screen.findByRole('alert')).toHaveTextContent('Email or password is incorrect.');
     expect(router.getPathname()).toBe('/login');
@@ -102,7 +102,7 @@ describe('Create account', () => {
     await type('Password', 'correct horse battery');
     await press('Create account');
 
-    expect(await screen.findByText(/already exists\. Log in instead\?/)).toBeOnTheScreen();
+    expect(await screen.findByText(/already exists\. Sign in instead\?/)).toBeOnTheScreen();
     expect(screen.queryByRole('alert')).toBeNull();
   });
 
@@ -205,5 +205,19 @@ describe('Links from emails', () => {
   it('a link without a token explains itself', async () => {
     await renderRouter('src/app', { initialUrl: '/verify-email' });
     expect(await screen.findByRole('alert')).toHaveTextContent(/incomplete/);
+  });
+});
+
+describe('Sign in | Create account switch', () => {
+  it('moves between the two forms, with the current one marked selected', async () => {
+    const router = await openLogin();
+    expect(screen.getByRole('tab', { name: 'Sign in' })).toBeSelected();
+
+    await fireEvent.press(screen.getByRole('tab', { name: 'Create account' }));
+    await waitFor(() => expect(router.getPathname()).toBe('/register'));
+    expect(screen.getByRole('tab', { name: 'Create account' })).toBeSelected();
+
+    await fireEvent.press(screen.getByRole('tab', { name: 'Sign in' }));
+    await waitFor(() => expect(router.getPathname()).toBe('/login'));
   });
 });

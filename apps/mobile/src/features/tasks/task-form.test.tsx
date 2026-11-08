@@ -3,7 +3,7 @@ import { router as appRouter, type Href } from 'expo-router';
 import { act, fireEvent, renderRouter, screen, waitFor } from 'expo-router/testing-library';
 import { authStore } from '@/features/auth/auth-instance';
 import { apiError, calls, resetMockApi, routes } from '@/test/mock-auth-instance';
-import { addDays, localToday } from './dates';
+import { addDays, formatDayLong, formatDue, localToday, monthOf } from './dates';
 
 jest.mock('@/features/auth/auth-instance', () => jest.requireActual('@/test/mock-auth-instance'));
 
@@ -59,6 +59,14 @@ async function openForm(url: Href) {
   await act(async () => appRouter.push(url));
   return router;
 }
+
+const today = () => localToday(ZONE);
+const createReturnsBody = () => {
+  routes['POST /tasks'] = (body) => ({
+    status: 201,
+    body: { data: { ...EXISTING, ...body, id: 't9' } },
+  });
+};
 
 beforeEach(() => resetMockApi());
 
@@ -149,5 +157,59 @@ describe('task form', () => {
     await choose('Work');
     await press('Add task');
     expect(await screen.findByText('Choose one of your categories.')).toBeOnTheScreen();
+  });
+
+  describe('due date', () => {
+    it('picks any later day from the calendar, which then closes', async () => {
+      createReturnsBody();
+      await openForm('/task-form');
+      await fireEvent.changeText(await screen.findByLabelText('Title'), 'Dentist');
+
+      const target = addDays(today(), 10);
+      await choose('Pick a date');
+      expect(screen.getByTestId('month-calendar')).toBeOnTheScreen();
+      if (monthOf(target) !== monthOf(today())) await press('Next month');
+      await press(formatDayLong(target));
+
+      // The chip now names the day, and the calendar has closed.
+      const label = formatDue(target, today()).text;
+      expect(screen.getByRole('radio', { name: label })).toBeSelected();
+      expect(screen.queryByTestId('month-calendar')).toBeNull();
+
+      await press('Add task');
+      await waitFor(() => expect(bodies('POST /tasks')).toHaveLength(1));
+      expect(bodies('POST /tasks')[0]).toMatchObject({ dueDate: target });
+    });
+
+    it("can't go back before this month or pick a past day", async () => {
+      await openForm('/task-form');
+      await screen.findByLabelText('Title');
+      await choose('Pick a date');
+
+      expect(screen.getByRole('button', { name: 'Previous month' })).toBeDisabled();
+      expect(
+        screen.getByRole('button', { name: `Today, ${formatDayLong(today())}` }),
+      ).toBeEnabled();
+      const yesterday = addDays(today(), -1);
+      if (monthOf(yesterday) === monthOf(today())) {
+        expect(screen.getByRole('button', { name: formatDayLong(yesterday) })).toBeDisabled();
+      }
+    });
+
+    it('Today and Tomorrow are one tap; the date can be removed again', async () => {
+      createReturnsBody();
+      await openForm('/task-form');
+      await fireEvent.changeText(await screen.findByLabelText('Title'), 'Call mum');
+
+      await choose('Today');
+      expect(screen.getByRole('radio', { name: 'Today' })).toBeSelected();
+      await press('Remove due date');
+      expect(screen.getByRole('radio', { name: 'Today' })).not.toBeSelected();
+      expect(screen.queryByRole('button', { name: 'Remove due date' })).toBeNull();
+
+      await press('Add task');
+      await waitFor(() => expect(bodies('POST /tasks')).toHaveLength(1));
+      expect(bodies('POST /tasks')[0]).toMatchObject({ dueDate: null });
+    });
   });
 });

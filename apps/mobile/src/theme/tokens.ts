@@ -2,41 +2,54 @@ import type { TextStyle } from 'react-native';
 
 // docs/07 §3–4. Everything here is the same in both themes.
 
-// 4-point grid. Screen gutter = lg.
+// 4-point grid, plus the design's 20 pt screen gutter.
 export const spacing = {
   xxs: 2,
   xs: 4,
   sm: 8,
   md: 12,
   lg: 16,
+  gutter: 20,
   xl: 24,
   xxl: 32,
   xxxl: 48,
 } as const;
 
 export const radius = {
-  sm: 8, // chips, inputs
-  md: 12, // buttons
-  lg: 16, // cards
-  xl: 24, // sheets
-  full: 9999, // avatars, check circles
+  sm: 10, // badges
+  md: 14, // icon tiles
+  lg: 22, // inputs, list rows
+  xl: 26, // cards
+  sheet: 34,
+  full: 9999, // buttons, chips, avatars
 } as const;
 
-// System font (SF / Roboto) for now; Inter is Proposed in docs/07.
+// Outfit, loaded at launch (app/_layout.tsx). One font file per weight, so each style names
+// its file instead of setting fontWeight (Android can't synthesise weights from one file).
+export const fonts = {
+  regular: 'Outfit_400Regular',
+  medium: 'Outfit_500Medium',
+  semibold: 'Outfit_600SemiBold',
+  bold: 'Outfit_700Bold',
+} as const;
+
 export const typography = {
-  display: { fontSize: 34, lineHeight: 40, fontWeight: '700' },
-  title1: { fontSize: 28, lineHeight: 34, fontWeight: '700' },
-  title2: { fontSize: 22, lineHeight: 28, fontWeight: '600' },
-  title3: { fontSize: 18, lineHeight: 24, fontWeight: '600' },
-  body: { fontSize: 16, lineHeight: 22, fontWeight: '400' },
-  bodyStrong: { fontSize: 16, lineHeight: 22, fontWeight: '600' },
-  callout: { fontSize: 14, lineHeight: 20, fontWeight: '400' },
-  caption: { fontSize: 12, lineHeight: 16, fontWeight: '500' },
+  hero: { fontFamily: fonts.bold, fontSize: 48, lineHeight: 52, letterSpacing: -2 },
+  display: { fontFamily: fonts.bold, fontSize: 34, lineHeight: 38, letterSpacing: -1 },
+  title1: { fontFamily: fonts.bold, fontSize: 26, lineHeight: 30, letterSpacing: -0.6 },
+  title2: { fontFamily: fonts.bold, fontSize: 22, lineHeight: 28, letterSpacing: -0.5 },
+  title3: { fontFamily: fonts.bold, fontSize: 18, lineHeight: 24 },
+  body: { fontFamily: fonts.medium, fontSize: 16, lineHeight: 22 },
+  bodyStrong: { fontFamily: fonts.semibold, fontSize: 16, lineHeight: 22 },
+  callout: { fontFamily: fonts.medium, fontSize: 15, lineHeight: 20 },
+  calloutStrong: { fontFamily: fonts.semibold, fontSize: 15, lineHeight: 20 },
+  label: { fontFamily: fonts.semibold, fontSize: 14, lineHeight: 18 },
+  caption: { fontFamily: fonts.regular, fontSize: 13, lineHeight: 18 },
   overline: {
-    fontSize: 11,
-    lineHeight: 14,
-    fontWeight: '600',
-    letterSpacing: 0.5,
+    fontFamily: fonts.bold,
+    fontSize: 13,
+    lineHeight: 16,
+    letterSpacing: 1,
     textTransform: 'uppercase',
   },
 } as const satisfies Record<string, TextStyle>;

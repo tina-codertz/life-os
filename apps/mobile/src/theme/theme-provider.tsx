@@ -29,9 +29,9 @@ export function ThemeProvider({
   }, [preference]);
 
   // Worked out from the preference directly (not only from Appearance), so the very first
-  // render is already right. Unknown system scheme → dark (docs/07: dark-first).
+  // render is already right. Unknown system scheme → light (the Nov 2026 design is light-first).
   const systemScheme = useColorScheme();
-  const isDark = preference === 'DARK' || (preference === 'SYSTEM' && systemScheme !== 'light');
+  const isDark = preference === 'DARK' || (preference === 'SYSTEM' && systemScheme === 'dark');
   const theme = isDark ? darkTheme : lightTheme;
 
   return (

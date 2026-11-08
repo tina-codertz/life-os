@@ -27,13 +27,13 @@ describe('Card', () => {
     expect(onPress).toHaveBeenCalledTimes(1);
   });
 
-  it('uses a shadow for depth in light mode', async () => {
+  it('uses a stronger shadow for elevated cards in light mode', async () => {
     await renderWithTheme(
       <Card variant="elevated" testID="card">
         <Text>x</Text>
       </Card>,
       'LIGHT',
     );
-    expect(screen.getByTestId('card')).toHaveStyle({ boxShadow: lightTheme.shadows.md });
+    expect(screen.getByTestId('card')).toHaveStyle({ boxShadow: lightTheme.shadows.lg });
   });
 });

@@ -1,10 +1,10 @@
 import { PASSWORD_MIN_LENGTH, registerSchema } from '@life-os/shared';
-import { router } from 'expo-router';
 import { useRef } from 'react';
 import { Controller } from 'react-hook-form';
 import { FormScreen } from '@/components/form-screen';
 import { Button, Text, TextField, type TextFieldHandle } from '@/components/ui';
 import { register } from '@/features/auth/auth-api';
+import { AuthSwitch } from '@/features/auth/auth-switch';
 import { useSession } from '@/features/auth/session';
 import { applyApiError, useZodForm } from '@/features/forms/zod-form';
 
@@ -27,7 +27,7 @@ export default function Register() {
       const code = applyApiError(err, setError, ['displayName', 'email', 'password']);
       if (code === 'EMAIL_TAKEN') {
         setError('email', {
-          message: 'An account with this email already exists. Log in instead?',
+          message: 'An account with this email already exists. Sign in instead?',
         });
         setError('root.server', { message: '' });
       }
@@ -37,13 +37,15 @@ export default function Register() {
   const serverError = formState.errors.root?.['server']?.message;
 
   return (
-    <FormScreen title="Create account" intro="Takes a minute. You can change everything later.">
+    <FormScreen title="Join Life OS" intro="Takes a minute. You can change everything later." brand>
+      <AuthSwitch current="register" />
       <Controller
         control={control}
         name="displayName"
         render={({ field, fieldState }) => (
           <TextField
             label="Name"
+            icon="person"
             value={field.value}
             onChangeText={field.onChange}
             onBlur={field.onBlur}
@@ -62,6 +64,7 @@ export default function Register() {
           <TextField
             ref={emailRef}
             label="Email"
+            icon="mail"
             value={field.value}
             onChangeText={field.onChange}
             onBlur={field.onBlur}
@@ -82,6 +85,7 @@ export default function Register() {
           <TextField
             ref={passwordRef}
             label="Password"
+            icon="lock"
             value={field.value}
             onChangeText={field.onChange}
             onBlur={field.onBlur}
@@ -102,13 +106,10 @@ export default function Register() {
       ) : null}
       <Button
         title="Create account"
+        size="lg"
+        icon="arrowRight"
         loading={formState.isSubmitting}
         onPress={() => void submit()}
-      />
-      <Button
-        title="Already have an account? Log in"
-        variant="ghost"
-        onPress={() => router.replace('/login')}
       />
     </FormScreen>
   );

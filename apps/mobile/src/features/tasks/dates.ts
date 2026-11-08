@@ -68,3 +68,62 @@ export function formatTime(minutes: number): string {
   const m = (minutes % 60).toString().padStart(2, '0');
   return `${h}:${m}`;
 }
+
+// --- Month calendar (the date picker in the task form) ---
+
+// "2026-11-08" → "2026-11".
+export function monthOf(day: string): string {
+  return day.slice(0, 7);
+}
+
+export function addMonths(month: string, months: number): string {
+  const date = new Date(`${month}-01T00:00:00.000Z`);
+  date.setUTCMonth(date.getUTCMonth() + months);
+  return date.toISOString().slice(0, 7);
+}
+
+// The month as weeks of 7 days, starting on `weekStartsOn` (0 = Sunday … 6 = Saturday, the
+// API's numbering). Days outside the month are null, so the grid lines up under the weekdays.
+export function monthGrid(month: string, weekStartsOn: number): (string | null)[][] {
+  const first = `${month}-01`;
+  const lead = (new Date(`${first}T00:00:00.000Z`).getUTCDay() - weekStartsOn + 7) % 7;
+  const length = daysBetween(first, `${addMonths(month, 1)}-01`);
+  const cells: (string | null)[] = [
+    ...Array<null>(lead).fill(null),
+    ...Array.from({ length }, (_, i) => addDays(first, i)),
+  ];
+  while (cells.length % 7 !== 0) cells.push(null);
+  return Array.from({ length: cells.length / 7 }, (_, w) => cells.slice(w * 7, w * 7 + 7));
+}
+
+// Narrow weekday names in grid order, e.g. M T W T F S S for a Monday start.
+export function weekdayLetters(weekStartsOn: number): string[] {
+  // 2026-11-01 is a Sunday.
+  return Array.from({ length: 7 }, (_, i) =>
+    new Intl.DateTimeFormat('en-GB', { timeZone: 'UTC', weekday: 'narrow' }).format(
+      new Date(`${addDays('2026-11-01', (weekStartsOn + i) % 7)}T00:00:00.000Z`),
+    ),
+  );
+}
+
+// "November 2026".
+export function formatMonth(month: string): string {
+  return new Intl.DateTimeFormat('en-GB', {
+    timeZone: 'UTC',
+    month: 'long',
+    year: 'numeric',
+  }).format(new Date(`${month}-01T00:00:00.000Z`));
+}
+
+// "Friday 20 November 2026": what a screen reader says for a day in the calendar.
+export function formatDayLong(day: string): string {
+  return new Intl.DateTimeFormat('en-GB', {
+    timeZone: 'UTC',
+    weekday: 'long',
+    day: 'numeric',
+    month: 'long',
+    year: 'numeric',
+  })
+    .format(new Date(`${day}T00:00:00.000Z`))
+    .replace(',', '');
+}

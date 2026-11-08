@@ -4,27 +4,34 @@ import { router } from 'expo-router';
 import { useMemo, useState } from 'react';
 import { View } from 'react-native';
 import { FormScreen } from '@/components/form-screen';
-import { Button, Card, Text } from '@/components/ui';
+import { Button, Card, Icon, IconTile, type IconName, Text } from '@/components/ui';
 import { finishOnboarding } from '@/features/onboarding/api';
 import { deviceDefaults } from '@/features/onboarding/device-defaults';
 import { updateDraft, useOnboardingDraft } from '@/features/onboarding/draft';
+import { StepDots } from '@/features/onboarding/step-dots';
 import { userKeys } from '@/features/users/queries';
 import { isApiError } from '@/services/api-error';
-import { spacing, useThemePreference } from '@/theme';
+import { radius, spacing, type ThemeColors, useTheme, useThemePreference } from '@/theme';
 
-const OPTIONS: Record<ThemePreference, { title: string; description: string }> = {
+const OPTIONS: Record<
+  ThemePreference,
+  { title: string; description: string; icon: IconName; tint: keyof ThemeColors['tile'] }
+> = {
   SYSTEM: {
     title: 'Match my phone',
     description: 'Dark at night, light by day, if your phone does that.',
+    icon: 'phone',
+    tint: 'sky',
   },
-  DARK: { title: 'Dark', description: 'Easy on the eyes, always.' },
-  LIGHT: { title: 'Light', description: 'Bright and clear, always.' },
+  DARK: { title: 'Dark', description: 'Easy on the eyes, always.', icon: 'moon', tint: 'lavender' },
+  LIGHT: { title: 'Light', description: 'Bright and clear, always.', icon: 'sun', tint: 'peach' },
 };
 
 // Onboarding step 2 of 2: theme, applied live so the choice is seen before it's made.
 export default function OnboardingTheme() {
   const draft = useOnboardingDraft();
   const { setPreference } = useThemePreference();
+  const { colors } = useTheme();
   const device = useMemo(() => deviceDefaults(), []);
   const queryClient = useQueryClient();
   const [saving, setSaving] = useState(false);
@@ -50,28 +57,46 @@ export default function OnboardingTheme() {
 
   return (
     <FormScreen title="Pick a look" intro="You can change this any time in Settings.">
-      <Text variant="overline" tone="secondary">
-        Step 2 of 2
-      </Text>
+      <StepDots step={2} of={2} />
       <View accessibilityRole="radiogroup" style={{ gap: spacing.sm }}>
         {THEMES.map((theme) => {
           const selected = draft.theme === theme;
           return (
             <Card
               key={theme}
-              variant={selected ? 'surface' : 'outlined'}
               onPress={() => choose(theme)}
               accessibilityLabel={OPTIONS[theme].title}
               accessibilityRole="radio"
               accessibilityState={{ selected, checked: selected }}
+              style={{
+                flexDirection: 'row',
+                alignItems: 'center',
+                gap: spacing.md,
+                borderWidth: 2,
+                borderColor: selected ? colors.ink.fill : 'transparent',
+              }}
             >
-              <Text variant="bodyStrong" tone={selected ? 'accent' : 'primary'}>
-                {selected ? '● ' : '○ '}
-                {OPTIONS[theme].title}
-              </Text>
-              <Text variant="callout" tone="secondary">
-                {OPTIONS[theme].description}
-              </Text>
+              <IconTile icon={OPTIONS[theme].icon} tint={colors.tile[OPTIONS[theme].tint]} />
+              <View style={{ flex: 1, gap: spacing.xxs }}>
+                <Text variant="bodyStrong">{OPTIONS[theme].title}</Text>
+                <Text variant="callout" tone="secondary">
+                  {OPTIONS[theme].description}
+                </Text>
+              </View>
+              <View
+                style={{
+                  width: 26,
+                  height: 26,
+                  borderRadius: radius.full,
+                  borderWidth: 2,
+                  borderColor: selected ? colors.ink.fill : colors.border.subtle,
+                  backgroundColor: selected ? colors.ink.fill : 'transparent',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                }}
+              >
+                {selected && <Icon name="check" size={14} color={colors.ink.text} />}
+              </View>
             </Card>
           );
         })}
@@ -81,7 +106,13 @@ export default function OnboardingTheme() {
           {error}
         </Text>
       )}
-      <Button title="Finish" loading={saving} onPress={() => void finish()} />
+      <Button
+        title="Finish"
+        size="lg"
+        icon="check"
+        loading={saving}
+        onPress={() => void finish()}
+      />
       <Button title="Back" variant="ghost" disabled={saving} onPress={() => router.back()} />
     </FormScreen>
   );

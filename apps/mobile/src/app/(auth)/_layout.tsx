@@ -1,8 +1,8 @@
 import { Stack } from 'expo-router';
 import { useTheme } from '@/theme';
 
-// Welcome has no header; the forms get a native header for the back button only (the title
-// is in the screen, large).
+// Welcome has no header; the forms get a transparent native header for the back button only
+// (the title is in the screen, large, over the wash).
 export default function AuthLayout() {
   const { colors } = useTheme();
   return (
@@ -11,8 +11,8 @@ export default function AuthLayout() {
         title: '',
         headerShadowVisible: false,
         headerBackButtonDisplayMode: 'minimal',
-        headerTintColor: colors.accent.default,
-        headerStyle: { backgroundColor: colors.bg.canvas },
+        headerTransparent: true,
+        headerTintColor: colors.text.primary,
         contentStyle: { backgroundColor: colors.bg.canvas },
       }}
     >

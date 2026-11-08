@@ -10,7 +10,7 @@ export default function ConfirmEmailChange() {
       title="Confirm new email"
       token={token}
       action={confirmEmailChange}
-      successMessage="Your account now uses this email address. Use it next time you log in."
+      successMessage="Your account now uses this email address. Use it next time you sign in."
     />
   );
 }

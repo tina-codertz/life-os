@@ -54,7 +54,8 @@ export function Skeleton({ shape = 'line', width = '100%', height, delayMs = 150
         {
           width: shape === 'circle' ? size : width,
           height: size,
-          borderRadius: shape === 'circle' ? radius.full : radius.sm,
+          borderRadius:
+            shape === 'circle' ? radius.full : shape === 'block' ? radius.lg : radius.sm,
           backgroundColor: colors.bg.subtle,
         },
         { opacity },

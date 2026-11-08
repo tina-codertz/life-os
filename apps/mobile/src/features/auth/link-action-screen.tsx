@@ -1,10 +1,10 @@
 import { router } from 'expo-router';
 import { useEffect, useRef, useState } from 'react';
-import { ActivityIndicator } from 'react-native';
+import { ActivityIndicator, View } from 'react-native';
 import { FormScreen } from '@/components/form-screen';
-import { Button, Text } from '@/components/ui';
+import { Button, Card, IconTile, Text } from '@/components/ui';
 import { isApiError } from '@/services/api-error';
-import { useTheme } from '@/theme';
+import { spacing, useTheme } from '@/theme';
 import { fetchMe } from './auth-api';
 import { authStore } from './auth-instance';
 
@@ -57,16 +57,30 @@ export function LinkActionScreen({
 
   return (
     <FormScreen title={title}>
-      {state.kind === 'working' && (
-        <ActivityIndicator accessibilityLabel="Working" color={colors.accent.default} />
+      <Card>
+        {state.kind === 'working' && (
+          <ActivityIndicator accessibilityLabel="Working" color={colors.text.primary} />
+        )}
+        {state.kind === 'done' && (
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.md }}>
+            <IconTile icon="check" tint={colors.success.soft} iconColor={colors.success.default} />
+            <Text accessibilityLiveRegion="polite" style={{ flex: 1 }}>
+              {successMessage}
+            </Text>
+          </View>
+        )}
+        {state.kind === 'failed' && (
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.md }}>
+            <IconTile icon="warning" tint={colors.danger.soft} iconColor={colors.danger.text} />
+            <Text tone="danger" accessibilityRole="alert" style={{ flex: 1 }}>
+              {state.message}
+            </Text>
+          </View>
+        )}
+      </Card>
+      {state.kind !== 'working' && (
+        <Button title="Continue" size="lg" onPress={() => router.replace('/')} />
       )}
-      {state.kind === 'done' && <Text accessibilityLiveRegion="polite">{successMessage}</Text>}
-      {state.kind === 'failed' && (
-        <Text tone="danger" accessibilityRole="alert">
-          {state.message}
-        </Text>
-      )}
-      {state.kind !== 'working' && <Button title="Continue" onPress={() => router.replace('/')} />}
     </FormScreen>
   );
 }

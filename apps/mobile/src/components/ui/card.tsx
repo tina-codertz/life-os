@@ -18,19 +18,19 @@ export interface CardProps {
 }
 
 // A container that takes children, not content props (title, icon…): what goes inside is up
-// to the screen. Depth comes from the surface colour, plus a shadow in light mode.
+// to the screen. White "glass" cards on the canvas, lifted by a soft shadow in light mode.
 const BASE: ViewStyle = {
   padding: spacing.lg,
-  borderRadius: radius.lg,
+  borderRadius: radius.xl,
   borderCurve: 'continuous',
   gap: spacing.sm,
 };
 
 const VARIANT: Record<CardVariant, (theme: Theme) => ViewStyle> = {
-  surface: ({ colors, shadows }) => ({ backgroundColor: colors.bg.surface, boxShadow: shadows.sm }),
+  surface: ({ colors, shadows }) => ({ backgroundColor: colors.bg.surface, boxShadow: shadows.md }),
   elevated: ({ colors, shadows }) => ({
-    backgroundColor: colors.bg.elevated,
-    boxShadow: shadows.md,
+    backgroundColor: colors.bg.surface,
+    boxShadow: shadows.lg,
   }),
   outlined: ({ colors }) => ({
     backgroundColor: 'transparent',
@@ -66,7 +66,11 @@ export function Card({
       {...(accessibilityState ? { accessibilityState } : {})}
       onPress={onPress}
       testID={testID}
-      style={({ pressed }) => [...base, { opacity: pressed ? 0.85 : 1 }, style]}
+      style={({ pressed }) => [
+        ...base,
+        { opacity: pressed ? 0.85 : 1, transform: [{ scale: pressed ? 0.99 : 1 }] },
+        style,
+      ]}
     >
       {children}
     </Pressable>
