@@ -1,12 +1,14 @@
 import { Injectable } from '@nestjs/common';
 import {
   addDays,
+  computeStats,
   computeStreaks,
   type CreateHabitInput,
   dayState,
   type HabitCheckInResult,
   type HabitDay,
   type HabitDaysQuery,
+  type HabitStats,
   type HabitStreak,
   HABIT_BACKFILL_DAYS,
   type HabitCheckInInput,
@@ -219,6 +221,15 @@ export class HabitsService {
       out.push({ date: d, state: dayState(input, d), count: input.completions.get(d) ?? 0 });
     }
     return out;
+  }
+
+  // The detail screen's Consistency and Total days (the shared engine, over every check-in).
+  async stats(userId: string, id: string): Promise<HabitStats> {
+    const habit = await this.findActive(userId, id);
+    const completions = await this.prisma.habitCompletion.findMany({
+      where: { habitId: habit.id },
+    });
+    return computeStats(this.streakInput(habit, completions, await this.userDay(userId)));
   }
 
   private async assertCanChange(

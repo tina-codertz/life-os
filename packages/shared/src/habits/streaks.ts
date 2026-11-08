@@ -117,3 +117,25 @@ export function computeStreaks(input: StreakInput): Streaks {
     unit: rule?.frequency === 'TIMES_PER_WEEK' ? 'weeks' : 'days',
   };
 }
+
+export interface HabitStats {
+  // Share of finished periods (due days, or weeks) that were done, 0–100; null before any has
+  // finished. Today counts once it's done, like the streak.
+  consistency: number | null;
+  // Days the habit was done (count reached), ever.
+  totalDays: number;
+}
+
+// The habit detail's Consistency and Total days (the design's tiles; FR-HAB-005).
+export function computeStats(input: StreakInput): HabitStats {
+  const list = periods(input).filter((p) => !p.pending);
+  const ok = list.filter((p) => p.ok).length;
+  let totalDays = 0;
+  for (const [day, count] of input.completions) {
+    if (day <= input.today && count >= input.targetCount) totalDays += 1;
+  }
+  return {
+    consistency: list.length === 0 ? null : Math.round((ok / list.length) * 100),
+    totalDays,
+  };
+}

@@ -37,6 +37,7 @@ describe('Habits (e2e)', () => {
       action: (id: string, name: string) => http().post(`/api/v1/habits/${id}/${name}`).set(auth),
       checkIn: (id: string, body: object) =>
         http().post(`/api/v1/habits/${id}/completions`).set(auth).send(body),
+      stats: (id: string) => http().get(`/api/v1/habits/${id}/stats`).set(auth),
       undo: (id: string, day: string) =>
         http().delete(`/api/v1/habits/${id}/completions/${day}`).set(auth),
     };
@@ -250,6 +251,7 @@ describe('Habits (e2e)', () => {
       await as(juma).update(habit.id, { name: 'Mine' }).expect(404);
       await as(juma).checkIn(habit.id, { localDate: today() }).expect(404);
       await as(juma).undo(habit.id, today()).expect(404);
+      await as(juma).stats(habit.id).expect(404);
       await as(juma).remove(habit.id).expect(404);
       await as(tina).get('not-a-uuid').expect(404);
       expect((await as(tina).get(habit.id).expect(200)).body.data.name).toBe('Read');
@@ -301,6 +303,37 @@ describe('Habits (e2e)', () => {
         'today',
         'upcoming',
       ]);
+    });
+
+    it('stats: consistency over finished days, and total days done', async () => {
+      const habit = await newHabit(tina, { startDate: addDays(today(), -4) });
+      expect((await as(tina).stats(habit.id).expect(200)).body.data).toEqual({
+        consistency: 0,
+        totalDays: 0,
+      });
+      // 4 days back to yesterday: 3 done, 1 missed; today not done yet (doesn't count).
+      for (const back of [4, 3, 1]) {
+        await as(tina)
+          .checkIn(habit.id, { localDate: addDays(today(), -back) })
+          .expect(201);
+      }
+      expect((await as(tina).stats(habit.id).expect(200)).body.data).toEqual({
+        consistency: 75,
+        totalDays: 3,
+      });
+      await as(tina).checkIn(habit.id, { localDate: today() }).expect(201);
+      expect((await as(tina).stats(habit.id).expect(200)).body.data).toEqual({
+        consistency: 80,
+        totalDays: 4,
+      });
+    });
+
+    it('stats: a habit started today has no consistency yet', async () => {
+      const habit = await newHabit(tina);
+      expect((await as(tina).stats(habit.id).expect(200)).body.data).toEqual({
+        consistency: null,
+        totalDays: 0,
+      });
     });
 
     it('days: at most 93 at a time', async () => {

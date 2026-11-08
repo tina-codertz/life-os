@@ -50,6 +50,10 @@ function textPairs(c: ThemeColors): [string, string, string][] {
     ['danger.text on danger.soft (High badge)', c.danger.text, c.danger.soft],
     ['success.default on success.soft (Done badge)', c.success.default, c.success.soft],
     ['reward.text on reward.fill', c.reward.text, c.reward.fill],
+    ['done day number', c.quest.day.doneText, c.quest.day.doneFill],
+    ['missed day number', c.quest.day.missedText, c.quest.day.missedFill],
+    ['later day number', c.quest.day.laterText, c.quest.day.laterFill],
+    ['today number', c.text.onAccent, c.accent.fill],
     ...c.heat.fill.map((fill, i): [string, string, string] => [
       `heat step ${i} number`,
       c.heat.text[i] ?? '',

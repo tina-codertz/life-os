@@ -1,6 +1,12 @@
 import { describe, expect, it } from 'vitest';
 import { addDays } from '../dates.ts';
-import { computeStreaks, dayState, type ScheduleVersion, type StreakInput } from './streaks.ts';
+import {
+  computeStats,
+  computeStreaks,
+  dayState,
+  type ScheduleVersion,
+  type StreakInput,
+} from './streaks.ts';
 
 // The streak test matrix (docs/02 "Habit edge-case rules", docs/08 Habits II).
 // 2026-11-02 is a Monday; weeks start on Monday unless a test says otherwise.
@@ -158,5 +164,56 @@ describe('dayState', () => {
     expect(dayState(daily, '2026-11-09')).toBe('upcoming');
     expect(dayState(input({ schedules: [MON_WED_FRI] }), '2026-11-03')).toBe('off');
     expect(dayState(input({ schedules: [THREE_A_WEEK] }), '2026-11-03')).toBe('open');
+  });
+});
+
+describe('computeStats (the habit detail tiles)', () => {
+  it('consistency is done periods over finished ones; today open doesn’t count yet', () => {
+    // 1–7 Nov: six done, the 4th missed; today (8th) not done yet.
+    const done = days('2026-11-01', 7).filter((d) => d !== '2026-11-04');
+    expect(computeStats(input({ done }))).toEqual({ consistency: 86, totalDays: 6 });
+  });
+
+  it('today done counts', () => {
+    expect(computeStats(input({ done: days('2026-11-01', 8) }))).toEqual({
+      consistency: 100,
+      totalDays: 8,
+    });
+  });
+
+  it('a new habit has no consistency yet', () => {
+    expect(computeStats(input({ startDate: '2026-11-08' }))).toEqual({
+      consistency: null,
+      totalDays: 0,
+    });
+  });
+
+  it('days off don’t count against it, and a day short of its target isn’t a done day', () => {
+    const s = computeStats(
+      input({
+        schedules: [MON_WED_FRI],
+        targetCount: 2,
+        completions: new Map([
+          ['2026-11-02', 2], // Mon done
+          ['2026-11-04', 1], // Wed short
+          ['2026-11-06', 2], // Fri done
+        ]),
+      }),
+    );
+    expect(s).toEqual({ consistency: 67, totalDays: 2 });
+  });
+
+  it('N times a week: counted in weeks', () => {
+    const s = computeStats(
+      input({
+        schedules: [THREE_A_WEEK],
+        today: '2026-11-16',
+        done: ['2026-11-03', '2026-11-04', '2026-11-05', '2026-11-10'],
+      }),
+    );
+    // Week of 2 Nov: 3 of 3; week of 9 Nov: 1 of 3; the week of the 16th is still running.
+    // (The 1st, a Sunday, is its own week before them, with nothing done.)
+    expect(s.totalDays).toBe(4);
+    expect(s.consistency).toBe(33);
   });
 });

@@ -2,6 +2,7 @@ import type {
   CreateHabitInput,
   HabitCheckInResult,
   HabitDay,
+  HabitStats,
   Progress,
   PublicHabit,
   UpdateHabitInput,
@@ -15,6 +16,7 @@ export const habitKeys = {
   all: ['habits'] as const,
   list: (archived: boolean) => ['habits', 'list', archived] as const,
   days: (id: string, from: string, to: string) => ['habits', 'days', id, from, to] as const,
+  stats: (id: string) => ['habits', 'stats', id] as const,
 };
 // XP and the 🔥 streak. Under habits too, so a check-in refreshes it.
 export const progressKey = ['habits', 'progress'] as const;
@@ -32,6 +34,15 @@ export function useHabitDays(id: string | undefined, from: string, to: string) {
     queryKey: habitKeys.days(id ?? '', from, to),
     queryFn: ({ signal }) =>
       api().get<HabitDay[]>(`/habits/${id}/days?from=${from}&to=${to}`, { signal }),
+    enabled: Boolean(id),
+  });
+}
+
+// Consistency and Total days for the habit detail. Under habits, so a check-in refreshes it.
+export function useHabitStats(id: string | undefined) {
+  return useQuery({
+    queryKey: habitKeys.stats(id ?? ''),
+    queryFn: ({ signal }) => api().get<HabitStats>(`/habits/${id}/stats`, { signal }),
     enabled: Boolean(id),
   });
 }

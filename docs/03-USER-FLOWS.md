@@ -96,7 +96,7 @@ flowchart TD
 | 8 | Task list | `(tabs)/tasks` | MVP | empty, filtered-empty, loading more, error |
 | 9 | Task detail / form | `tasks/[id]`, `(modals)/task-form` | MVP | create, edit, saving, delete confirm |
 | 10 | Habit list | `(tabs)/habits` | MVP | empty, all checked |
-| 11 | Habit detail | `habits/[id]` | MVP | history heatmap, stats |
+| 11 | Habit detail | `habit/[id]` (from the habit card on Habits) | MVP | streak, Consistency / Total days / Best streak, this month, Mark done today |
 | 12 | Habit form | `(modals)/habit-form` | MVP | frequency pickers |
 | 13 | Calendar | `calendar` (pushed from Habits) | MVP | day / week / month segments |
 | 14 | Event form | `(modals)/event-form` | MVP | recurrence picker |

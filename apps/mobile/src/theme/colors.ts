@@ -48,6 +48,15 @@ export interface ThemeColors {
     lockIcon: string;
     todayShade: string;
     ring: string;
+    // The habit detail's month: done, missed and later days (number + fill). Today is accent.
+    day: {
+      doneFill: string;
+      doneText: string;
+      missedFill: string;
+      missedText: string;
+      laterFill: string;
+      laterText: string;
+    };
   };
   flame: string;
 }
@@ -130,6 +139,15 @@ export const lightColors: ThemeColors = {
     lockIcon: '#6B7180',
     todayShade: '#3E3BC2',
     ring: 'rgba(90,87,238,0.14)',
+    // The design's #2FA866 / #8A90A0 / #9AA0AE numbers were 3.0, 2.7 and 2.4:1; darkened to 4.5.
+    day: {
+      doneFill: '#208350',
+      doneText: '#FFFFFF',
+      missedFill: '#E9EBF2',
+      missedText: '#636773',
+      laterFill: '#F3F4F6',
+      laterText: '#686C78',
+    },
   },
   flame: '#D2690F',
 };
@@ -207,6 +225,14 @@ export const darkColors: ThemeColors = {
     lockIcon: '#A0A4B2',
     todayShade: '#3E3BC2',
     ring: 'rgba(169,166,255,0.18)',
+    day: {
+      doneFill: '#5FD38D',
+      doneText: '#0F1015',
+      missedFill: '#2C2E3A',
+      missedText: '#C2C5D0',
+      laterFill: '#23242D',
+      laterText: '#A0A4B2',
+    },
   },
   flame: '#F5A65B',
 };

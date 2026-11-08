@@ -1,7 +1,7 @@
-import { HABIT_BACKFILL_DAYS, type PublicHabit, XP } from '@life-os/shared';
+import { HABIT_BACKFILL_DAYS, type PublicHabit } from '@life-os/shared';
 import { router } from 'expo-router';
 import { useState } from 'react';
-import { Alert, Pressable, ScrollView, View } from 'react-native';
+import { Pressable, ScrollView, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { ScreenWash, TAB_BAR_SPACE } from '@/components/screen';
 import {
@@ -13,12 +13,12 @@ import {
   Skeleton,
   SkeletonGroup,
   Text,
-  useToast,
 } from '@/components/ui';
-import { buildPath, habitIcon, type PathNode, scheduleLabel } from '@/features/habits/quest';
+import { buildPath, habitIcon, scheduleLabel } from '@/features/habits/quest';
 import { QuestPath } from '@/features/habits/quest-path';
-import { useCheckIn, useHabitDays, useHabits, useProgress } from '@/features/habits/queries';
-import { addDays, formatDayLong, localToday } from '@/features/tasks/dates';
+import { useHabitDays, useHabits, useProgress } from '@/features/habits/queries';
+import { useDayPress } from '@/features/habits/use-day-press';
+import { addDays, localToday } from '@/features/tasks/dates';
 import { useTimezone } from '@/features/users/use-timezone';
 import { MIN_TOUCH_TARGET, radius, spacing, useTheme } from '@/theme';
 
@@ -220,61 +220,13 @@ function HabitChip({
 
 function HabitQuest({ habit }: { habit: PublicHabit }) {
   const { colors } = useTheme();
-  const toast = useToast();
   const today = localToday(useTimezone());
   const days = useHabitDays(habit.id, addDays(today, -21), today);
-  const checkIn = useCheckIn(habit, today);
+  const onPressDay = useDayPress(habit, today);
   const nodes = buildPath(habit, days.data ?? [], today);
   const earliest = addDays(today, -HABIT_BACKFILL_DAYS);
   const daily = habit.streak.unit === 'days';
   const counter = daily ? 'DAY' : 'WEEK';
-
-  function onPressDay(node: PathNode) {
-    if (node.kind === 'today' && !node.done) {
-      // One tap is done, or one more for a count habit ("3 of 8").
-      const count = habit.targetCount > 1 ? node.count + 1 : undefined;
-      const previous = node.count;
-      checkIn.mutate(
-        { day: node.date, undo: false, ...(count !== undefined ? { count } : {}) },
-        {
-          onSuccess: (result) => {
-            const done = (result.completion?.count ?? 0) >= habit.targetCount;
-            toast({
-              message: done
-                ? `Day ${result.streak.current}! +${XP.HABIT} XP`
-                : `${result.completion?.count ?? 0} of ${habit.targetCount}${habit.unit ? ` ${habit.unit}` : ''}`,
-              tone: done ? 'success' : 'info',
-              action: {
-                label: 'Undo',
-                onPress: () =>
-                  checkIn.mutate(
-                    previous > 0
-                      ? { day: node.date, undo: false, count: previous }
-                      : { day: node.date, undo: true },
-                  ),
-              },
-            });
-          },
-        },
-      );
-      return;
-    }
-    if (node.kind === 'missed') {
-      checkIn.mutate({ day: node.date, undo: false });
-      return;
-    }
-    if (node.kind === 'done' || (node.kind === 'today' && node.done)) {
-      // Undoing a done day asks first: it lowers the streak.
-      Alert.alert('Undo this day?', `${formatDayLong(node.date)} won’t count as done.`, [
-        { text: 'Cancel', style: 'cancel' },
-        {
-          text: 'Undo',
-          style: 'destructive',
-          onPress: () => checkIn.mutate({ day: node.date, undo: true }),
-        },
-      ]);
-    }
-  }
 
   return (
     <View style={{ gap: spacing.sm }}>
@@ -289,7 +241,14 @@ function HabitQuest({ habit }: { habit: PublicHabit }) {
           boxShadow: '0 14px 28px rgba(90,87,238,0.3)',
         }}
       >
-        <View style={{ flex: 1 }} accessible accessibilityRole="header">
+        {/* The card opens the habit's detail (its streak, stats and month). */}
+        <Pressable
+          style={({ pressed }) => ({ flex: 1, opacity: pressed ? 0.8 : 1 })}
+          accessibilityRole="button"
+          accessibilityHint="Opens the habit’s details"
+          onPress={() => router.push({ pathname: '/habit/[id]', params: { id: habit.id } })}
+          testID="habit-card"
+        >
           <Text variant="label" tone="onAccent" style={{ letterSpacing: 1, fontSize: 13 }}>
             {habit.name.toUpperCase()} · {counter} {habit.streak.current}
             {daily ? ` OF ${habit.goalDays}` : ''}
@@ -297,7 +256,7 @@ function HabitQuest({ habit }: { habit: PublicHabit }) {
           <Text variant="title2" tone="onAccent" style={{ marginTop: spacing.xs + 2 }}>
             {scheduleLabel(habit.schedule)}
           </Text>
-        </View>
+        </Pressable>
         <Pressable
           accessibilityRole="button"
           accessibilityLabel={`Edit ${habit.name}`}

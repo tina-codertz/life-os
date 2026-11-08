@@ -12,6 +12,7 @@ export default function AppLayout() {
         name="design-preview"
         options={{ title: 'Design system', headerTintColor: colors.text.primary }}
       />
+      <Stack.Screen name="habit/[id]" options={{ headerShown: false }} />
       <Stack.Screen
         name="calendar"
         options={{

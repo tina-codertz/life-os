@@ -107,6 +107,10 @@ function serve(onboarded = true) {
     status: 200,
     body: { data: [{ date: TODAY, state: 'today', count: 0 }] },
   });
+  routes['GET /habits/h1/stats'] = () => ({
+    status: 200,
+    body: { data: { consistency: 86, totalDays: 48 } },
+  });
   routes['GET /progress'] = () => ({
     status: 200,
     body: { data: { xp: 1240, streak: { current: 3, best: 3 } } },
@@ -188,6 +192,12 @@ describe('every control can be named by a screen reader', () => {
   it('Habits: chips, the card and the quest path', async () => {
     await open('/habits');
     await screen.findByTestId('quest-today');
+    expect(unnamedControls()).toEqual([]);
+  });
+
+  it('Habit detail: streak, tiles, the month and Mark done today', async () => {
+    await open('/habit/h1');
+    await screen.findByLabelText('Consistency: 86%');
     expect(unnamedControls()).toEqual([]);
   });
 

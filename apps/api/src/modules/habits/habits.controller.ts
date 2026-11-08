@@ -8,6 +8,7 @@ import {
   type HabitDay,
   type HabitDaysQuery,
   habitDaysQuerySchema,
+  type HabitStats,
   type ListHabitsQuery,
   listHabitsQuerySchema,
   localDateSchema,
@@ -86,6 +87,11 @@ export class HabitsController {
     @ZodQuery(habitDaysQuerySchema) query: HabitDaysQuery,
   ): Promise<HabitDay[]> {
     return this.habits.days(user.id, id, query);
+  }
+
+  @Get(':id/stats')
+  stats(@CurrentUser() user: AuthUser, @habitId() id: string): Promise<HabitStats> {
+    return this.habits.stats(user.id, id);
   }
 
   @Post(':id/completions')

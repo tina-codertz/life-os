@@ -1160,3 +1160,26 @@ Still open (History, to discuss): what the design's calendar button on Week / Ye
 1. Why does the app show the tick before the server has answered, and what has to happen if the server says no?
 2. Why does editing a habit send the schedule only when it changed?
 
+### 2026-11-08 — Fix: the tab bar, and the Habit detail screen
+**What changed:**
+- **Tab bar** now follows the design: Today · Habits · Tasks · Money · Settings. I'd put a Calendar tab where the design has Money. Calendar now opens from the button at the top of Habits; Money says "coming soon" until Finance (v1.1).
+- **Habit detail** (the design's screen, opened by tapping the purple habit card):
+  - the streak card;
+  - Consistency, Total days and Best streak;
+  - this month's days (green done, grey missed, purple today);
+  - Mark done today.
+- **API:** `GET /habits/:id/stats`. The shared engine works out consistency from the same "periods" as the streak, so the two can't disagree.
+- **Refactor:** what a tap on a day does (check in, toast with Undo, ask before undoing) moved into `useDayPress`, used by both the path and the detail's button.
+**Concepts:**
+- *One source of truth:* consistency and the streak both come from the engine's list of periods, so "86%" and "12-day streak" are counted the same way.
+- *Test isolation:* the app saves its query cache to the phone's storage. In tests, that saved cache carried one test's habit into the next, so the detail tests clear storage first.
+**Checks:**
+- Tests: engine 5 new, API e2e 2 new, detail screen 7, a11y audit 17 screens.
+- Probes: wrong day label, wrong button title, today's count ignored and missed colour each make a test fail.
+- Totals: mobile 426, API 116 + 178, shared 136.
+- Seen on the simulator.
+
+**To learn:**
+1. Why is "Consistency" counted in the same periods as the streak, not just "days done ÷ days since start"?
+2. Why can a saved cache make a test pass or fail depending on which test ran before it?
+
