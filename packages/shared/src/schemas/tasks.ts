@@ -88,6 +88,43 @@ export const completeTaskSchema = z
   .default({});
 export type CompleteTaskInput = z.infer<typeof completeTaskSchema>;
 
+// GET /tasks/history (Tasks II Part 4): completed top-level tasks per local day, in the user's
+// time zone. Up to a year at a time; with include=tasks (the Week view's lists) up to 6 weeks.
+export const HISTORY_MAX_DAYS = 366;
+export const HISTORY_MAX_DAYS_WITH_TASKS = 42;
+const spanDays = (from: string, to: string) =>
+  (Date.parse(`${to}T00:00:00Z`) - Date.parse(`${from}T00:00:00Z`)) / 86_400_000 + 1;
+export const historyQuerySchema = z
+  .object({
+    from: localDateSchema,
+    to: localDateSchema,
+    include: z.enum(['tasks']).optional(),
+  })
+  .refine((q) => q.from <= q.to, { path: ['to'], error: 'End on or after the start.' })
+  .refine((q) => spanDays(q.from, q.to) <= HISTORY_MAX_DAYS, {
+    path: ['to'],
+    error: `Ask for at most ${HISTORY_MAX_DAYS} days.`,
+  })
+  .refine((q) => !q.include || spanDays(q.from, q.to) <= HISTORY_MAX_DAYS_WITH_TASKS, {
+    path: ['include'],
+    error: `Tasks can be included for at most ${HISTORY_MAX_DAYS_WITH_TASKS} days.`,
+  });
+export type HistoryQuery = z.infer<typeof historyQuerySchema>;
+
+export interface HistoryDay {
+  date: string; // "2026-11-08", the user's local day
+  count: number;
+  tasks?: PublicTask[]; // newest first, with include=tasks
+}
+
+// Only days with something completed are listed, oldest first.
+export interface TaskHistory {
+  from: string;
+  to: string;
+  total: number;
+  days: HistoryDay[];
+}
+
 export interface PublicTask {
   id: string;
   title: string;

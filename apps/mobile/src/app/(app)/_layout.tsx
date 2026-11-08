@@ -12,6 +12,16 @@ export default function AppLayout() {
         name="design-preview"
         options={{ title: 'Design system', headerTintColor: colors.text.primary }}
       />
+      <Stack.Screen
+        name="history"
+        options={{
+          title: '',
+          headerTransparent: true,
+          headerShadowVisible: false,
+          headerBackButtonDisplayMode: 'minimal',
+          headerTintColor: colors.text.primary,
+        }}
+      />
       <Stack.Screen name="sheet-demo" options={sheetOptions([0.5, 1], colors.bg.elevated)} />
       <Stack.Screen name="task-form" options={sheetOptions([0.85, 1], colors.bg.elevated)} />
     </Stack>

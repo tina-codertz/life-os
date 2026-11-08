@@ -1009,3 +1009,33 @@ The project owner added **History: week / month / year** to the design (`docs/Li
 3. What stops complete → uncomplete → complete from creating two next tasks?
 4. Why can't the last weekday be unticked in Weekly?
 
+### 2026-11-08 — Tasks II Part 4: History (from design export 2)
+**What was built:**
+- **API:** `GET /tasks/history?from&to[&include=tasks]` counts completed top-level tasks per **local day** with SQL: `("completedAt" AT TIME ZONE tz)::date`, using the user's saved zone. A one-day-wider UTC window lets the `(userId, completedAt)` index do the first cut. Up to a year, or six weeks with the tasks themselves. `history` is declared before `:id`, so it isn't read as a task id.
+- **Phone:** **Settings → History** opens the design's History:
+  - **Week:** the total, "+9 vs last week", a bar per day (today in ink), then each day's tasks with the time they were done, on your clock.
+  - **Month:** the total, a heatmap with five greens (darker means more done), and "By week" with each week's total and best day.
+  - **Year:** the total, "Best: Oct", a bar per month (the best in ink with its number), the longest streak, and the three best months.
+  - Arrows step back a period and forward again, never past the current one. Weeks start on your setting.
+**Concepts:**
+- *Grouping by local day in SQL:* the same instant is a different calendar day in different zones, so "when" depends on the user's zone, not the server's.
+- *Leaving out empty days:* the server sends only days with something done; the app fills in the zeros for charts.
+- *Charts that speak:* each bar row and heatmap cell has a text label ("Mon 3, Tue 5…", "Saturday 3 October 2026, 6 done"), so a screen reader gets the numbers, not just the shapes.
+**Found while building:**
+- British English writes "Sept"; the design writes "Sep", so short month names use US English.
+- The design's darkest heatmap green with white numbers was 4.1:1. It's now `#4F7A1A` (5.1:1), and every step's number colour is in the contrast test.
+- The error-state test first waited forever: a 5xx is retried after a delay that Jest's fake timers never reach. It now uses a 400, which isn't retried, like the Tasks screen test.
+- Two probes pushed the tests to check the heatmap's colours (not just its counts) and that last week's tasks aren't listed this week.
+**Checks:** shared 101, API 114 unit + 150 e2e (5 new: local-day grouping across midnight, what's left out, order, limits, login), mobile 343 (6 helper + 6 screen tests). Probes: API (server zone instead of the user's, subtasks counted) and phone (change badge, last week's tasks, heat levels, Next past this week, streak, clock zone). Each makes a test fail. `bun run check` clean. Seen on the simulator with real data.
+**Where the design and the build differ (to discuss):**
+- The Week and Year headers show a calendar button, but the design doesn't say what it opens. The build uses ‹ › arrows on all three (as Month shows).
+- Month's "5 weeks" badge has no clear meaning, so it's left out.
+- The All / Tasks / Habits / Goals chips, the Habits kept / Goals reached tiles and the XP badges wait for Habits, Goals and points.
+- The design doesn't show how History is opened. It's a row in Settings for now.
+
+**To learn:**
+1. Why must "which day was this completed" be worked out in the user's time zone?
+2. Why does the API leave out days with nothing done?
+3. Why is `GET /tasks/history` declared before `GET /tasks/:id`?
+4. How does a screen reader user get the numbers from a bar chart?
+

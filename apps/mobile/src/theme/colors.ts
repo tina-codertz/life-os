@@ -30,6 +30,13 @@ export interface ThemeColors {
   category: Record<CategoryColor, string>;
   // ...and the pastel behind a category's chip or icon.
   categoryTile: Record<CategoryColor, string>;
+  // History charts: bars (week view) and the five heatmap steps, none → most, each with the
+  // text colour that reads on it.
+  chart: { bar: string; barStrong: string; track: string };
+  heat: {
+    fill: [string, string, string, string, string];
+    text: [string, string, string, string, string];
+  };
 }
 
 export const lightColors: ThemeColors = {
@@ -93,6 +100,12 @@ export const lightColors: ThemeColors = {
     pink: '#FADDEB',
     gray: '#ECEEF3',
   },
+  chart: { bar: '#E5EFC1', barStrong: '#BCD66C', track: '#E9EAEE' },
+  // The design's greens; the darkest is a touch darker than its #5E8A1F (white text was 4.1:1).
+  heat: {
+    fill: ['#F1F2F5', '#EEF5D6', '#DCEAA8', '#BCD66C', '#4F7A1A'],
+    text: ['#0F0F14', '#0F0F14', '#0F0F14', '#0F0F14', '#FFFFFF'],
+  },
 };
 
 // The design is light only; this is its night version, built from the same roles.
@@ -152,5 +165,10 @@ export const darkColors: ThemeColors = {
     red: '#3D2128',
     pink: '#3A2232',
     gray: '#272934',
+  },
+  chart: { bar: '#2C3320', barStrong: '#52692A', track: '#272934' },
+  heat: {
+    fill: ['#23242D', '#2C3320', '#3B4A1F', '#52692A', '#9CC24A'],
+    text: ['#F4F5F9', '#F4F5F9', '#F4F5F9', '#F4F5F9', '#0F0F14'],
   },
 };

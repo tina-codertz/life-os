@@ -1,5 +1,10 @@
 import { describe, expect, it } from 'vitest';
-import { createTaskSchema, listTasksQuerySchema, updateTaskSchema } from './tasks.ts';
+import {
+  createTaskSchema,
+  historyQuerySchema,
+  listTasksQuerySchema,
+  updateTaskSchema,
+} from './tasks.ts';
 
 describe('createTaskSchema', () => {
   it('needs only a title; trims it', () => {
@@ -52,5 +57,30 @@ describe('listTasksQuerySchema', () => {
       dueFrom: '2026-12-01',
       q: 'rent',
     });
+  });
+});
+
+describe('historyQuerySchema', () => {
+  it('takes a range of local days, optionally with the tasks', () => {
+    expect(
+      historyQuerySchema.parse({ from: '2026-11-02', to: '2026-11-08', include: 'tasks' }),
+    ).toEqual({ from: '2026-11-02', to: '2026-11-08', include: 'tasks' });
+  });
+
+  it.each([
+    [{ from: '2026-11-08', to: '2026-11-01' }, 'to'],
+    [{ from: '2026-01-01', to: '2027-01-02' }, 'to'], // 367 days
+    [{ from: '2026-01-01', to: '2026-02-12', include: 'tasks' }, 'include'], // 43 days
+    [{ from: '2026-02-30', to: '2026-03-01' }, 'from'],
+  ])('refuses %j on %s', (query, field) => {
+    const result = historyQuerySchema.safeParse(query);
+    expect(result.success).toBe(false);
+    expect(result.error?.issues[0]?.path).toEqual([field]);
+  });
+
+  it('a whole leap year is allowed', () => {
+    expect(historyQuerySchema.safeParse({ from: '2028-01-01', to: '2028-12-31' }).success).toBe(
+      true,
+    );
   });
 });

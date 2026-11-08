@@ -60,6 +60,20 @@ describe('Tasks (e2e)', () => {
   const completeIt = async (who: AuthResult, id: string) =>
     (await as(who).action(id, 'complete').expect(200)).body.data as CompleteTaskResult;
 
+  // Completes a task at a chosen instant (the API would use "now").
+  const doneAt = async (who: AuthResult, title: string, at: string, body: object = {}) => {
+    const t = await newTask(who, { title, ...body });
+    await prisma.task.update({
+      where: { id: t.id },
+      data: { status: 'DONE', completedAt: new Date(at) },
+    });
+    return t;
+  };
+  const history = (who: AuthResult, query: string) =>
+    http()
+      .get(`/api/v1/tasks/history${query}`)
+      .set({ Authorization: `Bearer ${who.accessToken}` });
+
   beforeAll(async () => {
     app = await createTestApp();
     prisma = app.get(PrismaService);
@@ -479,6 +493,74 @@ describe('Tasks (e2e)', () => {
       expect(noDate.body.data.recurrenceRule).toBeNull();
       const refused = await as(tina).update(t.id, { recurrenceRule: 'FREQ=DAILY' }).expect(400);
       expect(refused.body.error.details[0].field).toBe('recurrenceRule');
+    });
+  });
+
+  describe('history', () => {
+    beforeEach(async () => {
+      await prisma.userSettings.update({
+        where: { userId: tina.user.id },
+        data: { timezone: 'Africa/Dar_es_Salaam' }, // UTC+3
+      });
+    });
+
+    it('counts completed tasks per local day in the user’s time zone', async () => {
+      await doneAt(tina, 'Late Saturday', '2026-11-07T20:00:00Z'); // 23:00 Sat in Dar
+      await doneAt(tina, 'After midnight', '2026-11-07T22:30:00Z'); // 01:30 Sun in Dar
+      await doneAt(tina, 'Sunday noon', '2026-11-08T09:00:00Z');
+
+      const res = await history(tina, '?from=2026-11-07&to=2026-11-08').expect(200);
+      expect(res.body.data).toEqual({
+        from: '2026-11-07',
+        to: '2026-11-08',
+        total: 3,
+        days: [
+          { date: '2026-11-07', count: 1 },
+          { date: '2026-11-08', count: 2 },
+        ],
+      });
+    });
+
+    it('leaves out open, deleted, other people’s, out-of-range tasks and subtasks', async () => {
+      const kept = await doneAt(tina, 'Kept', '2026-11-08T09:00:00Z');
+      await newTask(tina, { title: 'Still open' });
+      const gone = await doneAt(tina, 'Deleted', '2026-11-08T09:00:00Z');
+      await as(tina).remove(gone.id).expect(204);
+      await doneAt(juma, 'Juma’s', '2026-11-08T09:00:00Z');
+      await doneAt(tina, 'Last month', '2026-10-08T09:00:00Z');
+      const sub = (await as(tina).addSubtask(kept.id, 'Step').expect(201)).body.data;
+      await prisma.task.update({
+        where: { id: sub.id },
+        data: { status: 'DONE', completedAt: new Date('2026-11-08T09:00:00Z') },
+      });
+
+      const res = await history(tina, '?from=2026-11-01&to=2026-11-30&include=tasks').expect(200);
+      expect(res.body.data.total).toBe(1);
+      expect(res.body.data.days[0].tasks.map((t: PublicTask) => t.title)).toEqual(['Kept']);
+    });
+
+    it('include=tasks lists each day’s tasks, newest first', async () => {
+      await doneAt(tina, 'Morning', '2026-11-08T06:00:00Z');
+      await doneAt(tina, 'Evening', '2026-11-08T15:00:00Z');
+      const res = await history(tina, '?from=2026-11-08&to=2026-11-08&include=tasks').expect(200);
+      expect(res.body.data.days[0].tasks.map((t: PublicTask) => t.title)).toEqual([
+        'Evening',
+        'Morning',
+      ]);
+    });
+
+    it('checks the range (a year at most; tasks for six weeks at most)', async () => {
+      const backwards = await history(tina, '?from=2026-11-08&to=2026-11-01').expect(400);
+      expect(backwards.body.error.details[0].field).toBe('to');
+      await history(tina, '?from=2026-01-01&to=2026-12-31').expect(200);
+      const tooMany = await history(tina, '?from=2026-01-01&to=2026-03-01&include=tasks').expect(
+        400,
+      );
+      expect(tooMany.body.error.details[0].field).toBe('include');
+    });
+
+    it('needs a login', async () => {
+      await http().get('/api/v1/tasks/history?from=2026-11-01&to=2026-11-08').expect(401);
     });
   });
 });

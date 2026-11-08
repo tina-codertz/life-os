@@ -3,6 +3,8 @@ import {
   type CompleteTaskResult,
   type CreateSubtaskInput,
   type CreateTaskInput,
+  type HistoryDay,
+  type HistoryQuery,
   type ListTasksQuery,
   MAX_SUBTASKS,
   nextDueDate,
@@ -10,12 +12,13 @@ import {
   type PublicTask,
   TASK_RESTORE_DAYS,
   type TaskDetail,
+  type TaskHistory,
   type UpdateTaskInput,
 } from '@life-os/shared';
 import { fromDbDate, localToday, toDbDate } from '../../common/dates.js';
 import { decodeCursor, pageOf } from '../../common/pagination/cursor.js';
 import { Page } from '../../common/pagination/page.js';
-import type { Prisma, Task } from '../../generated/prisma/client.js';
+import { Prisma, type Task } from '../../generated/prisma/client.js';
 import { PrismaService } from '../../prisma/prisma.service.js';
 import { CategoriesService } from '../categories/categories.service.js';
 import { CategoryNotFoundError } from '../categories/category.errors.js';
@@ -74,6 +77,52 @@ export class TasksService {
   }
 
   // The task with its subtasks, oldest first (the order they were added).
+  // Completed top-level tasks per day in the user's own time zone (a task done at 23:30 in Dar
+  // es Salaam counts on that local day, not on the UTC one). Days with nothing are left out.
+  async history(userId: string, query: HistoryQuery): Promise<TaskHistory> {
+    const settings = await this.prisma.userSettings.findUnique({ where: { userId } });
+    const tz = settings?.timezone ?? 'UTC';
+    // Bounds in UTC a day wider than the range on each side (zones are at most ±14 h), so the
+    // (userId, completedAt) index narrows the rows before the exact local-day check.
+    const after = new Date(toDbDate(query.from).getTime() - DAY_MS);
+    const before = new Date(toDbDate(query.to).getTime() + 2 * DAY_MS);
+    const rows = await this.prisma.$queryRaw<{ id: string; day: string }[]>(Prisma.sql`
+      SELECT "id", to_char(("completedAt" AT TIME ZONE ${tz})::date, 'YYYY-MM-DD') AS "day"
+      FROM "Task"
+      WHERE "userId" = ${userId}::uuid
+        AND "status" = 'DONE'
+        AND "deletedAt" IS NULL
+        AND "parentId" IS NULL
+        AND "completedAt" >= ${after} AND "completedAt" < ${before}
+        AND ("completedAt" AT TIME ZONE ${tz})::date BETWEEN ${query.from}::date AND ${query.to}::date
+    `);
+
+    const byDay = new Map<string, string[]>();
+    for (const row of rows) byDay.set(row.day, [...(byDay.get(row.day) ?? []), row.id]);
+    const dates = [...byDay.keys()].toSorted();
+
+    let tasksById = new Map<string, PublicTask>();
+    if (query.include === 'tasks' && rows.length > 0) {
+      const tasks = await this.prisma.task.findMany({
+        where: { id: { in: rows.map((r) => r.id) } },
+        orderBy: { completedAt: 'desc' },
+      });
+      const counts = await this.subtaskCounts(tasks.map((t) => t.id));
+      tasksById = new Map(tasks.map((t) => [t.id, toPublicTask(t, counts.get(t.id))]));
+    }
+
+    const days: HistoryDay[] = dates.map((date) => {
+      const ids = byDay.get(date) ?? [];
+      if (query.include !== 'tasks') return { date, count: ids.length };
+      const tasks = ids
+        .map((id) => tasksById.get(id))
+        .filter((t): t is PublicTask => t !== undefined)
+        .toSorted((a, b) => (b.completedAt ?? '').localeCompare(a.completedAt ?? ''));
+      return { date, count: ids.length, tasks };
+    });
+    return { from: query.from, to: query.to, total: rows.length, days };
+  }
+
   async get(userId: string, id: string): Promise<TaskDetail> {
     const task = await this.findActive(userId, id);
     const subtasks = await this.prisma.task.findMany({

@@ -7,10 +7,13 @@ import {
   createSubtaskSchema,
   type CreateTaskInput,
   createTaskSchema,
+  type HistoryQuery,
+  historyQuerySchema,
   type ListTasksQuery,
   listTasksQuerySchema,
   type PublicTask,
   type TaskDetail,
+  type TaskHistory,
   type UpdateTaskInput,
   updateTaskSchema,
 } from '@life-os/shared';
@@ -45,6 +48,15 @@ export class TasksController {
     @ZodBody(createTaskSchema) body: CreateTaskInput,
   ): Promise<PublicTask> {
     return this.tasks.create(user.id, body);
+  }
+
+  // Before ':id', so "history" isn't read as a task id.
+  @Get('history')
+  history(
+    @CurrentUser() user: AuthUser,
+    @ZodQuery(historyQuerySchema) query: HistoryQuery,
+  ): Promise<TaskHistory> {
+    return this.tasks.history(user.id, query);
   }
 
   // The task with its subtasks[].

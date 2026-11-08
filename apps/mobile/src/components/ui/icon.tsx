@@ -10,6 +10,7 @@ import ChevronsRight from 'lucide-react-native/icons/chevrons-right';
 import Clock from 'lucide-react-native/icons/clock';
 import Flag from 'lucide-react-native/icons/flag';
 import Flame from 'lucide-react-native/icons/flame';
+import History from 'lucide-react-native/icons/history';
 import Globe from 'lucide-react-native/icons/globe';
 import HeartPulse from 'lucide-react-native/icons/heart-pulse';
 import House from 'lucide-react-native/icons/house';
@@ -30,6 +31,7 @@ import Tag from 'lucide-react-native/icons/tag';
 import TextAlignStart from 'lucide-react-native/icons/text-align-start';
 import Trash from 'lucide-react-native/icons/trash';
 import TriangleExclamationPoint from 'lucide-react-native/icons/triangle-exclamation-point';
+import Trophy from 'lucide-react-native/icons/trophy';
 import User from 'lucide-react-native/icons/user';
 import Wallet from 'lucide-react-native/icons/wallet';
 import X from 'lucide-react-native/icons/x';
@@ -54,6 +56,7 @@ const ICONS = {
   flame: Flame,
   globe: Globe,
   health: HeartPulse,
+  history: History,
   home: House,
   layers: Layers,
   lock: Lock,
@@ -71,6 +74,7 @@ const ICONS = {
   tag: Tag,
   tasks: ListChecks,
   trash: Trash,
+  trophy: Trophy,
   wallet: Wallet,
   warning: TriangleExclamationPoint,
 } as const satisfies Record<string, LucideIcon>;

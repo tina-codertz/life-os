@@ -35,6 +35,7 @@ export const fonts = {
 
 export const typography = {
   hero: { fontFamily: fonts.bold, fontSize: 48, lineHeight: 52, letterSpacing: -2 },
+  stat: { fontFamily: fonts.bold, fontSize: 54, lineHeight: 58, letterSpacing: -2 },
   display: { fontFamily: fonts.bold, fontSize: 34, lineHeight: 38, letterSpacing: -1 },
   title1: { fontFamily: fonts.bold, fontSize: 26, lineHeight: 30, letterSpacing: -0.6 },
   title2: { fontFamily: fonts.bold, fontSize: 22, lineHeight: 28, letterSpacing: -0.5 },

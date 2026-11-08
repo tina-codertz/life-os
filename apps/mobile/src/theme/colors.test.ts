@@ -49,6 +49,11 @@ function textPairs(c: ThemeColors): [string, string, string][] {
     ['danger.text on danger.soft (High badge)', c.danger.text, c.danger.soft],
     ['success.default on success.soft (Done badge)', c.success.default, c.success.soft],
     ['reward.text on reward.fill', c.reward.text, c.reward.fill],
+    ...c.heat.fill.map((fill, i): [string, string, string] => [
+      `heat step ${i} number`,
+      c.heat.text[i] ?? '',
+      fill,
+    ]),
   );
   return pairs;
 }

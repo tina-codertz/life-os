@@ -1,4 +1,5 @@
 import type { Theme } from '@life-os/shared';
+import { router } from 'expo-router';
 import { Alert, type AlertButton, Platform, View } from 'react-native';
 import { Screen } from '@/components/screen';
 import {
@@ -67,6 +68,15 @@ export default function Settings() {
           />
         </ListGroup>
       )}
+      <ListGroup>
+        <ListRow
+          icon="history"
+          tint={colors.tile.lime}
+          title="History"
+          accessibilityHint="Everything you've completed, by week, month and year"
+          onPress={() => router.push('/history')}
+        />
+      </ListGroup>
       <ListGroup>
         <ListRow
           icon="signOut"
