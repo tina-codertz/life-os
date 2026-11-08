@@ -1,14 +1,19 @@
 import { Injectable } from '@nestjs/common';
 import {
   addDays,
+  computeStreaks,
   type CreateHabitInput,
+  dayState,
+  type HabitCheckInResult,
+  type HabitDay,
+  type HabitDaysQuery,
+  type HabitStreak,
   HABIT_BACKFILL_DAYS,
   type HabitCheckInInput,
   type HabitSchedule as ScheduleInput,
   localToday,
   MAX_HABITS,
   type PublicHabit,
-  type PublicHabitCompletion,
   type UpdateHabitInput,
 } from '@life-os/shared';
 import { fromDbDate, toDbDate } from '../../common/dates.js';
@@ -21,7 +26,17 @@ import {
   HabitLimitError,
   HabitNotFoundError,
 } from './habit.errors.js';
-import { type HabitWithSchedules, toPublicCompletion, toPublicHabit } from './public-habit.js';
+import {
+  type HabitWithSchedules,
+  toPublicCompletion,
+  toPublicHabit,
+  toScheduleVersions,
+} from './public-habit.js';
+
+interface UserDay {
+  today: string;
+  weekStartsOn: number;
+}
 
 const withSchedules = { schedules: true } as const;
 
@@ -40,17 +55,23 @@ export class HabitsService {
   constructor(private readonly prisma: PrismaService) {}
 
   async list(userId: string, archived: boolean): Promise<PublicHabit[]> {
-    const today = await this.today(userId);
+    const day = await this.userDay(userId);
     const habits = await this.prisma.habit.findMany({
       where: { userId, deletedAt: null, archivedAt: archived ? { not: null } : null },
       include: withSchedules,
       orderBy: [{ sortOrder: 'asc' }, { createdAt: 'asc' }],
     });
-    const todays = await this.prisma.habitCompletion.findMany({
-      where: { userId, localDate: toDbDate(today), habitId: { in: habits.map((h) => h.id) } },
+    // Every check-in of these habits, once, for their streaks and today's state.
+    const completions = await this.prisma.habitCompletion.findMany({
+      where: { userId, habitId: { in: habits.map((h) => h.id) } },
     });
-    const byHabit = new Map(todays.map((c) => [c.habitId, c]));
-    return habits.map((h) => toPublicHabit(h, today, byHabit.get(h.id)));
+    const byHabit = new Map<string, HabitCompletion[]>();
+    for (const c of completions) {
+      const list = byHabit.get(c.habitId);
+      if (list) list.push(c);
+      else byHabit.set(c.habitId, [c]);
+    }
+    return habits.map((h) => this.toPublic(h, byHabit.get(h.id) ?? [], day));
   }
 
   async get(userId: string, id: string): Promise<PublicHabit> {
@@ -129,11 +150,7 @@ export class HabitsService {
 
   // FR-HAB-002: check in for today or up to 7 days back. Safe to repeat: a day has one
   // check-in, and sending it again sets its count. No count means "done" (the full target).
-  async checkIn(
-    userId: string,
-    id: string,
-    input: HabitCheckInInput,
-  ): Promise<PublicHabitCompletion> {
+  async checkIn(userId: string, id: string, input: HabitCheckInInput): Promise<HabitCheckInResult> {
     const habit = await this.findActive(userId, id);
     await this.assertCanChange(userId, habit, input.localDate);
     const key = { habitId: habit.id, localDate: toDbDate(input.localDate) };
@@ -153,16 +170,38 @@ export class HabitsService {
       if (!isUniqueViolation(err, 'HabitCompletion', 'localDate')) throw err;
       completion = await upsert();
     }
-    return toPublicCompletion(completion);
+    return {
+      completion: toPublicCompletion(completion),
+      streak: await this.streakOf(userId, habit),
+    };
   }
 
   // Undo a check-in (same day range as checking in). Undoing a day with none is fine.
-  async undoCheckIn(userId: string, id: string, localDate: string): Promise<void> {
+  async undoCheckIn(userId: string, id: string, localDate: string): Promise<HabitCheckInResult> {
     const habit = await this.findActive(userId, id);
     await this.assertCanChange(userId, habit, localDate);
     await this.prisma.habitCompletion.deleteMany({
       where: { habitId: habit.id, localDate: toDbDate(localDate) },
     });
+    return { completion: null, streak: await this.streakOf(userId, habit) };
+  }
+
+  // Each day's state from `from` to `to` (the quest path, the calendar).
+  async days(userId: string, id: string, query: HabitDaysQuery): Promise<HabitDay[]> {
+    const habit = await this.findActive(userId, id);
+    const day = await this.userDay(userId);
+    const completions = await this.prisma.habitCompletion.findMany({
+      where: {
+        habitId: habit.id,
+        localDate: { gte: toDbDate(query.from), lte: toDbDate(query.to) },
+      },
+    });
+    const input = this.streakInput(habit, completions, day);
+    const out: HabitDay[] = [];
+    for (let d = query.from; d <= query.to; d = addDays(d, 1)) {
+      out.push({ date: d, state: dayState(input, d), count: input.completions.get(d) ?? 0 });
+    }
+    return out;
   }
 
   private async assertCanChange(
@@ -180,11 +219,34 @@ export class HabitsService {
   }
 
   private async present(userId: string, habit: HabitWithSchedules): Promise<PublicHabit> {
-    const today = await this.today(userId);
-    const todays = await this.prisma.habitCompletion.findUnique({
-      where: { habitId_localDate: { habitId: habit.id, localDate: toDbDate(today) } },
+    const completions = await this.prisma.habitCompletion.findMany({
+      where: { habitId: habit.id },
     });
-    return toPublicHabit(habit, today, todays ?? undefined);
+    return this.toPublic(habit, completions, await this.userDay(userId));
+  }
+
+  private toPublic(habit: HabitWithSchedules, completions: HabitCompletion[], day: UserDay) {
+    const input = this.streakInput(habit, completions, day);
+    const todays = completions.find((c) => fromDbDate(c.localDate) === day.today);
+    return toPublicHabit(habit, day.today, todays, computeStreaks(input));
+  }
+
+  private async streakOf(userId: string, habit: HabitWithSchedules): Promise<HabitStreak> {
+    const completions = await this.prisma.habitCompletion.findMany({
+      where: { habitId: habit.id },
+    });
+    return computeStreaks(this.streakInput(habit, completions, await this.userDay(userId)));
+  }
+
+  private streakInput(habit: HabitWithSchedules, completions: HabitCompletion[], day: UserDay) {
+    return {
+      startDate: fromDbDate(habit.startDate),
+      schedules: toScheduleVersions(habit),
+      completions: new Map(completions.map((c) => [fromDbDate(c.localDate), c.count])),
+      targetCount: habit.targetCount,
+      today: day.today,
+      weekStartsOn: day.weekStartsOn,
+    };
   }
 
   private async findActive(userId: string, id: string): Promise<HabitWithSchedules> {
@@ -197,7 +259,15 @@ export class HabitsService {
   }
 
   private async today(userId: string): Promise<string> {
+    return (await this.userDay(userId)).today;
+  }
+
+  // "Today" and the week start are the user's own (their saved zone and setting).
+  private async userDay(userId: string): Promise<UserDay> {
     const settings = await this.prisma.userSettings.findUnique({ where: { userId } });
-    return localToday(settings?.timezone ?? 'UTC');
+    return {
+      today: localToday(settings?.timezone ?? 'UTC'),
+      weekStartsOn: settings?.weekStartsOn ?? 1,
+    };
   }
 }

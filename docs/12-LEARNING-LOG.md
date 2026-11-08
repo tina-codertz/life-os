@@ -1101,3 +1101,24 @@ Still open (History, to discuss): what the design's calendar button on Week / Ye
 2. What makes checking in twice for the same day harmless?
 3. Why does the backfill window stop at 7 days?
 
+### 2026-11-08 — Decision: the full quest path now; Habits I step 2a, the streak engine
+**Your choice:** build the design's **full quest path** now (XP chips, "Day N of 21", gift and lock), and a **habit sheet like New task**. That brings parts of gamification (planned v1.2) forward, so Habits I continues in steps: **2a** streaks and day states, **2b** XP, **2c** the Habits tab, sheet and onboarding first habit, **2d** milestones and the chest reward. Rules taken from the design's numbers: check-in +5 XP, task +15 XP, chest +40 XP, 21-day challenge by default.
+**2a, what was built:**
+- **The streak engine** (`packages/shared/src/habits/streaks.ts`), a pure function with 14 tests covering the rules in docs/02:
+  - daily days in a row, where today not done yet doesn't break it;
+  - weekday habits skipping their off days;
+  - N-times-a-week counted in weeks, from your week-start day;
+  - schedule changes judged by the rule of the day;
+  - nothing missed before the start;
+  - count targets;
+  - an ordinary daylight-saving day.
+- **API:** every habit carries its streak; check-in and undo answer with the new streak; `GET /habits/:id/days` gives each day's state (done, missed, open, off, today, upcoming, before-start).
+**Concepts:**
+- *Periods:* a streak counts **periods**, either due days or weeks. The current period still running is "pending" and doesn't break anything until it's over.
+- *One engine, two places:* the server and (later) the app use the same function, so the numbers can't drift.
+**Checks:** probes on six engine rules and on the API's streak answer each make a test fail. Shared 128, API 116 unit + 170 e2e, mobile 369; check clean.
+
+**To learn:**
+1. Why doesn't "not done yet today" break a daily streak?
+2. Why is an N-times-a-week streak counted in weeks, not days?
+

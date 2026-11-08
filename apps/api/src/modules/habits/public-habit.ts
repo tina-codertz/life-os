@@ -1,9 +1,11 @@
 import {
   CATEGORY_COLORS,
   type CategoryColor,
-  HabitSchedule as PublicSchedule,
-  PublicHabit,
-  PublicHabitCompletion,
+  type HabitSchedule as PublicSchedule,
+  type HabitStreak,
+  type PublicHabit,
+  type PublicHabitCompletion,
+  type ScheduleVersion,
 } from '@life-os/shared';
 import { fromDbDate } from '../../common/dates.js';
 import type { Habit, HabitCompletion, HabitSchedule } from '../../generated/prisma/client.js';
@@ -52,10 +54,21 @@ export function toPublicCompletion(c: HabitCompletion): PublicHabitCompletion {
 }
 
 // Allow-listed fields only: userId and deletedAt never leave the API.
+// The schedule versions in the shared streak engine's shape.
+export function toScheduleVersions(habit: HabitWithSchedules): ScheduleVersion[] {
+  return habit.schedules.map((s) => ({
+    effectiveFrom: fromDbDate(s.effectiveFrom),
+    frequency: s.frequency,
+    weekdays: s.weekdays,
+    timesPerWeek: s.timesPerWeek,
+  }));
+}
+
 export function toPublicHabit(
   habit: HabitWithSchedules,
   today: string,
   todays: HabitCompletion | undefined,
+  streak: HabitStreak,
 ): PublicHabit {
   const schedule = scheduleOn(habit, today);
   return {
@@ -71,6 +84,7 @@ export function toPublicHabit(
     schedule: toPublicSchedule(schedule),
     dueToday: today >= fromDbDate(habit.startDate) && isDueOn(schedule, today),
     today: todays ? toPublicCompletion(todays) : null,
+    streak,
     createdAt: habit.createdAt.toISOString(),
     updatedAt: habit.updatedAt.toISOString(),
   };

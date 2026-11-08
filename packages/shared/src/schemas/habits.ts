@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { daysBetween } from '../dates.ts';
 import { CATEGORY_COLORS, type CategoryColor } from './categories.ts';
 import { localDateSchema } from './tasks.ts';
 
@@ -94,6 +95,29 @@ export const habitCheckInSchema = z.object({
 });
 export type HabitCheckInInput = z.infer<typeof habitCheckInSchema>;
 
+// GET /habits/:id/days?from&to: each day's state, for the quest path and the calendar.
+export const HABIT_DAYS_MAX = 93;
+export const habitDaysQuerySchema = z
+  .object({ from: localDateSchema, to: localDateSchema })
+  .refine((q) => q.from <= q.to, { path: ['to'], error: 'End on or after the start.' })
+  .refine((q) => daysBetween(q.from, q.to) + 1 <= HABIT_DAYS_MAX, {
+    path: ['to'],
+    error: `Ask for at most ${HABIT_DAYS_MAX} days.`,
+  });
+export type HabitDaysQuery = z.infer<typeof habitDaysQuerySchema>;
+
+export interface HabitStreak {
+  current: number;
+  best: number;
+  unit: 'days' | 'weeks';
+}
+
+export interface HabitDay {
+  date: string;
+  state: 'done' | 'missed' | 'open' | 'off' | 'today' | 'upcoming' | 'before-start';
+  count: number;
+}
+
 export interface PublicHabitCompletion {
   localDate: string;
   count: number;
@@ -116,8 +140,16 @@ export interface PublicHabit {
   dueToday: boolean;
   // Today's check-in, if any (in the user's time zone).
   today: PublicHabitCompletion | null;
+  // FR-HAB-003, worked out on the server with the shared streak engine.
+  streak: HabitStreak;
   createdAt: string;
   updatedAt: string;
+}
+
+// POST /habits/:id/completions and DELETE …/completions/:localDate answer with the new streak.
+export interface HabitCheckInResult {
+  completion: PublicHabitCompletion | null;
+  streak: HabitStreak;
 }
 
 export const HABIT_ERROR_CODES = [

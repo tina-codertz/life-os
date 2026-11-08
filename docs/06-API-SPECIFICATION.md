@@ -221,7 +221,11 @@ Built in 6.1 Part 1: `GET` (ordered by `sortOrder`, then name), `POST` (`201`), 
 - **Check-in** is `{ localDate, count? }` → `201` the completion. It's **safe to repeat**: one per day (unique index), and a repeat sets the count. With no count it's the full `targetCount` (one tap means done).
 - `422 CHECK_IN_OUT_OF_RANGE` for the future, more than 7 days back, before `startDate`, or an archived habit. Undo has the same range and is `204` even if there was nothing to undo.
 - Max 50 habits → `422 HABIT_LIMIT_REACHED`. Another user's habit or a malformed id → `404 HABIT_NOT_FOUND`.
-- **Habits II adds:** streaks in the check-in response, `/completions?from&to` for the heatmap, `/stats`, and reminders.
+- **Brought forward for the quest path (Habits I step 2a):**
+  - Every habit carries `streak: { current, best, unit }` (unit is `weeks` for N-times-a-week), worked out by the **shared streak engine** (`packages/shared/src/habits/streaks.ts`).
+  - Check-in answers `201 { completion, streak }`; undo answers `200 { completion: null, streak }`.
+  - `GET /habits/:id/days?from&to` (up to 93 days) gives each day's `state`: `done`, `missed`, `open` (an unused day of an N-times-a-week habit), `off`, `today`, `upcoming` or `before-start`, with its `count`. This replaces the planned `/completions?from&to` labels.
+- **Still Habits II:** `/stats`, reminders, and caching streaks on the habit with a nightly reconcile (for now they're computed on each read).
 
 ### Goals
 | Method | Path | Notes |

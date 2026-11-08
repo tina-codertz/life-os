@@ -3,12 +3,15 @@ import {
   type CreateHabitInput,
   createHabitSchema,
   type HabitCheckInInput,
+  type HabitCheckInResult,
   habitCheckInSchema,
+  type HabitDay,
+  type HabitDaysQuery,
+  habitDaysQuerySchema,
   type ListHabitsQuery,
   listHabitsQuerySchema,
   localDateSchema,
   type PublicHabit,
-  type PublicHabitCompletion,
   type UpdateHabitInput,
   updateHabitSchema,
 } from '@life-os/shared';
@@ -76,22 +79,31 @@ export class HabitsController {
     return this.habits.remove(user.id, id);
   }
 
+  @Get(':id/days')
+  days(
+    @CurrentUser() user: AuthUser,
+    @habitId() id: string,
+    @ZodQuery(habitDaysQuerySchema) query: HabitDaysQuery,
+  ): Promise<HabitDay[]> {
+    return this.habits.days(user.id, id, query);
+  }
+
   @Post(':id/completions')
   checkIn(
     @CurrentUser() user: AuthUser,
     @habitId() id: string,
     @ZodBody(habitCheckInSchema) body: HabitCheckInInput,
-  ): Promise<PublicHabitCompletion> {
+  ): Promise<HabitCheckInResult> {
     return this.habits.checkIn(user.id, id, body);
   }
 
+  // Undo answers 200 with the new streak (FR-HAB-003).
   @Delete(':id/completions/:localDate')
-  @HttpCode(HttpStatus.NO_CONTENT)
   undoCheckIn(
     @CurrentUser() user: AuthUser,
     @habitId() id: string,
     @Param('localDate') localDate: string,
-  ): Promise<void> {
+  ): Promise<HabitCheckInResult> {
     if (!localDateSchema.safeParse(localDate).success) {
       throw fieldError('localDate', 'Use a date like 2026-12-01.');
     }

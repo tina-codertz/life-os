@@ -5,7 +5,8 @@ import {
   localToday,
   MAX_HABITS,
   type PublicHabit,
-  type PublicHabitCompletion,
+  type HabitCheckInResult,
+  type HabitDay,
 } from '@life-os/shared';
 import request from 'supertest';
 import type { App } from 'supertest/types.js';
@@ -90,6 +91,7 @@ describe('Habits (e2e)', () => {
         schedule: { frequency: 'DAILY' },
         dueToday: true,
         today: null,
+        streak: { current: 0, best: 0, unit: 'days' },
         createdAt: expect.any(String),
         updatedAt: expect.any(String),
       });
@@ -148,10 +150,10 @@ describe('Habits (e2e)', () => {
     it('a count habit: one tap means done; a count can also be set', async () => {
       const water = await newHabit(tina, { name: 'Water', targetCount: 8, unit: 'glasses' });
       const tap = (await as(tina).checkIn(water.id, { localDate: today() }).expect(201)).body
-        .data as PublicHabitCompletion;
-      expect(tap.count).toBe(8);
+        .data as HabitCheckInResult;
+      expect(tap.completion?.count).toBe(8);
       const set = await as(tina).checkIn(water.id, { localDate: today(), count: 3 }).expect(201);
-      expect(set.body.data.count).toBe(3);
+      expect(set.body.data.completion.count).toBe(3);
     });
 
     it('backfill: up to 7 days back; never the future, older days, or before the start', async () => {
@@ -181,9 +183,9 @@ describe('Habits (e2e)', () => {
     it('undo removes the day’s check-in; undoing nothing is fine; a bad date is a 400', async () => {
       const habit = await newHabit(tina);
       await as(tina).checkIn(habit.id, { localDate: today() }).expect(201);
-      await as(tina).undo(habit.id, today()).expect(204);
+      await as(tina).undo(habit.id, today()).expect(200);
       expect((await as(tina).get(habit.id).expect(200)).body.data.today).toBeNull();
-      await as(tina).undo(habit.id, today()).expect(204);
+      await as(tina).undo(habit.id, today()).expect(200);
       const bad = await as(tina).undo(habit.id, '2026-02-30').expect(400);
       expect(bad.body.error.details[0].field).toBe('localDate');
     });
@@ -254,6 +256,59 @@ describe('Habits (e2e)', () => {
 
     it('needs a login', async () => {
       await http().get('/api/v1/habits').expect(401);
+    });
+  });
+
+  describe('streaks and days (FR-HAB-003, worked out by the shared engine)', () => {
+    it('check-ins and undo answer with the streak; the habit carries it too', async () => {
+      const habit = await newHabit(tina, { startDate: addDays(today(), -3) });
+      for (const back of [3, 2, 1]) {
+        await as(tina)
+          .checkIn(habit.id, { localDate: addDays(today(), -back) })
+          .expect(201);
+      }
+      // Today isn't done yet: that doesn't break the 3 days before it.
+      expect((await as(tina).get(habit.id).expect(200)).body.data.streak).toEqual({
+        current: 3,
+        best: 3,
+        unit: 'days',
+      });
+      const done = await as(tina).checkIn(habit.id, { localDate: today() }).expect(201);
+      expect(done.body.data.streak).toMatchObject({ current: 4, best: 4 });
+      const undone = await as(tina).undo(habit.id, addDays(today(), -2)).expect(200);
+      expect(undone.body.data).toEqual({
+        completion: null,
+        streak: { current: 2, best: 2, unit: 'days' },
+      });
+    });
+
+    it('days: each day\u2019s state, for the path and the calendar', async () => {
+      const habit = await newHabit(tina, { startDate: addDays(today(), -2) });
+      await as(tina)
+        .checkIn(habit.id, { localDate: addDays(today(), -2) })
+        .expect(201);
+      const res = await http()
+        .get(
+          `/api/v1/habits/${habit.id}/days?from=${addDays(today(), -3)}&to=${addDays(today(), 1)}`,
+        )
+        .set({ Authorization: `Bearer ${tina.accessToken}` })
+        .expect(200);
+      expect((res.body.data as HabitDay[]).map((d) => d.state)).toEqual([
+        'before-start',
+        'done',
+        'missed',
+        'today',
+        'upcoming',
+      ]);
+    });
+
+    it('days: at most 93 at a time', async () => {
+      const habit = await newHabit(tina);
+      const res = await http()
+        .get(`/api/v1/habits/${habit.id}/days?from=2026-01-01&to=2026-06-01`)
+        .set({ Authorization: `Bearer ${tina.accessToken}` })
+        .expect(400);
+      expect(res.body.error.details[0].field).toBe('to');
     });
   });
 });

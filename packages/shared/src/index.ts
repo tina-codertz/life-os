@@ -57,3 +57,4 @@ export * from './schemas/categories.ts';
 export * from './schemas/recurrence.ts';
 export * from './schemas/tasks.ts';
 export * from './schemas/habits.ts';
+export * from './habits/streaks.ts';
