@@ -3,7 +3,7 @@ import { Screen } from '@/components/screen';
 import { Card, Mascot, Text } from '@/components/ui';
 import { spacing } from '@/theme';
 
-// Stand-in for tabs whose real content comes in later steps (Today, Habits, Calendar). Same
+// Stand-in for screens whose real content comes in later steps (Calendar, Money). Same
 // header as the finished screens, and a card saying what will be here.
 export function PlaceholderScreen({
   title,

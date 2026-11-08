@@ -76,6 +76,20 @@ describe('Habits (the quest path)', () => {
     await waitFor(() => expect(router.getPathname()).toBe('/habit-form'));
   });
 
+  it('the tab bar is in the design’s order, and Calendar opens from the Habits header', async () => {
+    const router = await openHabits([]);
+    await screen.findByText('No habits yet');
+    expect(screen.getAllByRole('tab').map((t) => t.props.accessibilityLabel)).toEqual([
+      'Today',
+      'Habits',
+      'Tasks',
+      'Money',
+      'Settings',
+    ]);
+    await fireEvent.press(screen.getByRole('button', { name: 'Calendar' }));
+    await waitFor(() => expect(router.getPathname()).toBe('/calendar'));
+  });
+
   it('shows the 🔥 and ⚡ chips, the habit card and its path, like the design', async () => {
     await openHabits([habit(), habit({ id: 'h2', name: 'Workout', icon: 'dumbbell' })]);
     expect(await screen.findByText('READ 20 MIN · DAY 12 OF 21')).toBeOnTheScreen();

@@ -13,6 +13,8 @@
 
 **Proposed:** 4 primary tabs + "More". Calendar is a tab because it is a daily-use view. Goals, Finance, Stats and Settings live under *More* until usage data says otherwise.
 
+**Confirmed 2026-11-08 (the design export):** the tabs are **Today · Habits · Tasks · Money · Settings** (the design's Profile). Money shows "coming soon" until Finance (v1.1). **Calendar is not a tab:** it's pushed from the calendar button at the top of Habits (the design's Calendar screen has no tab bar).
+
 ```text
 apps/mobile/src/app/
 ├── _layout.tsx                 # Root: providers (Theme, QueryClient, Auth gate)
@@ -73,7 +75,7 @@ flowchart TD
   Onb -- No --> Onboarding[Onboarding steps] --> Tabs
   Onb -- Yes --> Tabs
   subgraph Tabs[Bottom tabs]
-    Today --- Tasks --- Habits --- Calendar --- More
+    Today --- Habits --- Tasks --- Money --- More
   end
   More --> Goals & Settings & Finance["Finance (v1.1)"] & Stats["Stats (v2)"]
 ```
@@ -96,7 +98,7 @@ flowchart TD
 | 10 | Habit list | `(tabs)/habits` | MVP | empty, all checked |
 | 11 | Habit detail | `habits/[id]` | MVP | history heatmap, stats |
 | 12 | Habit form | `(modals)/habit-form` | MVP | frequency pickers |
-| 13 | Calendar | `(tabs)/calendar` | MVP | day / week / month segments |
+| 13 | Calendar | `calendar` (pushed from Habits) | MVP | day / week / month segments |
 | 14 | Event form | `(modals)/event-form` | MVP | recurrence picker |
 | 15 | Goals list / detail / form | `goals/…` | MVP | progress, milestones |
 | 16 | More | `(tabs)/more` | MVP | menu |

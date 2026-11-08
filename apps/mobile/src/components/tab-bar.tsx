@@ -7,7 +7,7 @@ const ICONS: Record<string, IconName> = {
   today: 'home',
   tasks: 'tasks',
   habits: 'flame',
-  calendar: 'calendar',
+  money: 'wallet',
   more: 'person',
 };
 

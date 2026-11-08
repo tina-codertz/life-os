@@ -109,6 +109,11 @@ export default function Habits() {
           </Text>
           <ProgressChips />
           <View style={{ flex: 1 }} />
+          <IconButton
+            icon="calendar"
+            accessibilityLabel="Calendar"
+            onPress={() => router.push('/calendar')}
+          />
           <IconButton icon="add" accessibilityLabel="New habit" onPress={() => openHabit()} />
         </View>
         {body}

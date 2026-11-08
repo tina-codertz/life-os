@@ -13,6 +13,16 @@ export default function AppLayout() {
         options={{ title: 'Design system', headerTintColor: colors.text.primary }}
       />
       <Stack.Screen
+        name="calendar"
+        options={{
+          title: '',
+          headerTransparent: true,
+          headerShadowVisible: false,
+          headerBackButtonDisplayMode: 'minimal',
+          headerTintColor: colors.text.primary,
+        }}
+      />
+      <Stack.Screen
         name="history"
         options={{
           title: '',

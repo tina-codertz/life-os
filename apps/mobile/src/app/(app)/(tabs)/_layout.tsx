@@ -5,7 +5,8 @@ import { useTheme } from '@/theme';
 // A plain function (not a component defined inside TabsLayout), so it isn't recreated per render.
 const renderTabBar = (props: BottomTabBarProps) => <TabBar {...props} />;
 
-// The design's floating tab bar (components/tab-bar.tsx) over docs/03's four tabs + Settings (the design's Profile and preferences).
+// The design's floating tab bar (components/tab-bar.tsx), in the design's order: Today, Habits,
+// Tasks, Money, and Settings (the design's Profile and preferences). Calendar opens from Habits.
 // A JS tab navigator, because the native tab bar can't take this shape.
 export default function TabsLayout() {
   const { colors } = useTheme();
@@ -15,9 +16,9 @@ export default function TabsLayout() {
       screenOptions={{ headerShown: false, sceneStyle: { backgroundColor: colors.bg.canvas } }}
     >
       <Tabs.Screen name="today" options={{ title: 'Today' }} />
-      <Tabs.Screen name="tasks" options={{ title: 'Tasks' }} />
       <Tabs.Screen name="habits" options={{ title: 'Habits' }} />
-      <Tabs.Screen name="calendar" options={{ title: 'Calendar' }} />
+      <Tabs.Screen name="tasks" options={{ title: 'Tasks' }} />
+      <Tabs.Screen name="money" options={{ title: 'Money' }} />
       <Tabs.Screen name="more" options={{ title: 'Settings' }} />
     </Tabs>
   );
