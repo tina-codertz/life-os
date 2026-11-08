@@ -15,6 +15,7 @@ cp .env.example .env      # local defaults; never commit .env
                           # then set JWT_ACCESS_SECRET: openssl rand -base64 48
 bun install               # also generates the Prisma client and installs the git hook
 bun run db:up             # Postgres 18 on localhost:5433 + Mailpit (emails: http://localhost:8025)
+                          # emails never reach real inboxes in development; read them in Mailpit
 bun run db:migrate        # apply migrations to lifeos_dev
 bun run --filter @life-os/api start:dev    # API on http://localhost:3000/api/v1/health
                                            # API docs: http://localhost:3000/api/v1/docs

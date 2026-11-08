@@ -774,3 +774,6 @@ Node is pinned in `.node-version` and Bun in `packageManager`, so CI uses the sa
 3. Why present a sheet as a native route instead of drawing one in JavaScript?
 4. What does Reduce Motion change, and who needs it?
 5. When the testing setup kept failing, why was "don't use Reanimated here" a better fix than a fourth mock?
+
+### 2026-11-08 — Decision: email verification links wait until near release
+Registering on the device worked; the verification email went to **Mailpit** (http://localhost:8025 on the Mac), not Gmail, as designed: in development nothing leaves the machine. Its `lifeos://verify-email?token=…` link can't open in Expo Go (which uses `exp://` addresses). **Decision (mine):** leave it for now and fix email links properly when the app is close to ready, with real app links in a development/production build, instead of a dev-only `EMAIL_LINK_BASE_URL=exp://…` workaround. Unverified accounts can use everything except export and changing the email (ADR-015), so nothing is blocked. Recorded as an open item on M5 in the roadmap.
