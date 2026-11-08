@@ -912,3 +912,7 @@ Done by me in Expo Go: registered with the real form, went through onboarding (n
 
 **To learn:**
 1. Why confirm sign-out but not task deletion (which uses Undo instead)?
+
+### 2026-11-08 — M6a accepted on a real device
+I did the whole checklist in Expo Go and everything worked: sign-out confirmation (Cancel and Sign out); a new account through name → focus areas (limit of 3 shown) → Today; tasks added with Today, Tomorrow, a calendar date and no date; completing (instant tick, green Done badge) and un-completing; editing; delete with Undo; pull to refresh; Appearance in dark, light and system; and after a restart I was still signed in, with my tasks and theme. **M6a Tasks is Done.**
+
