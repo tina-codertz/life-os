@@ -11,6 +11,7 @@ import { CategoriesModule } from './modules/categories/categories.module.js';
 import { JwtAuthGuard } from './modules/auth/jwt-auth.guard.js';
 import { HabitsModule } from './modules/habits/habits.module.js';
 import { HealthModule } from './modules/health/health.module.js';
+import { ProgressModule } from './modules/progress/progress.module.js';
 import { TasksModule } from './modules/tasks/tasks.module.js';
 import { UsersModule } from './modules/users/users.module.js';
 import { PrismaModule } from './prisma/prisma.module.js';
@@ -31,6 +32,7 @@ import { rateLimitOptions } from './security/rate-limit.js';
     CategoriesModule,
     TasksModule,
     HabitsModule,
+    ProgressModule,
   ],
   // APP_* providers (not app.useGlobal*) so they get DI and e2e tests get them too.
   // Success → ResponseEnvelopeInterceptor `{ data }`; failure → AllExceptionsFilter `{ error }`.

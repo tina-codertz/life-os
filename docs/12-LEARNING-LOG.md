@@ -1122,3 +1122,21 @@ Still open (History, to discuss): what the design's calendar button on Week / Ye
 1. Why doesn't "not done yet today" break a daily streak?
 2. Why is an N-times-a-week streak counted in weeks, not days?
 
+### 2026-11-08 — Habits I step 2b: XP and the overall streak
+**What was built:**
+- **XP ledger** (migration `add_xp_events`): each award is a row keyed by what earned it (a task id, or "habitId:day"), with a unique index, so the same thing never pays twice. Undoing deletes the row.
+  - +15 for a completed task (subtasks earn nothing).
+  - +5 for a habit day that reaches its target.
+  - +40 for a chest (2d).
+  - Points are saved **in the same transaction** as the completion.
+- **`GET /progress`:** the XP total and the **🔥 streak** (days in a row with a habit done or a task completed; today with nothing yet doesn't break it). It's computed with the shared `activityStreak`.
+**Concepts:**
+- *Ledger vs counter:* a running `xp` number on the user could drift (a double tap, a crash between two writes). A ledger of awards, summed, always matches what actually happened, and undo is just deleting a row.
+- *Idempotent awards:* the unique key makes "award XP for this task" safe to call twice.
+**Found while building:** a probe showed no test covered "a habit day short of its target doesn't count toward the streak". Added.
+**Checks:** 6 progress e2e tests (task once and taken back, subtasks, habit target / repeat / lower count / undo, the streak, a partly-done day, separate users). Probes on 5 rules each make a test fail. Shared 131, API 116 unit + 176 e2e, mobile 369.
+
+**To learn:**
+1. Why store XP as a list of awards instead of one number per user?
+2. Why must the XP award be in the same transaction as completing the task?
+

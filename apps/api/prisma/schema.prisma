@@ -29,6 +29,7 @@ model User {
   categories Category[]
   tasks      Task[]
   habits     Habit[]
+  xpEvents   XpEvent[]
 }
 
 // One row per refresh token. Logging in starts a *family*; every refresh replaces the row's
@@ -228,4 +229,27 @@ model HabitCompletion {
 
   @@unique([habitId, localDate])
   @@index([userId, localDate])
+}
+
+// ───────────── Progress (XP; gamification pieces brought forward for the quest path) ─────────────
+
+// One row per award. The unique key makes awards safe to repeat (a task completed twice pays
+// once); undoing deletes the row, so the total is always the sum of what still stands.
+model XpEvent {
+  id        String   @id @default(uuid(7)) @db.Uuid
+  userId    String   @db.Uuid
+  source    XpSource
+  sourceKey String   @db.VarChar(80) // task id, "habitId:YYYY-MM-DD", or a chest key
+  amount    Int      @db.SmallInt
+  createdAt DateTime @default(now()) @db.Timestamptz(3)
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, source, sourceKey])
+}
+
+enum XpSource {
+  TASK
+  HABIT
+  CHEST
 }

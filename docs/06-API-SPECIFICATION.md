@@ -227,6 +227,17 @@ Built in 6.1 Part 1: `GET` (ordered by `sortOrder`, then name), `POST` (`201`), 
   - `GET /habits/:id/days?from&to` (up to 93 days) gives each day's `state`: `done`, `missed`, `open` (an unused day of an N-times-a-week habit), `off`, `today`, `upcoming` or `before-start`, with its `count`. This replaces the planned `/completions?from&to` labels.
 - **Still Habits II:** `/stats`, reminders, and caching streaks on the habit with a nightly reconcile (for now they're computed on each read).
 
+### Progress (XP and the overall streak; Habits I step 2b, gamification pieces brought forward)
+| Method | Path | Notes |
+|---|---|---|
+| GET | `/progress` | `{ xp, streak: { current, best } }`: the ⚡ and 🔥 chips |
+
+- **XP is a ledger** (`XpEvent`, one row per award, unique on `(userId, source, sourceKey)`), so an award can't pay twice and undoing deletes it. The total is the sum of what still stands.
+- **Amounts** (shared `XP`, from the design): a top-level task completed **+15** (subtasks earn nothing), a habit day reaching its target **+5**, a chest **+40** (step 2d).
+- **Taking it back:** un-completing a task, undoing a check-in, or lowering a day's count below the target takes the XP back.
+- **Same transaction:** awards are made in the same transaction as the completion, so points and completions can't drift. It's a direct `XpService` call rather than the domain events ADR-001 sketched.
+- **The 🔥 streak** counts days in a row (in the user's zone) with a habit day done or a top-level task completed. Today with nothing yet doesn't break it.
+
 ### Goals
 | Method | Path | Notes |
 |---|---|---|

@@ -58,3 +58,5 @@ export * from './schemas/recurrence.ts';
 export * from './schemas/tasks.ts';
 export * from './schemas/habits.ts';
 export * from './habits/streaks.ts';
+export * from './habits/activity-streak.ts';
+export * from './schemas/progress.ts';

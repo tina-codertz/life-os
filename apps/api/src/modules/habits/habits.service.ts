@@ -20,6 +20,7 @@ import { fromDbDate, toDbDate } from '../../common/dates.js';
 import type { HabitCompletion, Prisma } from '../../generated/prisma/client.js';
 import { isUniqueViolation } from '../../prisma/prisma-errors.js';
 import { PrismaService } from '../../prisma/prisma.service.js';
+import { XpService } from '../progress/xp.service.js';
 import {
   CheckInOutOfRangeError,
   type CheckInProblem,
@@ -52,7 +53,10 @@ function scheduleData(schedule: ScheduleInput) {
 // soft-deleted habits. "Today" is the user's own day (their saved time zone, ADR-006).
 @Injectable()
 export class HabitsService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly xp: XpService,
+  ) {}
 
   async list(userId: string, archived: boolean): Promise<PublicHabit[]> {
     const day = await this.userDay(userId);
@@ -155,20 +159,28 @@ export class HabitsService {
     await this.assertCanChange(userId, habit, input.localDate);
     const key = { habitId: habit.id, localDate: toDbDate(input.localDate) };
     const count = input.count ?? habit.targetCount;
-    const upsert = () =>
-      this.prisma.habitCompletion.upsert({
-        where: { habitId_localDate: key },
-        create: { ...key, userId, count },
-        update: { count },
+    const xpKey = `${habit.id}:${input.localDate}`;
+    // The check-in and its XP together: +5 once the day's count reaches the target, taken back
+    // if a later check-in lowers it below.
+    const save = () =>
+      this.prisma.$transaction(async (tx) => {
+        const saved = await tx.habitCompletion.upsert({
+          where: { habitId_localDate: key },
+          create: { ...key, userId, count },
+          update: { count },
+        });
+        if (count >= habit.targetCount) await this.xp.award(tx, userId, 'HABIT', xpKey);
+        else await this.xp.revoke(tx, userId, 'HABIT', xpKey);
+        return saved;
       });
     let completion: HabitCompletion;
     try {
-      completion = await upsert();
+      completion = await save();
     } catch (err) {
-      // Two check-ins for the same new day at once: the second insert hits the unique index;
-      // by now the row exists, so doing it again updates it.
+      // Two check-ins for the same new day at once: the second insert hits the unique index
+      // (and its transaction is rolled back); by now the row exists, so again updates it.
       if (!isUniqueViolation(err, 'HabitCompletion', 'localDate')) throw err;
-      completion = await upsert();
+      completion = await save();
     }
     return {
       completion: toPublicCompletion(completion),
@@ -180,8 +192,11 @@ export class HabitsService {
   async undoCheckIn(userId: string, id: string, localDate: string): Promise<HabitCheckInResult> {
     const habit = await this.findActive(userId, id);
     await this.assertCanChange(userId, habit, localDate);
-    await this.prisma.habitCompletion.deleteMany({
-      where: { habitId: habit.id, localDate: toDbDate(localDate) },
+    await this.prisma.$transaction(async (tx) => {
+      await tx.habitCompletion.deleteMany({
+        where: { habitId: habit.id, localDate: toDbDate(localDate) },
+      });
+      await this.xp.revoke(tx, userId, 'HABIT', `${habit.id}:${localDate}`);
     });
     return { completion: null, streak: await this.streakOf(userId, habit) };
   }

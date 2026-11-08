@@ -23,6 +23,7 @@ import { Prisma, type Task } from '../../generated/prisma/client.js';
 import { PrismaService } from '../../prisma/prisma.service.js';
 import { CategoriesService } from '../categories/categories.service.js';
 import { CategoryNotFoundError } from '../categories/category.errors.js';
+import { XpService } from '../progress/xp.service.js';
 import { NO_SUBTASKS, type SubtaskCounts, toPublicTask } from './public-task.js';
 import {
   fieldError,
@@ -40,6 +41,7 @@ export class TasksService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly categories: CategoriesService,
+    private readonly xp: XpService,
   ) {}
 
   // Newest first. UUIDv7 IDs sort by creation time, so "id < cursor" pages without gaps or
@@ -249,6 +251,8 @@ export class TasksService {
       });
       const current = await tx.task.findUniqueOrThrow({ where: { id: task.id } });
       if (flipped.count === 0) return { done: current, next: null };
+      // +15 XP for a task (not for its subtasks), paid once per task.
+      if (!current.parentId) await this.xp.award(tx, userId, 'TASK', current.id);
       return { done: current, next: await this.createNextOccurrence(tx, current) };
     });
     return {
@@ -313,9 +317,13 @@ export class TasksService {
   async uncomplete(userId: string, id: string): Promise<{ task: PublicTask }> {
     const task = await this.findActive(userId, id);
     if (task.status === 'TODO') return { task: await this.withCounts(task) };
-    const todo = await this.prisma.task.update({
-      where: { id: task.id },
-      data: { status: 'TODO', completedAt: null },
+    // Not done after all: its XP goes too.
+    const todo = await this.prisma.$transaction(async (tx) => {
+      await this.xp.revoke(tx, userId, 'TASK', task.id);
+      return tx.task.update({
+        where: { id: task.id },
+        data: { status: 'TODO', completedAt: null },
+      });
     });
     return { task: await this.withCounts(todo) };
   }
