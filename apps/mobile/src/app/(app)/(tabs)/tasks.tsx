@@ -23,6 +23,8 @@ import {
   useTasks,
   useToggleTask,
 } from '@/features/tasks/queries';
+import { FocusCard } from '@/features/tasks/focus-card';
+import { pickFocusTask } from '@/features/tasks/focus-task';
 import { TaskRow } from '@/features/tasks/task-row';
 import { useDebouncedValue } from '@/features/tasks/use-debounced-value';
 import { useTimezone } from '@/features/users/use-timezone';
@@ -85,7 +87,13 @@ export default function Tasks() {
   const remove = useDeleteTask();
   const today = localToday(useTimezone());
 
-  const items = useMemo(() => tasks.data?.pages.flatMap((page) => page.items) ?? [], [tasks.data]);
+  const loaded = useMemo(() => tasks.data?.pages.flatMap((page) => page.items) ?? [], [tasks.data]);
+  // The design's highlighted card: on To do, when not searching. It isn't repeated below.
+  const focus = filter === 'TODO' && !query ? pickFocusTask(loaded, today) : null;
+  const items = useMemo(
+    () => (focus ? loaded.filter((t) => t.id !== focus.id) : loaded),
+    [loaded, focus],
+  );
   const categoryById = useMemo(
     () => new Map((categories.data ?? []).map((c) => [c.id, c])),
     [categories.data],
@@ -130,6 +138,15 @@ export default function Tasks() {
           />
         ))}
       </View>
+      {focus && (
+        <FocusCard
+          task={focus}
+          category={focus.categoryId ? categoryById.get(focus.categoryId) : undefined}
+          today={today}
+          onOpen={() => openTask(focus)}
+          onComplete={() => completeOrAsk(focus, true, (input) => toggle.mutate(input))}
+        />
+      )}
     </View>
   );
 
@@ -200,7 +217,7 @@ export default function Tasks() {
           />
         )}
         ListHeaderComponent={header}
-        ListEmptyComponent={empty}
+        {...(focus ? {} : { ListEmptyComponent: empty })}
         ListFooterComponent={
           tasks.isFetchingNextPage ? (
             <ActivityIndicator

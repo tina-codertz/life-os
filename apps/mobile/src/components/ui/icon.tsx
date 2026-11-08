@@ -6,6 +6,7 @@ import Calendar from 'lucide-react-native/icons/calendar';
 import Check from 'lucide-react-native/icons/check';
 import ChevronLeft from 'lucide-react-native/icons/chevron-left';
 import ChevronRight from 'lucide-react-native/icons/chevron-right';
+import ChevronsRight from 'lucide-react-native/icons/chevrons-right';
 import Clock from 'lucide-react-native/icons/clock';
 import Flag from 'lucide-react-native/icons/flag';
 import Flame from 'lucide-react-native/icons/flame';
@@ -45,6 +46,7 @@ const ICONS = {
   check: Check,
   chevronLeft: ChevronLeft,
   chevronRight: ChevronRight,
+  chevronsRight: ChevronsRight,
   clock: Clock,
   close: X,
   flag: Flag,

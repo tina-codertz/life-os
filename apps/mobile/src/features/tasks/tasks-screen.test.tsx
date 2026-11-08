@@ -90,6 +90,9 @@ async function tickAndGetDialog() {
   return { title: call?.[0], message: call?.[1], buttons };
 }
 
+const dueToday = (o: Partial<PublicTask> = {}) =>
+  task({ title: 'Ship MVP', dueDate: localToday(ZONE), dueTime: 600, ...o });
+
 beforeEach(() => {
   resetMockApi();
   n = 0;
@@ -100,16 +103,26 @@ describe('Tasks screen', () => {
     const today = localToday(ZONE);
     routes['GET /tasks'] = () =>
       page([
-        task({ title: 'Pay rent', dueDate: today, priority: 'HIGH', categoryId: WORK.id }),
+        task({
+          title: 'Pay rent',
+          dueDate: addDays(today, 1),
+          priority: 'HIGH',
+          categoryId: WORK.id,
+        }),
         task({ title: 'Old thing', dueDate: addDays(today, -3) }),
       ]);
     await openTasks();
 
     // What a screen reader says for each row: everything in words, nothing only in colour.
     expect(
-      await screen.findByRole('button', { name: 'Pay rent, Today, High priority, Work' }),
+      await screen.findByRole('button', { name: 'Pay rent, Tomorrow, High priority, Work' }),
     ).toBeOnTheScreen();
-    expect(screen.getByRole('button', { name: /^Old thing, Overdue · / })).toBeOnTheScreen();
+    // The overdue task is the one due soonest, so it's the highlighted card (in words too).
+    expect(
+      within(screen.getByTestId('focus-card')).getByRole('button', {
+        name: /^Old thing, Overdue · /,
+      }),
+    ).toBeOnTheScreen();
     expect(gets('/tasks')[0]).toBe('GET /tasks?status=TODO'); // "To do" is the default filter
   });
 
@@ -334,6 +347,68 @@ describe('Tasks screen', () => {
       await waitFor(() =>
         expect(calls.filter((c) => c.route === 'POST /tasks/t1/complete')).toHaveLength(1),
       );
+    });
+  });
+
+  describe('highlighted card (the design’s top card)', () => {
+    it('shows the most important task due today, once, with its time and subtasks', async () => {
+      routes['GET /tasks'] = () =>
+        page([
+          dueToday({ priority: 'HIGH', subtaskCount: 3, subtasksDone: 1, categoryId: WORK.id }),
+          task({ title: 'Later' }),
+        ]);
+      const router = await openTasks();
+      const card = await screen.findByTestId('focus-card');
+      expect(within(card).getByText('Ship MVP')).toBeOnTheScreen();
+      expect(within(card).getByText('Work · Today')).toBeOnTheScreen();
+      expect(within(card).getByText('10:00')).toBeOnTheScreen();
+      // Not repeated in the list below.
+      expect(screen.getAllByText('Ship MVP')).toHaveLength(1);
+      expect(screen.getByText('Later')).toBeOnTheScreen();
+
+      await fireEvent.press(within(card).getByRole('button', { name: 'Subtasks, 1 of 3' }));
+      await waitFor(() => expect(router.getPathname()).toBe('/task-form'));
+    });
+
+    it('"Swipe to complete" (or its screen-reader action) completes the task', async () => {
+      routes['GET /tasks'] = () => page([dueToday()]);
+      routes['POST /tasks/t1/complete'] = () => ({ status: 200, body: { data: { task: {} } } });
+      await openTasks();
+      const swipe = await screen.findByLabelText('Complete Ship MVP');
+      await fireEvent(swipe, 'accessibilityAction', { nativeEvent: { actionName: 'activate' } });
+      await waitFor(() =>
+        expect(calls.filter((c) => c.route === 'POST /tasks/t1/complete')).toHaveLength(1),
+      );
+    });
+
+    it('with open subtasks, completing from the card asks first too', async () => {
+      routes['GET /tasks'] = () => page([dueToday({ subtaskCount: 2, subtasksDone: 0 })]);
+      const alert = jest.spyOn(Alert, 'alert').mockImplementation(() => undefined);
+      await openTasks();
+      const swipe = await screen.findByLabelText('Complete Ship MVP');
+      await fireEvent(swipe, 'accessibilityAction', { nativeEvent: { actionName: 'activate' } });
+      expect(alert.mock.calls.at(-1)?.[0]).toBe('Complete the subtasks too?');
+      alert.mockRestore();
+    });
+
+    it('is not shown while searching: the found task is a normal row', async () => {
+      routes['GET /tasks'] = () => page([dueToday()]);
+      await openTasks();
+      await screen.findByTestId('focus-card');
+
+      await fireEvent.press(screen.getByRole('button', { name: 'Search tasks' }));
+      await fireEvent.changeText(screen.getByLabelText('Search tasks'), 'ship');
+      await wait(300);
+      // Wait for the search results (a row has a tick), then check there's no card.
+      expect(await screen.findByRole('checkbox', { name: 'Ship MVP' })).toBeOnTheScreen();
+      expect(screen.queryByTestId('focus-card')).toBeNull();
+    });
+
+    it('nothing due today or overdue: no card', async () => {
+      routes['GET /tasks'] = () => page([task({ title: 'Someday' })]);
+      await openTasks();
+      await screen.findByText('Someday');
+      expect(screen.queryByTestId('focus-card')).toBeNull();
     });
   });
 });

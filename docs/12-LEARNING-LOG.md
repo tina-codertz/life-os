@@ -967,3 +967,15 @@ The project owner added **History: week / month / year** to the design (`docs/Li
 3. Why must "complete the task and its subtasks" be one transaction?
 4. Why are a new task's subtasks kept as drafts, while an existing task's are saved at once?
 
+### 2026-11-08 — The design's highlighted task card (your choice "A")
+**Where subtasks are seen:** as "2 of 4 subtasks" on task rows, in full inside the task's sheet, and now on the design's **highlighted card** at the top of Tasks.
+**What was built:**
+- `FocusCard`: category tile and "Work · Today", the title large, its time, a **Subtasks "1 of 3"** pill (opens the task) and **Swipe to complete**. It shows on To do only, not while searching, and the task isn't repeated in the list below.
+  - Which task: the most important open task due today or overdue (`pickFocusTask`: priority, then earliest time, then oldest date).
+  - The design's Goal pill and XP badge wait for Goals and gamification.
+- `SwipeToComplete`: drag the ink check past 70% of the bar. Built on React Native's own `PanResponder` + `Animated`, so no gesture library and it works in tests. Screen readers get a **Complete** action instead of the swipe. Completing from the card asks about open subtasks, just like ticking a row.
+**Found while building:**
+- The testing library ignored the screen-reader action because the same view also handled the swipe, and an idle swipe handler counts as "declining touches". The swipe now lives on an inner track.
+- One probe showed the "no card while searching" test passed too early, while results were still loading. It now waits for the found task to appear as a row.
+**Checks:** mobile tests: pure tests for the picker and the 70% rule, plus 5 screen tests. Probes: card repeated in the list, card while searching, swipe skipping the subtask question, priority ignored. Each makes a test fail.
+
