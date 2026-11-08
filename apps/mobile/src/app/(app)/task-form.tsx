@@ -1,6 +1,6 @@
 import { createTaskSchema, PRIORITIES, type Priority } from '@life-os/shared';
 import { router, useLocalSearchParams } from 'expo-router';
-import { type ReactNode, useEffect, useState } from 'react';
+import { type ReactNode, useEffect, useRef, useState } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import { Controller, useWatch } from 'react-hook-form';
 import { ScrollView, View } from 'react-native';
@@ -85,9 +85,13 @@ export default function TaskForm() {
   const dueDate = useWatch({ control, name: 'dueDate' });
 
   // Editing: fill the form once the task has loaded.
+  // Once per task: the cached task is replaced whenever a subtask is ticked or the list
+  // refreshes, and resetting then would throw away what the user has typed but not saved.
   const task = existing.data;
+  const filledFor = useRef<string | null>(null);
   useEffect(() => {
-    if (task) {
+    if (task && filledFor.current !== task.id) {
+      filledFor.current = task.id;
       reset({
         title: task.title,
         description: task.description ?? '',

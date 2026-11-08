@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { addDays } from '../dates.ts';
 
 // FR-TASK-006: repeating tasks. Stored and sent as a small, strict subset of the calendar
 // standard RRULE (RFC 5545), so the same text can serve calendar events later (docs/05):
@@ -100,12 +101,6 @@ export const recurrenceRuleSchema = z
 
 const toDate = (day: string) => new Date(`${day}T00:00:00.000Z`);
 const toDay = (date: Date) => date.toISOString().slice(0, 10);
-
-function addDays(day: string, n: number): string {
-  const date = toDate(day);
-  date.setUTCDate(date.getUTCDate() + n);
-  return toDay(date);
-}
 
 // The RRULE code for a day ("2026-11-09" is a Monday → "MO").
 export function weekdayOf(day: string): RRuleWeekday {

@@ -1,5 +1,6 @@
 import { z } from 'zod';
 import { paginationQuerySchema } from './pagination.ts';
+import { daysBetween } from '../dates.ts';
 import { recurrenceRuleSchema } from './recurrence.ts';
 
 // Task priority (FR-TASK-001), same order as the database enum.
@@ -92,8 +93,7 @@ export type CompleteTaskInput = z.infer<typeof completeTaskSchema>;
 // time zone. Up to a year at a time; with include=tasks (the Week view's lists) up to 6 weeks.
 export const HISTORY_MAX_DAYS = 366;
 export const HISTORY_MAX_DAYS_WITH_TASKS = 42;
-const spanDays = (from: string, to: string) =>
-  (Date.parse(`${to}T00:00:00Z`) - Date.parse(`${from}T00:00:00Z`)) / 86_400_000 + 1;
+const spanDays = (from: string, to: string) => daysBetween(from, to) + 1;
 export const historyQuerySchema = z
   .object({
     from: localDateSchema,

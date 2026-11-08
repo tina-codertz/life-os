@@ -1,30 +1,11 @@
 // Due dates are calendar days ("2026-12-01") in the user's time zone (ADR-006). These helpers
 // never use the phone's clock zone for "today": they ask for it in the user's saved zone.
 
-// Today's date in `timeZone`, e.g. "2026-11-08".
-export function localToday(timeZone: string, now: Date = new Date()): string {
-  const parts = new Intl.DateTimeFormat('en-CA', {
-    timeZone,
-    year: 'numeric',
-    month: '2-digit',
-    day: '2-digit',
-  }).formatToParts(now);
-  const get = (type: string) => parts.find((p) => p.type === type)?.value ?? '';
-  return `${get('year')}-${get('month')}-${get('day')}`;
-}
+// "Today" and day arithmetic are shared with the API (packages/shared/src/dates.ts), so both
+// sides agree on what a day is.
+import { addDays, daysBetween } from '@life-os/shared';
 
-// Calendar arithmetic on "YYYY-MM-DD", done in UTC so daylight saving can't shift the day.
-export function addDays(day: string, days: number): string {
-  const date = new Date(`${day}T00:00:00.000Z`);
-  date.setUTCDate(date.getUTCDate() + days);
-  return date.toISOString().slice(0, 10);
-}
-
-function daysBetween(from: string, to: string): number {
-  return Math.round(
-    (Date.parse(`${to}T00:00:00.000Z`) - Date.parse(`${from}T00:00:00.000Z`)) / 86_400_000,
-  );
-}
+export { addDays, daysBetween, localToday } from '@life-os/shared';
 
 export interface DueLabel {
   text: string;

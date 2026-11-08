@@ -467,6 +467,31 @@ describe('Tasks (e2e)', () => {
       expect(await prisma.task.count({ where: { userId: tina.user.id } })).toBe(2);
     });
 
+    it('completed from two devices at the same moment: still only one next task', async () => {
+      const t = await newTask(tina, { dueDate: '2099-01-01', recurrenceRule: 'FREQ=DAILY' });
+      const [a, b] = await Promise.all([
+        as(tina).action(t.id, 'complete').expect(200),
+        as(tina).action(t.id, 'complete').expect(200),
+      ]);
+      const created = [a, b].filter((r) => r.body.data.nextOccurrence !== null);
+      expect(created).toHaveLength(1);
+      expect(await prisma.task.count({ where: { userId: tina.user.id } })).toBe(2);
+    });
+
+    it('a subtask can\u2019t repeat', async () => {
+      const t = await newTask(tina, { dueDate: '2099-01-01' });
+      const sub = (await as(tina).addSubtask(t.id, 'Step').expect(201)).body.data;
+      const res = await as(tina)
+        .update(sub.id, { dueDate: '2099-01-02', recurrenceRule: 'FREQ=DAILY' })
+        .expect(400);
+      expect(res.body.error.details).toEqual([
+        {
+          field: 'recurrenceRule',
+          message: "A subtask can't repeat. Make its task repeat instead.",
+        },
+      ]);
+    });
+
     it('the next one gets the subtasks again, as a fresh checklist', async () => {
       const t = await newTask(tina, { dueDate: '2099-01-01', recurrenceRule: 'FREQ=DAILY' });
       const step = (await as(tina).addSubtask(t.id, 'Water plants').expect(201)).body.data;

@@ -376,6 +376,29 @@ describe('task form', () => {
       await waitFor(() => expect(calls.some((c) => c.route === 'DELETE /tasks/s2')).toBe(true));
     });
 
+    it('editing: ticking a subtask keeps what you typed but haven\u2019t saved', async () => {
+      // The server remembers the tick, so the refreshed task really is a new, different one.
+      const server = structuredClone(WITH_SUBTASKS) as PublicTask & { subtasks: PublicTask[] };
+      routes['POST /tasks/s1/complete'] = () => {
+        server.subtasks[0]!.status = 'DONE';
+        server.subtasksDone = 1;
+        return { status: 200, body: { data: { task: server.subtasks[0] } } };
+      };
+      await openForm(`/task-form?id=${EXISTING.id}`, server);
+      await screen.findByRole('checkbox', { name: 'Transfer' }); // loaded and filled in
+      await fireEvent.changeText(screen.getByLabelText('Title'), 'Pay rent and bills');
+      await fireEvent.press(screen.getByRole('checkbox', { name: 'Transfer' }));
+
+      // Wait for the refreshed task from the server (it says 1 of 2), then check the title.
+      await waitFor(() =>
+        expect(calls.filter((c) => c.route === `GET /tasks/${EXISTING.id}`).length).toBeGreaterThan(
+          1,
+        ),
+      );
+      expect(await screen.findByLabelText('Subtasks, 1 of 2')).toBeOnTheScreen();
+      expect(screen.getByLabelText('Title').props.value).toBe('Pay rent and bills');
+    });
+
     it('editing: a tick the server refuses is undone and says so', async () => {
       // The server's answer is held until the test releases it.
       let refuse: (() => void) | undefined;
@@ -480,6 +503,53 @@ describe('task form', () => {
       await waitFor(() => expect(bodies('POST /tasks')).toHaveLength(1));
       expect(bodies('POST /tasks')[0]).toMatchObject({ recurrenceRule: 'FREQ=DAILY;INTERVAL=3' });
     });
+
+    it('Weekly stays open with Mon–Fri ticked, so Saturday can be added too', async () => {
+      createReturnsBody();
+      await openForm('/task-form');
+      await fireEvent.changeText(await screen.findByLabelText('Title'), 'Run');
+      await choose('Today');
+      await press('Repeat, Never');
+      await choose('Weekly');
+      for (const day of ['Mon', 'Tue', 'Wed', 'Thu', 'Fri']) {
+        const chip = screen.getByRole('checkbox', { name: day });
+        if (!chip.props.accessibilityState?.checked) await fireEvent.press(chip);
+      }
+      // Exactly Mon–Fri: untick the starting day if it's Sat or Sun (the probe found that
+      // without this, the test only ever ran with a weekend day still ticked).
+      for (const day of ['Sat', 'Sun']) {
+        const chip = screen.getByRole('checkbox', { name: day });
+        if (chip.props.accessibilityState?.checked) await fireEvent.press(chip);
+      }
+      // Still the weekday picker (not "Weekdays", which would hide it).
+      expect(screen.getByRole('radio', { name: 'Weekly' })).toBeSelected();
+      await fireEvent.press(screen.getByRole('checkbox', { name: 'Sat' }));
+      await press('Add task');
+      await waitFor(() => expect(bodies('POST /tasks')).toHaveLength(1));
+      expect(bodies('POST /tasks')[0]).toMatchObject({
+        recurrenceRule: 'FREQ=WEEKLY;BYDAY=MO,TU,WE,TH,FR,SA',
+      });
+    });
+
+    it.each(['0', '400', ''])(
+      'Every few days: %j blocks saving instead of keeping an old number',
+      async (text) => {
+        createReturnsBody();
+        await openForm('/task-form');
+        await fireEvent.changeText(await screen.findByLabelText('Title'), 'Water');
+        await choose('Today');
+        await press('Repeat, Never');
+        await choose('Every few days');
+        await fireEvent.changeText(screen.getByLabelText('Every how many days?'), '3');
+        await fireEvent.changeText(screen.getByLabelText('Every how many days?'), text);
+        expect(screen.getByText('Use a number from 1 to 365.')).toBeOnTheScreen();
+        await press('Add task');
+        expect(
+          await screen.findByText('Choose daily, every few days, weekly on some days, or monthly.'),
+        ).toBeOnTheScreen();
+        expect(bodies('POST /tasks')).toHaveLength(0);
+      },
+    );
 
     it('removing the date removes the repeat; editing shows the saved one', async () => {
       createReturnsBody();

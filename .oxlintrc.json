@@ -23,7 +23,12 @@
         "node": true
       },
       "rules": {
-        "no-underscore-dangle": ["warn", { "allow": ["_count", "_all"] }]
+        "no-underscore-dangle": [
+          "warn",
+          {
+            "allow": ["_count", "_all"]
+          }
+        ]
       }
     },
     {
@@ -60,6 +65,36 @@
       },
       "rules": {
         "typescript/no-unsafe-type-assertion": "off"
+      }
+    },
+    {
+      "files": ["apps/mobile/**", "packages/shared/**"],
+      "rules": {
+        "unicorn/no-array-sort": "off",
+        "unicorn/no-array-reverse": "off",
+        "no-restricted-properties": [
+          "error",
+          {
+            "property": "toSorted",
+            "message": "Expo Go's Hermes engine doesn't have this (Node does, so tests pass but the phone crashes). Use sorted() / reversed() from @/lib/arrays, or a plain loop."
+          },
+          {
+            "property": "toReversed",
+            "message": "Expo Go's Hermes engine doesn't have this (Node does, so tests pass but the phone crashes). Use sorted() / reversed() from @/lib/arrays, or a plain loop."
+          },
+          {
+            "property": "toSpliced",
+            "message": "Expo Go's Hermes engine doesn't have this (Node does, so tests pass but the phone crashes). Use sorted() / reversed() from @/lib/arrays, or a plain loop."
+          },
+          {
+            "property": "findLast",
+            "message": "Expo Go's Hermes engine doesn't have this (Node does, so tests pass but the phone crashes). Use sorted() / reversed() from @/lib/arrays, or a plain loop."
+          },
+          {
+            "property": "findLastIndex",
+            "message": "Expo Go's Hermes engine doesn't have this (Node does, so tests pass but the phone crashes). Use sorted() / reversed() from @/lib/arrays, or a plain loop."
+          }
+        ]
       }
     }
   ]

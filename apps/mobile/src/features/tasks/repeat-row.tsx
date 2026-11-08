@@ -35,10 +35,19 @@ const DAY_LABEL: Record<RRuleWeekday, string> = {
   SU: 'Sun',
 };
 
-function kindOf(rule: Recurrence | null): Kind {
-  if (!rule) return 'NEVER';
+const EVERY_PREFIX = 'FREQ=DAILY;INTERVAL=';
+
+// Which chip a rule belongs to. `picked` is the chip the user last tapped: it wins when the rule
+// still fits it, so Weekly stays Weekly when Mon–Fri are ticked, and "Every few days" stays
+// open while a number is being typed (even an invalid one, or 1 on the way to 10).
+function kindOf(value: string | null, picked: Kind | null): Kind {
+  if (value === null) return 'NEVER';
+  const rule = parseRule(value);
+  if (picked === 'EVERY' && value.startsWith(EVERY_PREFIX)) return 'EVERY';
+  if (!rule) return value.startsWith(EVERY_PREFIX) ? 'EVERY' : 'NEVER';
   if (rule.freq === 'DAILY') return rule.interval === 1 ? 'DAILY' : 'EVERY';
   if (rule.freq === 'MONTHLY') return 'MONTHLY';
+  if (picked === 'WEEKLY') return 'WEEKLY';
   return rule.days.join() === WORKWEEK.join() ? 'WEEKDAYS' : 'WEEKLY';
 }
 
@@ -55,12 +64,14 @@ export interface RepeatRowProps {
 export function RepeatRow({ value, onChange, dueDate, error }: RepeatRowProps) {
   const { colors } = useTheme();
   const [open, setOpen] = useState(false);
+  const [picked, setPicked] = useState<Kind | null>(null);
   const rule = value ? parseRule(value) : null;
-  const kind = kindOf(rule);
+  const kind = kindOf(value, picked);
   const set = (next: Recurrence | null) => onChange(next ? formatRule(next) : null);
 
   function choose(next: Kind) {
     if (!dueDate) return;
+    setPicked(next);
     switch (next) {
       case 'NEVER':
         return set(null);
@@ -82,7 +93,15 @@ export function RepeatRow({ value, onChange, dueDate, error }: RepeatRowProps) {
       icon="repeat"
       tint={colors.tile.peach}
       title="Repeat"
-      value={!dueDate ? 'Pick a date first' : rule ? describeRule(rule) : 'Never'}
+      value={
+        !dueDate
+          ? 'Pick a date first'
+          : rule
+            ? describeRule(rule)
+            : kind === 'EVERY'
+              ? 'Every … days'
+              : 'Never'
+      }
       {...(dueDate
         ? { onPress: () => setOpen((o) => !o), accessibilityHint: 'Shows how often it repeats' }
         : {})}
@@ -107,10 +126,12 @@ export function RepeatRow({ value, onChange, dueDate, error }: RepeatRowProps) {
           {rule?.freq === 'WEEKLY' && kind === 'WEEKLY' && (
             <WeekdayPicker days={rule.days} onChange={(days) => set({ freq: 'WEEKLY', days })} />
           )}
-          {rule?.freq === 'DAILY' && kind === 'EVERY' && (
+          {kind === 'EVERY' && (
             <IntervalField
-              interval={rule.interval}
-              onChange={(interval) => set({ freq: 'DAILY', interval })}
+              initial={rule?.freq === 'DAILY' ? rule.interval : 2}
+              // The text goes to the form as typed: an invalid number makes an invalid rule,
+              // which the form refuses on Save (it never quietly keeps an older number).
+              onChange={(text) => onChange(`${EVERY_PREFIX}${text}`)}
             />
           )}
           {rule?.freq === 'MONTHLY' && (
@@ -162,15 +183,15 @@ function WeekdayPicker({
 }
 
 function IntervalField({
-  interval,
+  initial,
   onChange,
 }: {
-  interval: number;
-  onChange: (interval: number) => void;
+  initial: number;
+  onChange: (text: string) => void;
 }) {
-  const [text, setText] = useState(String(interval));
+  const [text, setText] = useState(String(initial));
   const n = Number(text);
-  const valid = /^\d+$/.test(text) && n >= 2 && n <= MAX_REPEAT_INTERVAL;
+  const valid = /^\d+$/.test(text) && n >= 1 && n <= MAX_REPEAT_INTERVAL;
   return (
     <TextField
       label="Every how many days?"
@@ -178,10 +199,9 @@ function IntervalField({
       keyboardType="number-pad"
       onChangeText={(next) => {
         setText(next);
-        const value = Number(next);
-        if (/^\d+$/.test(next) && value >= 2 && value <= MAX_REPEAT_INTERVAL) onChange(value);
+        onChange(next);
       }}
-      error={valid ? undefined : `Use a number from 2 to ${MAX_REPEAT_INTERVAL}.`}
+      error={valid ? undefined : `Use a number from 1 to ${MAX_REPEAT_INTERVAL}.`}
     />
   );
 }

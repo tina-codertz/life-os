@@ -49,6 +49,16 @@ export function useTasks(filter: TaskFilter, q = '') {
   });
 }
 
+// Candidates for the highlighted card: open tasks due today or earlier, asked for on their own
+// so the card doesn't depend on which page of the list happens to be loaded (week 13 review).
+export function useFocusCandidates(today: string) {
+  return useQuery({
+    queryKey: [...taskKeys.all, 'focus', today] as const,
+    queryFn: ({ signal }) =>
+      api().getPage<PublicTask>(`/tasks?status=TODO&dueTo=${today}&limit=100`, { signal }),
+  });
+}
+
 export function useTask(id: string | undefined) {
   return useQuery({
     queryKey: taskKeys.detail(id ?? ''),

@@ -20,6 +20,7 @@ import {
   type TaskFilter,
   useCategories,
   useDeleteTask,
+  useFocusCandidates,
   useTasks,
   useToggleTask,
 } from '@/features/tasks/queries';
@@ -89,7 +90,9 @@ export default function Tasks() {
 
   const loaded = useMemo(() => tasks.data?.pages.flatMap((page) => page.items) ?? [], [tasks.data]);
   // The design's highlighted card: on To do, when not searching. It isn't repeated below.
-  const focus = filter === 'TODO' && !query ? pickFocusTask(loaded, today) : null;
+  const candidates = useFocusCandidates(today);
+  const focus =
+    filter === 'TODO' && !query ? pickFocusTask(candidates.data?.items ?? [], today) : null;
   const items = useMemo(
     () => (focus ? loaded.filter((t) => t.id !== focus.id) : loaded),
     [loaded, focus],

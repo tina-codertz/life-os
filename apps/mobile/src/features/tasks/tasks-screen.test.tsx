@@ -353,11 +353,11 @@ describe('Tasks screen', () => {
 
   describe('highlighted card (the design’s top card)', () => {
     it('shows the most important task due today, once, with its time and subtasks', async () => {
-      routes['GET /tasks'] = () =>
-        page([
-          dueToday({ priority: 'HIGH', subtaskCount: 3, subtasksDone: 1, categoryId: WORK.id }),
-          task({ title: 'Later' }),
-        ]);
+      const items = [
+        dueToday({ priority: 'HIGH', subtaskCount: 3, subtasksDone: 1, categoryId: WORK.id }),
+        task({ title: 'Later' }),
+      ];
+      routes['GET /tasks'] = () => page(items);
       const router = await openTasks();
       const card = await screen.findByTestId('focus-card');
       expect(within(card).getByText('Ship MVP')).toBeOnTheScreen();
@@ -372,7 +372,8 @@ describe('Tasks screen', () => {
     });
 
     it('"Swipe to complete" (or its screen-reader action) completes the task', async () => {
-      routes['GET /tasks'] = () => page([dueToday()]);
+      const items = [dueToday()];
+      routes['GET /tasks'] = () => page(items);
       routes['POST /tasks/t1/complete'] = () => ({ status: 200, body: { data: { task: {} } } });
       await openTasks();
       const swipe = await screen.findByLabelText('Complete Ship MVP');
@@ -383,7 +384,8 @@ describe('Tasks screen', () => {
     });
 
     it('with open subtasks, completing from the card asks first too', async () => {
-      routes['GET /tasks'] = () => page([dueToday({ subtaskCount: 2, subtasksDone: 0 })]);
+      const items = [dueToday({ subtaskCount: 2, subtasksDone: 0 })];
+      routes['GET /tasks'] = () => page(items);
       const alert = jest.spyOn(Alert, 'alert').mockImplementation(() => undefined);
       await openTasks();
       const swipe = await screen.findByLabelText('Complete Ship MVP');
@@ -393,7 +395,8 @@ describe('Tasks screen', () => {
     });
 
     it('is not shown while searching: the found task is a normal row', async () => {
-      routes['GET /tasks'] = () => page([dueToday()]);
+      const items = [dueToday()];
+      routes['GET /tasks'] = () => page(items);
       await openTasks();
       await screen.findByTestId('focus-card');
 
@@ -405,8 +408,29 @@ describe('Tasks screen', () => {
       expect(screen.queryByTestId('focus-card')).toBeNull();
     });
 
+    it('finds the most important due task even if it isn\u2019t on the loaded page', async () => {
+      const today = localToday(ZONE);
+      const recent = task({ title: 'Water plants', dueDate: today, priority: 'LOW' });
+      const old = task({
+        title: 'Renew passport',
+        dueDate: addDays(today, -20),
+        priority: 'URGENT',
+      });
+      // The list's first page has only the recent task; the card asks for due tasks separately.
+      routes['GET /tasks'] = (_b, path) =>
+        page(
+          path.includes('dueTo=') ? [recent, old] : [recent],
+          path.includes('dueTo=') ? null : 'more',
+        );
+      await openTasks();
+      const card = await screen.findByTestId('focus-card');
+      expect(within(card).getByText('Renew passport')).toBeOnTheScreen();
+      expect(gets('/tasks')).toContain(`GET /tasks?status=TODO&dueTo=${today}&limit=100`);
+    });
+
     it('nothing due today or overdue: no card', async () => {
-      routes['GET /tasks'] = () => page([task({ title: 'Someday' })]);
+      const items = [task({ title: 'Someday' })];
+      routes['GET /tasks'] = () => page(items);
       await openTasks();
       await screen.findByText('Someday');
       expect(screen.queryByTestId('focus-card')).toBeNull();
@@ -415,15 +439,15 @@ describe('Tasks screen', () => {
 
   describe('repeating tasks', () => {
     it('rows say how a task repeats; the card shows it like the design', async () => {
-      routes['GET /tasks'] = () =>
-        page([
-          dueToday({ title: 'Standup', recurrenceRule: 'FREQ=WEEKLY;BYDAY=MO,TU,WE,TH,FR' }),
-          task({
-            title: 'Rent',
-            dueDate: addDays(localToday(ZONE), 5),
-            recurrenceRule: 'FREQ=MONTHLY;BYMONTHDAY=1',
-          }),
-        ]);
+      const items = [
+        dueToday({ title: 'Standup', recurrenceRule: 'FREQ=WEEKLY;BYDAY=MO,TU,WE,TH,FR' }),
+        task({
+          title: 'Rent',
+          dueDate: addDays(localToday(ZONE), 5),
+          recurrenceRule: 'FREQ=MONTHLY;BYMONTHDAY=1',
+        }),
+      ];
+      routes['GET /tasks'] = () => page(items);
       await openTasks();
       const card = await screen.findByTestId('focus-card');
       expect(within(card).getByText('Weekdays')).toBeOnTheScreen();
@@ -434,8 +458,10 @@ describe('Tasks screen', () => {
 
     it('completing one says when the next is due', async () => {
       const today = localToday(ZONE);
-      routes['GET /tasks'] = () =>
-        page([task({ title: 'Rent', dueDate: addDays(today, 5), recurrenceRule: 'FREQ=DAILY' })]);
+      const items = [
+        task({ title: 'Rent', dueDate: addDays(today, 5), recurrenceRule: 'FREQ=DAILY' }),
+      ];
+      routes['GET /tasks'] = () => page(items);
       routes['POST /tasks/t1/complete'] = () => ({
         status: 200,
         body: {

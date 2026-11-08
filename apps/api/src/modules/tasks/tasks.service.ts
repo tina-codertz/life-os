@@ -6,6 +6,7 @@ import {
   type HistoryDay,
   type HistoryQuery,
   type ListTasksQuery,
+  localToday,
   MAX_SUBTASKS,
   nextDueDate,
   parseRule,
@@ -15,7 +16,7 @@ import {
   type TaskHistory,
   type UpdateTaskInput,
 } from '@life-os/shared';
-import { fromDbDate, localToday, toDbDate } from '../../common/dates.js';
+import { fromDbDate, toDbDate } from '../../common/dates.js';
 import { decodeCursor, pageOf } from '../../common/pagination/cursor.js';
 import { Page } from '../../common/pagination/page.js';
 import { Prisma, type Task } from '../../generated/prisma/client.js';
@@ -98,14 +99,17 @@ export class TasksService {
     `);
 
     const byDay = new Map<string, string[]>();
-    for (const row of rows) byDay.set(row.day, [...(byDay.get(row.day) ?? []), row.id]);
+    for (const row of rows) {
+      const ids = byDay.get(row.day);
+      if (ids) ids.push(row.id);
+      else byDay.set(row.day, [row.id]);
+    }
     const dates = [...byDay.keys()].toSorted();
 
     let tasksById = new Map<string, PublicTask>();
     if (query.include === 'tasks' && rows.length > 0) {
       const tasks = await this.prisma.task.findMany({
         where: { id: { in: rows.map((r) => r.id) } },
-        orderBy: { completedAt: 'desc' },
       });
       const counts = await this.subtaskCounts(tasks.map((t) => t.id));
       tasksById = new Map(tasks.map((t) => [t.id, toPublicTask(t, counts.get(t.id))]));
@@ -196,6 +200,10 @@ export class TasksService {
     if (input.recurrenceRule != null && !dateAfter) {
       throw fieldError('recurrenceRule', 'A repeating task needs a date.');
     }
+    // A step inside a task can't repeat on its own; its task can (FR-TASK-005/006).
+    if (input.recurrenceRule != null && task.parentId) {
+      throw fieldError('recurrenceRule', "A subtask can't repeat. Make its task repeat instead.");
+    }
 
     return this.withCounts(await this.prisma.task.update({ where: { id: task.id }, data }));
   }
@@ -232,12 +240,16 @@ export class TasksService {
           data: { status: 'DONE', completedAt: now },
         });
       }
-      if (task.status === 'DONE') return { done: task, next: null };
-      const completed = await tx.task.update({
-        where: { id: task.id },
+      // TODO → DONE as one conditional write: if two requests complete the task at the same
+      // moment, the database lets only one of them flip it, and only that one creates the next
+      // occurrence (the other sees count 0, so there's never a second copy).
+      const flipped = await tx.task.updateMany({
+        where: { id: task.id, status: 'TODO', deletedAt: null },
         data: { status: 'DONE', completedAt: now },
       });
-      return { done: completed, next: await this.createNextOccurrence(tx, completed) };
+      const current = await tx.task.findUniqueOrThrow({ where: { id: task.id } });
+      if (flipped.count === 0) return { done: current, next: null };
+      return { done: current, next: await this.createNextOccurrence(tx, current) };
     });
     return {
       task: await this.withCounts(done),
@@ -253,7 +265,8 @@ export class TasksService {
     task: Task,
   ): Promise<Task | null> {
     const rule = task.recurrenceRule ? parseRule(task.recurrenceRule) : null;
-    if (!rule || !task.dueDate) return null;
+    // Subtasks don't repeat (update refuses it); this guards older or hand-made data.
+    if (!rule || !task.dueDate || task.parentId) return null;
     const seriesId = task.recurrenceSeriesId ?? task.id;
     const later = await tx.task.findFirst({
       where: {

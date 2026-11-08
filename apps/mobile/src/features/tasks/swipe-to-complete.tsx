@@ -22,33 +22,35 @@ export function SwipeToComplete({ label, onComplete }: { label: string; onComple
   const [x] = useState(() => new Animated.Value(0));
   const travel = Math.max(0, width - KNOB - PAD * 2);
 
-  const pan = useMemo(
-    () =>
-      PanResponder.create({
-        onMoveShouldSetPanResponder: (_e, g) =>
-          Math.abs(g.dx) > 4 && Math.abs(g.dx) > Math.abs(g.dy),
-        onPanResponderMove: (_e, g) => x.setValue(Math.min(Math.max(g.dx, 0), travel)),
-        onPanResponderRelease: (_e, g) => {
-          if (swipeCompletes(g.dx, travel)) {
-            Animated.timing(x, {
-              toValue: travel,
-              duration: reduceMotion ? 0 : motion.fast,
-              useNativeDriver: true,
-            }).start(() => {
-              onComplete();
-              x.setValue(0);
-            });
-          } else {
-            Animated.timing(x, {
-              toValue: 0,
-              duration: reduceMotion ? 0 : motion.base,
-              useNativeDriver: true,
-            }).start();
-          }
-        },
-      }),
-    [travel, x, onComplete, reduceMotion],
-  );
+  const pan = useMemo(() => {
+    const springBack = () =>
+      Animated.timing(x, {
+        toValue: 0,
+        duration: reduceMotion ? 0 : motion.base,
+        useNativeDriver: true,
+      }).start();
+    return PanResponder.create({
+      onMoveShouldSetPanResponder: (_e, g) => Math.abs(g.dx) > 4 && Math.abs(g.dx) > Math.abs(g.dy),
+      onPanResponderMove: (_e, g) => x.setValue(Math.min(Math.max(g.dx, 0), travel)),
+      onPanResponderRelease: (_e, g) => {
+        if (swipeCompletes(g.dx, travel)) {
+          Animated.timing(x, {
+            toValue: travel,
+            duration: reduceMotion ? 0 : motion.fast,
+            useNativeDriver: true,
+          }).start(() => {
+            onComplete();
+            x.setValue(0);
+          });
+        } else {
+          springBack();
+        }
+      },
+      // Something else took the gesture over (e.g. the list started scrolling): no release
+      // comes, so put the knob back here instead of leaving it halfway.
+      onPanResponderTerminate: () => springBack(),
+    });
+  }, [travel, x, onComplete, reduceMotion]);
 
   // The outer view is what screen readers see (with the Complete action); the swipe is on the
   // track inside it, so the gesture handling can't swallow the screen-reader action.

@@ -89,6 +89,22 @@ describe('Categories (e2e)', () => {
     await as(juma).create({ name: 'Work', color: 'teal' }).expect(201);
   });
 
+  // Two phones creating the same name at the same moment: both pass the name check, and the
+  // database's unique index must stop the second (the service turns that into the same 409).
+  it('creating the same name at once still makes only one', async () => {
+    const results = await Promise.all(
+      Array.from({ length: 5 }, (_, i) =>
+        as(tina).create({ name: i % 2 ? 'Gym' : 'GYM', color: 'green' }),
+      ),
+    );
+    expect(results.map((r) => r.status).toSorted((a, b) => a - b)).toEqual([
+      201, 409, 409, 409, 409,
+    ]);
+    for (const r of results.filter((res) => res.status === 409)) {
+      expect(r.body.error.code).toBe('CATEGORY_NAME_TAKEN');
+    }
+  });
+
   it('deleting a category keeps its tasks, without a category', async () => {
     const work = (await as(tina).create({ name: 'Work', color: 'blue' })).body.data;
     const task = await prisma.task.create({
