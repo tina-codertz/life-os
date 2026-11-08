@@ -361,3 +361,28 @@ Node is pinned in `.node-version` and Bun in `packageManager`, so CI uses the sa
 2. Why can't we "log out" an access token, and how does a 15-minute lifetime make that acceptable?
 3. Why does an unknown email still run a password check against a dummy hash?
 4. What would go wrong if `verifyAccessToken` accepted whatever algorithm the token's header names?
+
+### 2026-11-08 — 4.4 Part 3: protecting routes
+**What was built:**
+- `JwtAuthGuard` (`modules/auth`), registered globally with `APP_GUARD`: reads `Authorization: Bearer <token>`, verifies it with `TokenService`, sets `req.user = { id }`. Any failure → `401 UNAUTHENTICATED` "Log in to continue." plus `WWW-Authenticate: Bearer`.
+- `@Public()` opts a controller or method out (health, auth, the test-only validation controller).
+- `@CurrentUser()` parameter decorator; `req.user` added to Express's `Request` type (`auth-user.ts`, *declaration merging*).
+- `GET /users/me` (`modules/users`, the read part of 4.7) returns `PublicUser`; `401` if the account was deleted. `toPublicUser` moved to `modules/users`.
+- ADR-019 (Proposed): authentication required by default.
+**Concepts:**
+- *Guard:* answers one question before the handler runs: may this request continue? It runs after middleware and before interceptors and pipes, so an anonymous request never reaches validation or your code.
+- *Secure by default (fail closed):* with one global guard, a new route is protected automatically. Forgetting `@Public()` gives a 401 you'll notice in the first test; forgetting `@UseGuards()` would give a silent hole.
+- *Metadata + Reflector:* `@Public()` doesn't do anything itself; it attaches a label to the method/class. The guard reads it with `reflector.getAllAndOverride(...)`, checking the method first, then the controller.
+- *Authentication vs authorisation:* the guard answers *who are you?* (401 when it can't tell). *May you touch this task?* is authorisation, answered later by queries scoped to `userId` (404 for someone else's).
+- *Identity comes only from the token:* `@CurrentUser()` reads the verified token's `sub`, never an ID from the URL or body (NFR-SEC-003), so a user can only ever act as themselves.
+- *Stateless check, stateful edge case:* the guard doesn't touch the database (fast), so a deleted user's token still passes the guard for up to 15 minutes; `/users/me` loads the user and answers 401. Sessions (4.5) will close that gap.
+- *401 vs 403:* 401 = "I don't know who you are" (log in / refresh); 403 = "I know who you are, and the answer is no".
+**Checked it can fail:** removing `@Public()` from health made the health tests fail with 401; un-registering the global guard made 8 tests fail.
+**Lint caught:** passing class methods around unbound in the guard spec (now plain functions labelled with `Public()`), and a side-effect import (`import './auth-user.js'`, replaced by an explicit `import type`).
+**Checked:** 86 API unit (guard: public route, no token + header, invalid token keeps `cause`, valid token sets `req.user`; `bearerToken` parsing) + 22 shared + 36 e2e (`/users/me`: valid 200; no header / Basic / malformed → identical 401 envelope + `WWW-Authenticate`; other secret, expired, deleted account, non-existent user → 401; health/register/login still public; unknown route still 404). Live production build: 401 without token, 200 with it, `authorization: [Redacted]` and the token absent from the logs; probe user deleted.
+**4.4 complete:** register → token → protected routes work end to end.
+**To learn:**
+1. What's the difference between a guard and middleware? Why is the auth check a guard here?
+2. Why is "every route protected unless `@Public()`" safer than adding `@UseGuards()` where needed?
+3. 401 or 403: which one for "no token", and which one for "valid token, but you're not an admin"?
+4. A user deletes their account. Why does their access token still pass the guard, and what limits the damage?

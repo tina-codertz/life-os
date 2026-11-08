@@ -128,6 +128,8 @@ modules/tasks/
 **Request flow (create task):**
 `POST /api/v1/tasks` → `JwtAuthGuard` (sets `req.user`) → `ZodValidationPipe` (body → DTO) → `TasksController.create(@CurrentUser() user, dto)` → `TasksService.create(user.id, dto)` → `prisma.task.create({ data: { ...dto, userId } })` → `ResponseEnvelopeInterceptor` wraps `{ data }` → `201`.
 
+Built in 4.4: `JwtAuthGuard` is registered **globally** (`APP_GUARD` in `AuthModule`), so every route needs `Authorization: Bearer <access token>` unless the controller or method is marked `@Public()` (health, auth). It verifies the token without a database lookup and sets `req.user = { id }`; `@CurrentUser()` reads it. Any failure → `401 UNAUTHENTICATED` with `WWW-Authenticate: Bearer`. Guards run **before** pipes, so an unauthenticated request never reaches validation. See ADR-019.
+
 ### 3.2 Dependency rules between modules
 
 ```mermaid

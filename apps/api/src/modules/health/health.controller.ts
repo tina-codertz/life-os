@@ -1,6 +1,7 @@
 import { Controller, Get, HttpStatus } from '@nestjs/common';
 import { AppException } from '../../common/errors/app.exception.js';
 import { PrismaService } from '../../prisma/prisma.service.js';
+import { Public } from '../auth/public.decorator.js';
 
 export interface HealthResponse {
   status: 'ok';
@@ -8,6 +9,7 @@ export interface HealthResponse {
 }
 
 // Used by uptime monitors and the Docker healthcheck.
+@Public()
 @Controller('health')
 export class HealthController {
   constructor(private readonly prisma: PrismaService) {}

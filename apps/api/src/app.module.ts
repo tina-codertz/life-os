@@ -6,10 +6,11 @@ import { ConfigModule } from './config/config.module.js';
 import { LoggingModule } from './logging/logging.module.js';
 import { AuthModule } from './modules/auth/auth.module.js';
 import { HealthModule } from './modules/health/health.module.js';
+import { UsersModule } from './modules/users/users.module.js';
 import { PrismaModule } from './prisma/prisma.module.js';
 
 @Module({
-  imports: [ConfigModule, LoggingModule, PrismaModule, HealthModule, AuthModule],
+  imports: [ConfigModule, LoggingModule, PrismaModule, HealthModule, AuthModule, UsersModule],
   // APP_* providers (not app.useGlobal*) so they get DI and e2e tests get them too.
   // Success → ResponseEnvelopeInterceptor `{ data }`; failure → AllExceptionsFilter `{ error }`.
   providers: [

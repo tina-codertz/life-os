@@ -51,7 +51,7 @@ Built in 4.1: `ResponseEnvelopeInterceptor` wraps whatever a controller returns 
 | 201 | Created |
 | 204 | Deleted / no content |
 | 400 | `VALIDATION_FAILED`: malformed or invalid input |
-| 401 | `UNAUTHENTICATED`: missing/expired token |
+| 401 | `UNAUTHENTICATED`: missing/expired token (with `WWW-Authenticate: Bearer`); `INVALID_CREDENTIALS` for a failed login |
 | 403 | `FORBIDDEN`: authenticated but action not allowed (e.g. unverified email for export) |
 | 404 | `*_NOT_FOUND`: also returned for other users' resources |
 | 409 | `CONFLICT` / `EMAIL_TAKEN` |
@@ -109,7 +109,7 @@ Built so far (4.4): `POST /auth/register` → `201 { user, accessToken }`; `POST
 ### Users & settings (`/users/me`)
 | Method | Path | Notes |
 |---|---|---|
-| GET | `/users/me` | user + settings |
+| GET | `/users/me` | user + settings. Built in 4.4: returns `PublicUser` (settings join in 4.7); `401` if the account no longer exists |
 | PATCH | `/users/me` | `{ displayName?, onboardingCompletedAt? }` |
 | PATCH | `/users/me/settings` | `{ timezone?, followDeviceTimezone?, weekStartsOn?, theme?, habitRemindersOn?, … }` |
 | POST | `/users/me/change-password` | `{ currentPassword, newPassword }` |

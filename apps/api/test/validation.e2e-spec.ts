@@ -4,11 +4,13 @@ import request from 'supertest';
 import type { App } from 'supertest/types.js';
 import { z } from 'zod';
 import { ZodValidationPipe } from '../src/common/pipes/zod-validation.pipe.js';
+import { Public } from '../src/modules/auth/public.decorator.js';
 import { createTestApp } from './utils/create-test-app.js';
 
 const echoSchema = z.object({ title: z.string().min(1).max(10), done: z.boolean() });
 
 // Test-only endpoint: echoes what the controller received after validation.
+@Public()
 @Controller('test-validation')
 class ValidationTestController {
   @Post()

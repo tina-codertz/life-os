@@ -6,7 +6,7 @@ import { isUniqueViolation } from '../../prisma/prisma-errors.js';
 import { PrismaService } from '../../prisma/prisma.service.js';
 import { EmailTakenError, InvalidCredentialsError } from './auth.errors.js';
 import { PasswordService } from './password.service.js';
-import { toPublicUser } from './public-user.js';
+import { toPublicUser } from '../users/public-user.js';
 import { TokenService } from './token.service.js';
 
 @Injectable()
