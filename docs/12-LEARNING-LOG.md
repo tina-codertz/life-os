@@ -531,3 +531,23 @@ Node is pinned in `.node-version` and Bun in `packageManager`, so CI uses the sa
 - `Cannot GET /api/v1/docs,`: a comma copied along with the URL. Even a mistyped URL came back in the standard `{ error }` shape with a request ID.
 - `401 UNAUTHENTICATED` on `/users/me`: the token was pasted **with its JSON quotes** (`Bearer "eyJ…"`). The API expects exactly `Bearer <token>` and refuses anything else instead of guessing.
 - Swagger pre-fills bodies with placeholders: `"timezone": "string"` would be a 400. PATCH only needs the fields you're changing.
+
+### 2026-11-08 — Closing M4's loose ends: ADRs + per-email limits
+**Decisions recorded:** ADR-012 (Swagger docs from the Zod schemas via `@ZodBody`) and ADR-019 (authentication required unless `@Public()`) are **Confirmed** by me.
+**What was built:**
+- `AttemptLimiter` (`src/security`): counts events per key in a fixed one-hour window, in memory, capped at 100,000 keys (a flood of made-up emails can't eat the server's memory).
+- `EmailRateLimits`: 10 failed logins/hour per email → 429 with `Retry-After`, a success resets the count, unknown emails counted the same; 3 reset emails/hour per address (forgot-password still answers 204). Reaching the login limit is logged with a 12-character hash of the email, not the address.
+- `AppException` can now carry response headers (`Retry-After`), applied by the filter.
+**Concepts:**
+- *Two kinds of attacker:* one machine trying many passwords (stopped per IP, 4.8); many machines (a botnet) trying passwords on one account (stopped per email, here). Each limit covers the other's blind spot.
+- *Count failures, not attempts:* a real user who logs in often shouldn't be blocked; resetting on success means only sustained failures add up.
+- *Don't leak through the limiter:* an unknown email is counted and blocked exactly like a real one; otherwise "gets blocked after 10" would itself reveal which emails have accounts.
+- *The lockout trade-off:* anyone who knows your email can block password login for an hour. Accepted, because forgot-password still works, and the alternative is no protection for one targeted account.
+- *Bounded memory:* any in-memory map keyed by user input needs a cap.
+**Found while building:** a probe on the limiter's "sweep expired entries" code wasn't caught by any test, and the reason was that the code was redundant: all windows are the same length, so the oldest entry is always the first to expire, and evicting the oldest already does the job. Removed it. A probe that can't fail can also mean *the code shouldn't exist*. Also tightened a test whose assertion (`blocked = 0`) was true whether or not the entry existed.
+**Checked:** 106 API unit + 44 shared + 103 e2e. The e2e tests simulate a botnet with `X-Forwarded-For` (which also proves `TRUST_PROXY_HOPS` works): 10 failures from 10 IPs → the 11th, with the right password, is 429 with `Retry-After` ≈ 3600 while another account logs in fine; success resets the count; known and unknown emails give identical status sequences; 5 forgot-password requests → five 204s, exactly 3 emails. Probes: removing the check, not counting unknown emails, not resetting on success: each fails a test.
+**To learn:**
+1. Why is a per-IP limit not enough to protect one account?
+2. Why count only *failed* logins, and why reset on success?
+3. Why must an unknown email be blocked exactly like a real one?
+4. Anyone who knows your email can now lock your password login for an hour. Why is that acceptable?

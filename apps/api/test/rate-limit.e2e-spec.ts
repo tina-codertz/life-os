@@ -4,6 +4,7 @@ import request from 'supertest';
 import type { App } from 'supertest/types.js';
 import { PrismaService } from '../src/prisma/prisma.service.js';
 import { createTestApp } from './utils/create-test-app.js';
+import { clearInbox, waitForEmails, emailsTo } from './utils/mailpit.js';
 import { resetDatabase } from './utils/test-db.js';
 import { withEnv } from './utils/with-env.js';
 
@@ -80,5 +81,86 @@ describe('Rate limiting (e2e)', () => {
 
   it('never limits the health check', async () => {
     for (let i = 0; i < 110; i += 1) await http().get('/api/v1/health').expect(200);
+  });
+});
+
+// One account attacked from many IPs: the per-IP limit never triggers, the per-email one must.
+// TRUST_PROXY_HOPS=1 makes the app read X-Forwarded-For, so each request can come "from" a
+// different address, like a botnet.
+describe('Per-email limits (e2e)', () => {
+  let app: INestApplication<App>;
+  let ipCounter = 0;
+  const fromNewIp = () => {
+    ipCounter += 1;
+    return `203.0.113.${ipCounter % 250}`;
+  };
+  const http = () => request(app.getHttpServer());
+  const login = (email: string, password: string) =>
+    http().post('/api/v1/auth/login').set('X-Forwarded-For', fromNewIp()).send({ email, password });
+  const register = (email: string) =>
+    http()
+      .post('/api/v1/auth/register')
+      .set('X-Forwarded-For', fromNewIp())
+      .send({ email, password: PASSWORD, displayName: 'X' })
+      .expect(201);
+
+  beforeEach(async () => {
+    app = await withEnv({ RATE_LIMIT_ENABLED: 'true', TRUST_PROXY_HOPS: '1' }, () =>
+      createTestApp(),
+    );
+    await resetDatabase(app.get(PrismaService));
+    await register('tina@example.com');
+    await register('juma@example.com');
+  });
+
+  afterEach(async () => {
+    await app.close();
+  });
+
+  it('blocks an email after 10 failed logins from 10 different IPs, even with the right password', async () => {
+    for (let i = 0; i < 10; i += 1) await login('tina@example.com', 'wrong password').expect(401);
+
+    const res = await login('tina@example.com', PASSWORD).expect(429);
+    expect(res.body.error).toMatchObject({
+      code: 'RATE_LIMITED',
+      message: 'Too many failed attempts. Try again later, or reset your password.',
+    });
+    const retryAfter = Number(res.headers['retry-after']);
+    expect(retryAfter).toBeGreaterThan(3500);
+    expect(retryAfter).toBeLessThanOrEqual(3600);
+
+    await login('juma@example.com', PASSWORD).expect(200); // other accounts unaffected
+  });
+
+  it('a successful login resets the count', async () => {
+    for (let i = 0; i < 9; i += 1) await login('tina@example.com', 'wrong password').expect(401);
+    await login('tina@example.com', PASSWORD).expect(200);
+    for (let i = 0; i < 9; i += 1) await login('tina@example.com', 'wrong password').expect(401);
+    await login('tina@example.com', PASSWORD).expect(200);
+  });
+
+  it('treats unknown emails exactly the same (no hint that an account exists)', async () => {
+    const known: number[] = [];
+    const unknown: number[] = [];
+    for (let i = 0; i < 11; i += 1) {
+      known.push((await login('tina@example.com', 'wrong password')).status);
+      unknown.push((await login('nobody@example.com', 'wrong password')).status);
+    }
+    expect(unknown).toEqual(known);
+    expect(known.at(-1)).toBe(429);
+  });
+
+  it('sends at most 3 reset emails an hour to one address, still answering 204', async () => {
+    await clearInbox();
+    for (let i = 0; i < 5; i += 1) {
+      await http()
+        .post('/api/v1/auth/forgot-password')
+        .set('X-Forwarded-For', fromNewIp())
+        .send({ email: 'tina@example.com' })
+        .expect(204);
+    }
+    await waitForEmails('tina@example.com', 3);
+    await new Promise((resolve) => setTimeout(resolve, 300)); // room for any extra to arrive
+    expect(await emailsTo('tina@example.com')).toHaveLength(3);
   });
 });

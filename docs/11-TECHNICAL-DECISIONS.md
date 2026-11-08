@@ -111,7 +111,7 @@
 - **Status:** Confirmed · 2026-11-04. See [01-PRD §2](01-PRD.md#2-release-scope).
 
 ### ADR-012 — Zod → OpenAPI tooling
-- **Status:** Proposed · 2026-11-08 (was Open)
+- **Status:** Confirmed · 2026-11-08 (was Open, then Proposed)
 - **Decision:** No extra library. Zod 4 exports JSON Schema itself (`z.toJSONSchema(schema, { target: 'openapi-3.0', io: 'input' })`). A ~20-line `@ZodBody(schema)` parameter decorator applies `ZodValidationPipe` **and** `@ApiBody` from the same schema, so the docs can't drift from validation.
 - **Alternatives:** `nestjs-zod` (DTO classes from schemas; another dependency and its own conventions to learn); `@asteasolutions/zod-to-openapi` (registry-based, built for Zod 3 first); hand-written `@ApiProperty` DTOs (two sources of truth).
 - **Consequences:** Request bodies are documented; responses aren't yet (would need a similar `@ZodResponse`). Custom checks (time zone) appear as plain strings.
@@ -151,7 +151,7 @@
 - **Consequences:** Fast linting (the whole repo in well under a second). Some niche ESLint-only rules (e.g. Expo-specific ones) aren't available. If one is ever needed, oxlint can run alongside ESLint with `eslint-plugin-oxlint` turning off the duplicated rules. Typecheck isn't in the hook (too slow per commit), so CI (3.9) catches type errors.
 
 ### ADR-019 — Authentication required by default (global guard + `@Public()`)
-- **Status:** Proposed · 2026-11-08
+- **Status:** Confirmed · 2026-11-08
 - **Context:** Almost every endpoint belongs to a logged-in user. With a per-route `@UseGuards(JwtAuthGuard)`, forgetting it on one new route would expose that route to anyone, and nothing would fail.
 - **Decision:** Register `JwtAuthGuard` as a global `APP_GUARD`. Routes opt *out* with `@Public()` (currently `HealthController`, `AuthController`). The guard only verifies the token (no DB lookup); endpoints that load the user treat a missing or deleted account as `401`.
 - **Alternatives:** `@UseGuards()` per controller (explicit, but fails open when forgotten); Passport (`@nestjs/passport` + `passport-jwt`: more indirection for one strategy).

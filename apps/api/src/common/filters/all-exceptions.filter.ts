@@ -112,6 +112,9 @@ export class AllExceptionsFilter implements ExceptionFilter {
     // by the body parser first) have no ID yet, so create one here; it also sets the header.
     const requestId = typeof req.id === 'string' ? req.id : genRequestId(req, res);
     const body: ApiErrorBody = { error: { code, message, details, requestId } };
+    if (exception instanceof AppException) {
+      for (const [name, value] of Object.entries(exception.headers)) res.setHeader(name, value);
+    }
     res.status(status).json(body);
   }
 }

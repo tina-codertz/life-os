@@ -8,11 +8,13 @@ import type {
   TokenPair,
 } from '@life-os/shared';
 import { PinoLogger } from 'nestjs-pino';
+import { hashOpaqueToken } from '../../common/crypto/opaque-token.js';
 import { type Env, ENV } from '../../config/env.js';
 import type { User } from '../../generated/prisma/client.js';
 import { MailService } from '../../mail/mail.service.js';
 import { isUniqueViolation } from '../../prisma/prisma-errors.js';
 import { PrismaService } from '../../prisma/prisma.service.js';
+import { EmailRateLimits } from '../../security/email-rate-limits.js';
 import { toPublicUser } from '../users/public-user.js';
 import { AuthTokenService } from './auth-token.service.js';
 import { EmailTakenError, InvalidCredentialsError } from './auth.errors.js';
@@ -33,6 +35,7 @@ export class AuthService {
     private readonly sessions: SessionService,
     private readonly authTokens: AuthTokenService,
     private readonly mail: MailService,
+    private readonly emailLimits: EmailRateLimits,
     private readonly logger: PinoLogger,
     @Inject(ENV) private readonly env: Env,
   ) {
@@ -68,6 +71,7 @@ export class AuthService {
   }
 
   async login(input: LoginInput): Promise<AuthResult> {
+    this.emailLimits.assertLoginAllowed(input.email);
     const user = await this.prisma.user.findUnique({ where: { email: input.email } });
 
     if (!user || user.deletedAt) {
@@ -75,13 +79,26 @@ export class AuthService {
       // "wrong password" (a timing difference would reveal which emails have accounts).
       this.dummyHash ??= this.passwords.hash(randomUUID());
       await this.passwords.verify(await this.dummyHash, input.password);
-      throw new InvalidCredentialsError();
+      throw this.loginFailed(input.email);
     }
 
     if (!(await this.passwords.verify(user.passwordHash, input.password))) {
-      throw new InvalidCredentialsError();
+      throw this.loginFailed(input.email);
     }
+    this.emailLimits.recordLoginSuccess(input.email);
     return this.startSession(user, input.deviceName);
+  }
+
+  // Counts the failure per email (unknown emails too) and returns the error to throw.
+  private loginFailed(email: string): InvalidCredentialsError {
+    if (this.emailLimits.recordLoginFailure(email)) {
+      // A hash, not the address: enough to spot repeats in the logs, no personal data.
+      this.logger.warn(
+        { emailHash: hashOpaqueToken(email).slice(0, 12) },
+        'Login failure limit reached for an email',
+      );
+    }
+    return new InvalidCredentialsError();
   }
 
   async refresh(refreshToken: string): Promise<TokenPair> {
@@ -123,6 +140,8 @@ export class AuthService {
   // emails exist). Creating the token and talking to SMTP happen in the background: awaiting
   // them would make a known email measurably slower to answer than an unknown one.
   async forgotPassword(email: string): Promise<void> {
+    // Still 204 when over the limit (the answer never varies); we just don't send.
+    if (!this.emailLimits.allowResetEmail(email)) return;
     const user = await this.prisma.user.findUnique({ where: { email } });
     if (!user || user.deletedAt) return;
     void this.sendPasswordResetEmail(user).catch((err: unknown) => {

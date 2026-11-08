@@ -232,7 +232,7 @@ Built in 4.7: GET/PATCH `/users/me`, PATCH settings, change-password; 4.9: chang
 
 | Scope | Limit |
 |---|---|
-| `/auth/login`, `/auth/register`, `/auth/forgot-password` | 5 / min / IP and 10 / hour / email |
+| `/auth/login`, `/auth/register`, `/auth/forgot-password` | 5 / min / IP; login: 10 failures / hour / email; forgot-password: 3 emails / hour / address |
 | `/auth/refresh` | 30 / min / IP |
 | Authenticated default | 120 / min / user |
 | `/users/me/export` | 3 / day / user |
@@ -242,7 +242,8 @@ Built in 4.7: GET/PATCH `/users/me`, PATCH settings, change-password; 4.9: chang
 - Default **100 / min**, counted **per user** when logged in and per IP otherwise (many mobile users share one public IP behind carrier NAT). This also covers `/auth/refresh`.
 - `@StrictRateLimit()` **5 / min**: register, login, verify-email, resend-verification, forgot-password, reset-password, change-password, change-email, confirm-email-change.
 - `/health` is never limited. Over the limit → `429 RATE_LIMITED` with `Retry-After` (seconds).
-- **Not yet:** the per-email limit (10 / hour / email, against one account attacked from many IPs), the separate refresh and default numbers above (30 and 120), export and AI limits (those endpoints don't exist yet). `RATE_LIMIT_ENABLED=false` turns limits off (only the general e2e run does this).
+- **Per email** (`src/security/email-rate-limits.ts`, added 2026-11-08): **10 failed logins / hour / email**, from any number of IPs → `429 RATE_LIMITED` with `Retry-After`, even with the right password, until the hour ends (forgot-password stays available). A successful login resets the count. Unknown emails are counted identically. **Reset emails: 3 / hour / address**; beyond that forgot-password still answers 204 but sends nothing.
+- **Not yet:** the separate refresh and default numbers above (30 and 120; both are 100 / min today), export and AI limits (those endpoints don't exist yet). `RATE_LIMIT_ENABLED=false` turns limits off (only the general e2e run does this).
 
 ## 5. Swagger / OpenAPI
 - `@nestjs/swagger` generates the spec. Request bodies come from the shared Zod schemas via `@ZodBody(schema)`, which validates **and** documents from the one schema (Zod's built-in `z.toJSONSchema`, OpenAPI 3.0 target; ADR-012). Built in 4.8.

@@ -56,7 +56,7 @@ describe('toApiError', () => {
 describe('AllExceptionsFilter', () => {
   const logger = { error: vi.fn(), setContext: vi.fn() };
   const filter = new AllExceptionsFilter(logger as unknown as PinoLogger);
-  const res = { status: vi.fn(), json: vi.fn() };
+  const res = { status: vi.fn(), json: vi.fn(), setHeader: vi.fn() };
   res.status.mockReturnValue(res);
   const host = {
     switchToHttp: () => ({ getRequest: () => ({ id: 'req-123' }), getResponse: () => res }),
@@ -71,6 +71,17 @@ describe('AllExceptionsFilter', () => {
     expect(res.json).toHaveBeenCalledWith({
       error: { code: 'NOT_FOUND', message: 'Cannot GET /x', details: [], requestId: 'req-123' },
     });
+  });
+
+  it("sets an AppException's extra headers, e.g. Retry-After", () => {
+    filter.catch(
+      new AppException(HttpStatus.TOO_MANY_REQUESTS, 'RATE_LIMITED', 'Slow down.', {
+        headers: { 'Retry-After': '120' },
+      }),
+      host,
+    );
+    expect(res.setHeader).toHaveBeenCalledWith('Retry-After', '120');
+    expect(res.status).toHaveBeenCalledWith(429);
   });
 
   it('creates a request ID when the error happened before the logging middleware', () => {

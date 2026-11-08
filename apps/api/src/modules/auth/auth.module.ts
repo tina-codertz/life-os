@@ -1,5 +1,6 @@
 import { Module } from '@nestjs/common';
 import { MailModule } from '../../mail/mail.module.js';
+import { EmailRateLimits } from '../../security/email-rate-limits.js';
 import { AuthTokenService } from './auth-token.service.js';
 import { AuthController } from './auth.controller.js';
 import { AuthService } from './auth.service.js';
@@ -16,6 +17,7 @@ import { TokenService } from './token.service.js';
     AuthService,
     AuthTokenService,
     EmailChangeService,
+    EmailRateLimits,
     EmailVerifiedGuard,
     PasswordService,
     SessionService,
