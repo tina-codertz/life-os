@@ -58,7 +58,9 @@ flowchart TB
 - Factories (`test/factories.ts`) create users/tasks/habits with valid, unique defaults; a test passes only the fields it cares about. No shared global fixtures. (4.3: `createUser`.)
 
 ### 2.4 Mobile component tests
-- **Tools:** Jest (`jest-expo` preset) + React Native Testing Library + MSW (mocking `fetch`) *(Proposed)*.
+- **Tools:** Jest (`jest-expo` preset) + React Native Testing Library + MSW (mocking `fetch`) *(Proposed)*. Set up in 5.1: `apps/mobile/jest.config.js`, tests next to the code as `*.test.tsx`, `renderWithTheme()` in `src/test/render.tsx`, `bun run --filter @life-os/mobile test` (also in CI).
+- **RNTL 14 is async:** `await render(…)`, `await fireEvent.press(…)`. A missing `await` makes assertions run before rendering ("`render` function has not been called"); the type-aware `no-floating-promises` lint rule catches it.
+- **No snapshot tests** (the roadmap mentioned them for 5.1): they fail on every harmless style change and get updated without being read. Tests assert roles, states and the specific token values instead.
 - Query by role/label (`getByRole('button', { name: 'Save' })`), which also enforces accessibility labels.
 - Targets: every UI primitive's states, forms (validation messages), optimistic update + rollback, auth gate redirects.
 

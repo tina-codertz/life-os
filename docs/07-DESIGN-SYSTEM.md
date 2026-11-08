@@ -3,7 +3,7 @@
 | | |
 |---|---|
 | **Purpose** | Tokens, components and patterns so screens are composed from one system rather than designed in isolation |
-| **Status** | Draft v0.1. Accent direction **Confirmed** (violet/indigo); exact values **Proposed** |
+| **Status** | v0.2. Accent direction **Confirmed** (violet/indigo); colour values implemented in 5.1 and contrast-tested (two dark reds adjusted); Inter font still **Proposed** (system font for now) |
 | **Last updated** | 2026-11-03 |
 | **Related** | [03-User Flows](03-USER-FLOWS.md) · [11-Decisions](11-TECHNICAL-DECISIONS.md) (ADR-007) |
 
@@ -46,12 +46,14 @@ All ratios were computed with the WCAG 2.x relative-luminance formula.
 | `accent.soft` | `rgba(139,124,255,0.16)` | `rgba(91,63,224,0.10)` | selected chips, progress track |
 | `success.default` | `#8FB339` | `#17784C` | progress, streaks: 7.0 / 5.5 |
 | `success.soft` | `rgba(143,179,57,0.16)` | `rgba(23,120,76,0.10)` | |
-| `danger.text` | `#E5566E` | `#C2334B` | 4.75 / 5.4 |
-| `danger.fill` | `#D9475F` | `#C2334B` | destructive buttons |
+| `danger.text` | `#EA6479` | `#C2334B` | ≥ 4.72 on every dark background (was `#E5566E`: 4.21 on elevated) / 5.4 |
+| `danger.fill` | `#C2334B` | `#C2334B` | destructive buttons; white label 5.43 (dark was `#D9475F`: 4.19, fails AA) |
 | `warning.default` | `#F5B544` | `#9A6200` | budget 80% alert: 9.4 / 5.1 |
 | `priority.urgent/high/medium/low` | danger / warning / accent / text.secondary | same mapping | always paired with an icon or label, never color alone |
 
-**Implementation:** `apps/mobile/src/theme/tokens.ts` exports `darkTheme` and `lightTheme` objects with the same shape. `useTheme()` returns the active one, based on `UserSettings.theme` (system / dark / light) and `useColorScheme()`.
+**Implementation (5.1):** `apps/mobile/src/theme/` (`colors.ts`, `tokens.ts`, `theme.ts`, `theme-provider.tsx`, one entry point `@/theme`). `darkTheme` and `lightTheme` have the same shape (`text.onAccent` added for labels on fills). `ThemeProvider` holds the preference (SYSTEM / DARK / LIGHT, the shared `THEMES`) and applies it with `Appearance.setColorScheme`, so native UI (status bar, keyboard, alerts) follows too; `useTheme()` returns the active theme. Until settings sync (5.6/5.7) the preference lives in memory.
+
+**Contrast is tested, not just documented:** `colors.test.ts` checks every text colour on every background, and labels on fills, against WCAG AA (4.5:1) in both themes. It caught the two dark-mode reds above.
 
 ## 3. Typography
 
@@ -82,7 +84,7 @@ All text goes through a `<Text variant="body" tone="secondary">` primitive. Font
 
 ## 5. Component inventory
 
-Primitives live in `src/components/ui/`, and feature components in `src/features/*/components/`.
+Primitives live in `src/components/ui/`, and feature components in `src/features/*/components/`. **Built in 5.1:** `Text`, `Button`, `Card` (the rest in 5.8).
 
 | Component | Variants / props | States |
 |---|---|---|

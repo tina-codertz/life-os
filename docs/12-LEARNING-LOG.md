@@ -561,3 +561,30 @@ Node is pinned in `.node-version` and Bun in `packageManager`, so CI uses the sa
 2. Why count only *failed* logins, and why reset on success?
 3. Why must an unknown email be blocked exactly like a real one?
 4. Anyone who knows your email can now lock your password login for an hour. Why is that acceptable?
+
+### 2026-11-08 — 5.1 Theme system + Text / Button / Card
+**What was built:**
+- `apps/mobile/src/theme/`: colours (docs/07 §2.2, both themes, same shape), spacing / radius / typography / motion tokens, `ThemeProvider` + `useTheme()` + `useThemePreference()`. One import path: `@/theme`.
+- `src/components/ui/`: `Text` (variant + tone, scales up to 2×), `Button` (primary / secondary / ghost / destructive, sm / md / lg, pressed / disabled / loading, ≥ 44 pt), `Card` (surface / elevated / outlined, takes children, a labelled button when tappable).
+- Jest + React Native Testing Library (`jest-expo`), 58 tests, in CI. A temporary preview screen with the System / Dark / Light switch (replaced in 5.2).
+**Concepts:**
+- *Design tokens:* named values (`colors.text.secondary`, `spacing.lg`) instead of raw hex and numbers. Change a token once and every screen follows; a component can't drift to its own grey.
+- *Semantic names:* `danger.fill`, not `red`. The name says what it's *for*, so the dark and light themes can use different reds for the same job.
+- *React Context:* `ThemeProvider` puts the theme where any component can read it with `useTheme()`, without passing it through every layer of props.
+- *Apply the choice to the platform, not just to our components:* `Appearance.setColorScheme` makes iOS / Android render native pieces (status bar, keyboard, alerts) in the same mode. In the simulator, "System" followed the device setting live, status bar included.
+- *Lookup tables over `switch`:* `Record<ButtonVariant, …>` makes TypeScript insist every variant has a style; adding a variant without one is a compile error.
+- *Accessibility from the start:* roles (`button`, `header`), states (`disabled`, `busy`), the title kept as the label while a spinner shows, 44 pt touch targets. The tests find elements *by role and name*, so missing labels fail tests.
+- *Test what you claim:* contrast was "documented" in docs/07; now a test computes it for every text/background pair.
+**Found while building:**
+- **Two dark-mode reds failed WCAG AA**, both missed by docs/07, which only checked one background: white on `#D9475F` (destructive buttons) is 4.19:1; `#E5566E` error text on sheets (`elevated`) is 4.21:1. Now `#C2334B` and `#EA6479`, both ≥ 4.5:1 everywhere. The first one I caught computing the button labels; the second only the new test found.
+- **RNTL 14 made `render` and `fireEvent` async.** I wrote tests from the older API; 19 failed with "`render` function has not been called". Read the installed types, added `await`.
+- **TypeScript 6 no longer auto-includes `@types/*`**: `"types": ["jest"]` in the mobile tsconfig.
+- One test I wrote checked the opposite of its name ("throws outside the provider" while rendering *inside* it); rewritten before it ran.
+- Bun blocked `@parcel/watcher`'s install script (it only compiles from source when no prebuilt binary exists); left blocked.
+**Checked:** lint / format / typecheck clean; 58 mobile tests (contrast for every pair in both themes plus a test that the old red *fails*; provider switches themes; Text variants and tones; Button role, press, disabled, busy, fills per theme, 44 pt; Card plain vs pressable, light-mode shadow); iOS bundle builds. In the iOS Simulator (via your Metro): screenshots in dark and light; "System" followed the simulator's appearance, status bar included.
+**To learn:**
+1. Why do components use semantic tokens (`danger.fill`) instead of colour values (`#C2334B`)?
+2. What problem does React Context solve here, and what would theming look like without it?
+3. Why set the theme with `Appearance.setColorScheme` instead of only passing colours to our components?
+4. Why do the tests find buttons by role and name (`getByRole('button', { name: 'Save' })`) rather than by test ID?
+5. The contrast was already in docs/07. What did writing a test for it add?

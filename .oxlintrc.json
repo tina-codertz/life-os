@@ -49,6 +49,15 @@
       "rules": {
         "typescript/no-unsafe-type-assertion": "off"
       }
+    },
+    {
+      "files": ["apps/mobile/**/*.test.ts", "apps/mobile/**/*.test.tsx"],
+      "env": {
+        "jest": true
+      },
+      "rules": {
+        "typescript/no-unsafe-type-assertion": "off"
+      }
     }
   ]
 }
