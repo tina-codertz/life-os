@@ -523,3 +523,11 @@ Node is pinned in `.node-version` and Bun in `packageManager`, so CI uses the sa
 2. Why does the old address get a notice, and why does that notice contain no link?
 3. Why check "is the address free?" at request time if the database checks it again at confirm?
 4. Why must outstanding reset links be cancelled when the email changes?
+
+### 2026-11-08 — M4 accepted: the click-through in Swagger
+**Done by me in Swagger:** register → Authorize → `PATCH /users/me/settings` (`DARK`, `Africa/Dar_es_Salaam`) → login → refresh → logout → refresh again = `401 INVALID_REFRESH_TOKEN`.
+**Confirmed in the database:** the login's first session row is marked rotated (the refresh) and revoked (the logout), the refreshed row is revoked too, and the session from registering is untouched (logout ends one device only).
+**Snags on the way, and what they taught:**
+- `Cannot GET /api/v1/docs,`: a comma copied along with the URL. Even a mistyped URL came back in the standard `{ error }` shape with a request ID.
+- `401 UNAUTHENTICATED` on `/users/me`: the token was pasted **with its JSON quotes** (`Bearer "eyJ…"`). The API expects exactly `Bearer <token>` and refuses anything else instead of guessing.
+- Swagger pre-fills bodies with placeholders: `"timezone": "string"` would be a 400. PATCH only needs the fields you're changing.
