@@ -185,6 +185,7 @@ export const taskKeys = {
 - A thin `fetch` wrapper (`services/http.ts`). **No axios** unless needed; one less dependency.
 - Injects `Authorization: Bearer <access>`.
 - On `401`: single-flight refresh → retry once → otherwise logout.
+  - **Single-flight is required, not just nice:** each refresh token works once. If two requests refresh with the same token at once, the API treats the second as *reuse* and ends the whole login (4.5). The same happens if a refresh response is lost and the app retries with the old token: the user has to log in again. Accepted for MVP; a short grace window is the usual fix if it shows up in practice.
 - Parses the standard error envelope into an `ApiError` class (`code`, `message`, `fieldErrors`).
 - Base URL from `app.config.ts` `extra.apiUrl` per EAS profile.
 
@@ -198,8 +199,8 @@ export const taskKeys = {
 | Aspect | Decision (Proposed, ADR-004) |
 |---|---|
 | Password hashing | `argon2id` via `@node-rs/argon2` (prebuilt binaries, no install script, which Bun would skip), OWASP minimum: 19 MiB, 2 passes, 1 thread. Built in 4.4 (`PasswordService`) |
-| Access token | JWT, 15 min, signed HS256 (single service), claims: `sub`, `sid` |
-| Refresh token | Opaque random 256-bit, **stored hashed** in `Session` table, 30-day TTL, rotated on every refresh |
+| Access token | JWT, 15 min, signed HS256 (single service), claims: `sub`, `sid` (the login's session family), `iss`, `aud`, `iat`, `exp` |
+| Refresh token | Opaque random 256-bit, **stored hashed** (SHA-256) in `Session` table, 30-day TTL from the last refresh, rotated on every refresh with an atomic compare-and-set. Built in 4.5 (`SessionService`) |
 | Reuse detection | Using an already-rotated refresh token revokes the whole session family |
 | Storage on device | Refresh token in SecureStore; access token in memory only |
 | Authorization | All resources are user-owned. Every service method takes `userId` from the token and includes it in `where`. Accessing another user's id returns `404`, not `403`, so ids can't be probed |

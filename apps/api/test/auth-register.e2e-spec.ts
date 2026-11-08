@@ -42,6 +42,7 @@ describe('POST /auth/register (e2e)', () => {
           createdAt: expect.any(String),
         },
         accessToken: expect.any(String),
+        refreshToken: expect.any(String),
       },
     });
     expect(JSON.stringify(res.body)).not.toMatch(/password|argon2/i);

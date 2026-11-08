@@ -51,7 +51,7 @@ Built in 4.1: `ResponseEnvelopeInterceptor` wraps whatever a controller returns 
 | 201 | Created |
 | 204 | Deleted / no content |
 | 400 | `VALIDATION_FAILED`: malformed or invalid input |
-| 401 | `UNAUTHENTICATED`: missing/expired token (with `WWW-Authenticate: Bearer`); `INVALID_CREDENTIALS` for a failed login |
+| 401 | `UNAUTHENTICATED`: missing/expired token (with `WWW-Authenticate: Bearer`); `INVALID_CREDENTIALS` for a failed login; `INVALID_REFRESH_TOKEN` for a refresh token that's unknown, expired, revoked or reused |
 | 403 | `FORBIDDEN`: authenticated but action not allowed (e.g. unverified email for export) |
 | 404 | `*_NOT_FOUND`: also returned for other users' resources |
 | 409 | `CONFLICT` / `EMAIL_TAKEN` |
@@ -88,7 +88,7 @@ create(@Body(new ZodValidationPipe(createTaskSchema)) body: CreateTaskInput) { �
 ### Auth (`/auth`, public, rate-limited)
 | Method | Path | Body | Response |
 |---|---|---|---|
-| POST | `/auth/register` | `{ email, password, displayName }` | `201 { user, accessToken, refreshToken }` |
+| POST | `/auth/register` | `{ email, password, displayName, deviceName? }` | `201 { user, accessToken, refreshToken }` |
 | POST | `/auth/login` | `{ email, password, deviceName? }` | `200 { user, accessToken, refreshToken }` |
 | POST | `/auth/refresh` | `{ refreshToken }` | `200 { accessToken, refreshToken }` (rotated) |
 | POST | `/auth/logout` | `{ refreshToken }` | `204` |
@@ -98,7 +98,10 @@ create(@Body(new ZodValidationPipe(createTaskSchema)) body: CreateTaskInput) { �
 | POST | `/auth/forgot-password` | `{ email }` | `204` (always, even for unknown emails) |
 | POST | `/auth/reset-password` | `{ token, newPassword }` | `204`, revokes all sessions |
 
-Built so far (4.4): `POST /auth/register` → `201 { user, accessToken }`; `POST /auth/login` → `200 { user, accessToken }` (`AuthResult` in `packages/shared`). `refreshToken` is added in 4.5.
+Built (4.4–4.5): register `201` and login `200` return `{ user, accessToken, refreshToken }` (`AuthResult`); both accept an optional `deviceName`. Refresh returns `{ accessToken, refreshToken }` (`TokenPair`).
+- **Refresh:** each refresh token works **once**. Presenting an already-used one (replay, or two parallel refreshes) → `401 INVALID_REFRESH_TOKEN` and every token of that login is revoked. Unknown, expired, revoked, or deleted account → the same 401. The app must refresh single-flight (docs/04).
+- **Logout** (public, so it works with an expired access token): ends the token's login, `204` even for an unknown token. **Logout-all** (access token required): ends every login of the user, `204`.
+- Access tokens stay valid until they expire (≤ 15 min) after logout; only refresh tokens are revoked immediately.
 - Access token: JWT, HS256 with `JWT_ACCESS_SECRET`, 15 min. Claims `sub` (user ID), `iss: life-os-api`, `aud: life-os-app`, `iat`, `exp`; `sid` joins in 4.5. Verification accepts HS256 only.
 - Login failure, whether the email is unknown, the password is wrong or the account is deleted → the same `401 INVALID_CREDENTIALS` "Email or password is incorrect.", with the same timing (an unknown email still runs one argon2 verify).
 - `loginSchema` doesn't apply the new-password rules (an old password must keep working).

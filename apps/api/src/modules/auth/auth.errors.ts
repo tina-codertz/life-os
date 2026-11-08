@@ -16,3 +16,15 @@ export class InvalidCredentialsError extends AppException {
     super(HttpStatus.UNAUTHORIZED, 'INVALID_CREDENTIALS', 'Email or password is incorrect.');
   }
 }
+
+// Unknown, expired, revoked or reused refresh token. The app's only move is to log in again,
+// so one code covers them all.
+export class InvalidRefreshTokenError extends AppException {
+  constructor() {
+    super(
+      HttpStatus.UNAUTHORIZED,
+      'INVALID_REFRESH_TOKEN',
+      'Your session has ended. Please log in again.',
+    );
+  }
+}

@@ -31,6 +31,7 @@ export const registerSchema = z.object({
     .trim()
     .min(1, { error: 'Enter your name.' })
     .max(DISPLAY_NAME_MAX_LENGTH, { error: `Use at most ${DISPLAY_NAME_MAX_LENGTH} characters.` }),
+  deviceName: z.string().trim().max(100).optional(),
 });
 export type RegisterInput = z.infer<typeof registerSchema>;
 
@@ -54,11 +55,27 @@ export interface PublicUser {
   createdAt: string;
 }
 
-// What register and login return. `refreshToken` joins in 4.5.
-export interface AuthResult {
-  user: PublicUser;
+// The opaque refresh token the app keeps in SecureStore (refresh, logout).
+export const refreshTokenSchema = z.object({
+  refreshToken: z.string().min(1, { error: 'Missing refresh token.' }).max(200),
+});
+export type RefreshTokenInput = z.infer<typeof refreshTokenSchema>;
+
+// A fresh pair: the access token for API calls (memory only), the refresh token to get the
+// next pair. The old refresh token stops working the moment a new one is issued.
+export interface TokenPair {
   accessToken: string;
+  refreshToken: string;
 }
 
-export const AUTH_ERROR_CODES = ['EMAIL_TAKEN', 'INVALID_CREDENTIALS'] as const;
+// What register and login return.
+export interface AuthResult extends TokenPair {
+  user: PublicUser;
+}
+
+export const AUTH_ERROR_CODES = [
+  'EMAIL_TAKEN',
+  'INVALID_CREDENTIALS',
+  'INVALID_REFRESH_TOKEN',
+] as const;
 export type AuthErrorCode = (typeof AUTH_ERROR_CODES)[number];

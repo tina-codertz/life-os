@@ -62,10 +62,10 @@ describe('JwtAuthGuard', () => {
   });
 
   it('accepts a valid token and sets req.user from its subject', async () => {
-    const token = await tokens.signAccessToken({ userId: 'user-1' });
+    const token = await tokens.signAccessToken({ userId: 'user-1', sessionId: 'session-1' });
     const { context, req } = contextFor(closedHandler, `Bearer ${token}`);
     expect(await guard.canActivate(context)).toBe(true);
-    expect(req.user).toEqual({ id: 'user-1' });
+    expect(req.user).toEqual({ id: 'user-1', sessionId: 'session-1' });
   });
 });
 

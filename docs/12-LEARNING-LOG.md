@@ -386,3 +386,30 @@ Node is pinned in `.node-version` and Bun in `packageManager`, so CI uses the sa
 2. Why is "every route protected unless `@Public()`" safer than adding `@UseGuards()` where needed?
 3. 401 or 403: which one for "no token", and which one for "valid token, but you're not an admin"?
 4. A user deletes their account. Why does their access token still pass the guard, and what limits the damage?
+
+### 2026-11-08 — 4.5 Sessions: refresh rotation, logout, reuse detection
+**What was built:**
+- Migration `add_sessions`: the `Session` table from docs/05 (one row per refresh token, grouped by `familyId`).
+- `SessionService` (`modules/auth`): `start` (login/register → new family), `rotate` (refresh), `revokeFamilyOf` (logout), `revokeAll` (logout-all). Refresh tokens are 32 random bytes; only their SHA-256 is stored.
+- Endpoints: `POST /auth/refresh` (200 `{ accessToken, refreshToken }`), `POST /auth/logout` (204), `POST /auth/logout-all` (204, needs an access token). Register/login now also return `refreshToken` and accept `deviceName`.
+- Access tokens carry `sid` (the family ID); `req.user` is `{ id, sessionId }`.
+- `INVALID_REFRESH_TOKEN` (401) for every refresh failure.
+**Concepts:**
+- *Two tokens, two jobs:* the access token is checked on every request with no database lookup (fast) but can't be cancelled, so it lives 15 minutes. The refresh token is checked against the database (slower, but rare), so it *can* be cancelled, and lives 30 days.
+- *Rotation:* every refresh swaps the token for a new one, so a stolen refresh token is only good until the real app next refreshes.
+- *Reuse detection:* a used token coming back means two copies exist, and we can't tell which one is the thief's. So the whole family (that login) is revoked; the real user logs in again, the thief is locked out.
+- *Hash, but fast:* refresh tokens are 256 random bits, impossible to guess, so SHA-256 is enough. Slow hashing (argon2) is only needed for things *people* choose. Storing the hash means a leaked `Session` table can't be replayed.
+- *Compare-and-set:* `UPDATE … WHERE id = ? AND rotatedAt IS NULL` and check that one row changed. Postgres makes a second concurrent UPDATE wait for the first, re-checks the condition, and finds nothing to update. Reading "not rotated yet" and then writing would let two requests both pass the read.
+- *Logout is public and always 204:* it must work when the access token has already expired, and answering "unknown token" would tell an attacker which tokens exist.
+**Found while building:**
+- **Wiring trap:** the app wouldn't boot with `@InjectPinoLogger(SessionService.name)`. `nestjs-pino` collects those decorators when `LoggingModule` is *loaded*, so only classes imported before it get a logger. `AllExceptionsFilter` had only worked because of the import order in `app.module.ts`. Both now inject `PinoLogger` and call `setContext()`, which doesn't depend on order. Caught by the e2e tests, which boot the real app.
+- **A test that never raced:** with the compare-and-set removed, the "two simultaneous refreshes" test still passed. Over HTTP one request finished before the other even read the row, so it took the plain "already rotated" path. Rewritten with a barrier that holds each read until both have read, which forces the worst interleaving every time. Now removing the compare-and-set fails it, and it passed 5/5 runs with the real code.
+- **Tests failing for the wrong reason:** after adding the required `sid` claim, hand-built test tokens (wrong secret, expired, `alg: none`) would have been rejected for missing `sid` instead of what they test. They now include `sid`, and a separate test covers "no `sid`".
+**Trade-off accepted:** the strict reuse rule means a lost refresh response followed by a retry logs the user out. The app must refresh single-flight (docs/04). If it bites in practice, add a short grace window.
+**Checked:** 87 API unit + 22 shared + 47 e2e (hash stored, not token; `sid` = family; refresh gives a working new pair; reuse → 401 and the newer token dies too; forced race → exactly one 200; unknown/expired/deleted → 401; logout ends one device only; unknown-token logout 204; logout-all needs auth and ends all devices; two logins = two families). Probes: removing the compare-and-set or the family revocation each fails tests. Live production build: refresh, reuse 401, newer token 401, warning logged with `SessionService` context, family and user IDs, and request ID; no token in the logs; probe user deleted (sessions removed by cascade).
+**To learn:**
+1. Why does a refresh token need to be stored in the database when the access token doesn't?
+2. When a used refresh token comes back, why revoke the *whole family* instead of just rejecting that one request?
+3. Why is SHA-256 fine for refresh tokens when passwords need argon2?
+4. Two requests both read "not rotated yet" and then both write. What does the compare-and-set do differently, and why couldn't the old race test notice it was missing?
+5. After logout, the access token still works for up to 15 minutes. Why is that acceptable?

@@ -24,6 +24,26 @@ model User {
   deletedAt             DateTime? @db.Timestamptz(3) // scheduled for purge
 
   settings UserSettings?
+  sessions Session[]
+}
+
+// One row per refresh token. Logging in starts a *family*; every refresh replaces the row's
+// token with a new row in the same family. Only the SHA-256 of the token is stored.
+model Session {
+  id               String    @id @default(uuid(7)) @db.Uuid
+  userId           String    @db.Uuid
+  familyId         String    @db.Uuid // all rotations of one login share this
+  refreshTokenHash String    @unique
+  deviceName       String?   @db.VarChar(100)
+  expiresAt        DateTime  @db.Timestamptz(3)
+  rotatedAt        DateTime? @db.Timestamptz(3) // set when replaced → reuse = attack
+  revokedAt        DateTime? @db.Timestamptz(3)
+  createdAt        DateTime  @default(now()) @db.Timestamptz(3)
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([familyId])
 }
 
 enum Role {

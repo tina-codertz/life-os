@@ -54,7 +54,7 @@ describe('toApiError', () => {
 });
 
 describe('AllExceptionsFilter', () => {
-  const logger = { error: vi.fn() };
+  const logger = { error: vi.fn(), setContext: vi.fn() };
   const filter = new AllExceptionsFilter(logger as unknown as PinoLogger);
   const res = { status: vi.fn(), json: vi.fn() };
   res.status.mockReturnValue(res);

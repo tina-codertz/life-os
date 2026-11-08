@@ -2,6 +2,7 @@
 // user (and checking it still exists) is up to the endpoint that needs it.
 export interface AuthUser {
   id: string;
+  sessionId: string;
 }
 
 // Adds `req.user` to Express's Request type, set by JwtAuthGuard.

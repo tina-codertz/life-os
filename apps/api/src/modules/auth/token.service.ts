@@ -11,6 +11,7 @@ const AUDIENCE = 'life-os-app';
 
 export interface AccessTokenClaims {
   userId: string;
+  sessionId: string; // the login's session family (`sid`)
 }
 
 @Injectable()
@@ -23,8 +24,8 @@ export class TokenService {
 
   // Header and payload are only base64-encoded, not encrypted: anyone holding the token can
   // read them. So the payload carries an ID, never personal data.
-  signAccessToken({ userId }: AccessTokenClaims): Promise<string> {
-    return new SignJWT({})
+  signAccessToken({ userId, sessionId }: AccessTokenClaims): Promise<string> {
+    return new SignJWT({ sid: sessionId })
       .setProtectedHeader({ alg: ALGORITHM })
       .setSubject(userId)
       .setIssuer(ISSUER)
@@ -41,9 +42,11 @@ export class TokenService {
       algorithms: [ALGORITHM],
       issuer: ISSUER,
       audience: AUDIENCE,
-      requiredClaims: ['sub', 'exp'],
+      requiredClaims: ['sub', 'sid', 'exp'],
     });
-    if (typeof payload.sub !== 'string') throw new Error('Access token has no subject');
-    return { userId: payload.sub };
+    if (typeof payload.sub !== 'string' || typeof payload['sid'] !== 'string') {
+      throw new Error('Access token has no subject or session');
+    }
+    return { userId: payload.sub, sessionId: payload['sid'] };
   }
 }

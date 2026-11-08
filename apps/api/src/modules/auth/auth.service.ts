@@ -1,12 +1,13 @@
 import { randomUUID } from 'node:crypto';
 import { Injectable } from '@nestjs/common';
-import type { AuthResult, LoginInput, RegisterInput } from '@life-os/shared';
+import type { AuthResult, LoginInput, RegisterInput, TokenPair } from '@life-os/shared';
 import type { User } from '../../generated/prisma/client.js';
 import { isUniqueViolation } from '../../prisma/prisma-errors.js';
 import { PrismaService } from '../../prisma/prisma.service.js';
+import { toPublicUser } from '../users/public-user.js';
 import { EmailTakenError, InvalidCredentialsError } from './auth.errors.js';
 import { PasswordService } from './password.service.js';
-import { toPublicUser } from '../users/public-user.js';
+import { SessionService } from './session.service.js';
 import { TokenService } from './token.service.js';
 
 @Injectable()
@@ -18,6 +19,7 @@ export class AuthService {
     private readonly prisma: PrismaService,
     private readonly passwords: PasswordService,
     private readonly tokens: TokenService,
+    private readonly sessions: SessionService,
   ) {}
 
   // `input` is already validated and normalised by registerSchema (email lowercased).
@@ -40,7 +42,7 @@ export class AuthService {
       throw err;
     }
     // FR-AUTH-001: a new user is logged in straight away.
-    return this.issueTokens(user);
+    return this.startSession(user, input.deviceName);
   }
 
   async login(input: LoginInput): Promise<AuthResult> {
@@ -57,11 +59,29 @@ export class AuthService {
     if (!(await this.passwords.verify(user.passwordHash, input.password))) {
       throw new InvalidCredentialsError();
     }
-    return this.issueTokens(user);
+    return this.startSession(user, input.deviceName);
   }
 
-  private async issueTokens(user: User): Promise<AuthResult> {
-    const accessToken = await this.tokens.signAccessToken({ userId: user.id });
-    return { user: toPublicUser(user), accessToken };
+  async refresh(refreshToken: string): Promise<TokenPair> {
+    const session = await this.sessions.rotate(refreshToken);
+    const accessToken = await this.tokens.signAccessToken({
+      userId: session.userId,
+      sessionId: session.familyId,
+    });
+    return { accessToken, refreshToken: session.refreshToken };
+  }
+
+  logout(refreshToken: string): Promise<void> {
+    return this.sessions.revokeFamilyOf(refreshToken);
+  }
+
+  logoutAll(userId: string): Promise<void> {
+    return this.sessions.revokeAll(userId);
+  }
+
+  private async startSession(user: User, deviceName?: string): Promise<AuthResult> {
+    const { familyId, refreshToken } = await this.sessions.start(user.id, deviceName);
+    const accessToken = await this.tokens.signAccessToken({ userId: user.id, sessionId: familyId });
+    return { user: toPublicUser(user), accessToken, refreshToken };
   }
 }

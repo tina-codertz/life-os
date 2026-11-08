@@ -7,7 +7,7 @@ import {
 } from '@nestjs/common';
 import type { ApiErrorBody, ApiErrorDetail } from '@life-os/shared';
 import type { Request, Response } from 'express';
-import { InjectPinoLogger, PinoLogger } from 'nestjs-pino';
+import { PinoLogger } from 'nestjs-pino';
 import { Prisma } from '../../generated/prisma/client.js';
 import { genRequestId } from '../../logging/request-id.js';
 import { AppException } from '../errors/app.exception.js';
@@ -91,7 +91,11 @@ export function toApiError(exception: unknown): MappedError {
 // @Catch() with no arguments = catch everything, so no error can leave in another shape.
 @Catch()
 export class AllExceptionsFilter implements ExceptionFilter {
-  constructor(@InjectPinoLogger(AllExceptionsFilter.name) private readonly logger: PinoLogger) {}
+  // Plain PinoLogger + setContext, not @InjectPinoLogger: that decorator only works for
+  // classes imported before LoggingModule, a trap that bit SessionService in 4.5.
+  constructor(private readonly logger: PinoLogger) {
+    logger.setContext(AllExceptionsFilter.name);
+  }
 
   catch(exception: unknown, host: ArgumentsHost): void {
     const http = host.switchToHttp();

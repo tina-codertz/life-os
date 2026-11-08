@@ -65,7 +65,7 @@ describe('Authentication on protected routes (e2e)', () => {
   });
 
   it('rejects a token signed with a different secret', async () => {
-    const forged = await new SignJWT({})
+    const forged = await new SignJWT({ sid: 'session-1' })
       .setProtectedHeader({ alg: 'HS256' })
       .setSubject(userId)
       .setIssuer('life-os-api')
@@ -77,7 +77,7 @@ describe('Authentication on protected routes (e2e)', () => {
 
   it('rejects an expired token', async () => {
     const secret = new TextEncoder().encode(app.get<Env>(ENV).JWT_ACCESS_SECRET);
-    const expired = await new SignJWT({})
+    const expired = await new SignJWT({ sid: 'session-1' })
       .setProtectedHeader({ alg: 'HS256' })
       .setSubject(userId)
       .setIssuer('life-os-api')
@@ -95,9 +95,10 @@ describe('Authentication on protected routes (e2e)', () => {
   });
 
   it('identifies the user only from the token', async () => {
-    const other = await app
-      .get(TokenService)
-      .signAccessToken({ userId: '00000000-0000-7000-8000-000000000000' });
+    const other = await app.get(TokenService).signAccessToken({
+      userId: '00000000-0000-7000-8000-000000000000',
+      sessionId: '00000000-0000-4000-8000-000000000000',
+    });
     // A token for a user that doesn't exist: 401, never someone else's data.
     await me(`Bearer ${other}`).expect(401);
   });
