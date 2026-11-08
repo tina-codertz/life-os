@@ -46,7 +46,7 @@ describe('Authentication on protected routes (e2e)', () => {
 
   it('returns the logged-in user for a valid token', async () => {
     const res = await me(`Bearer ${accessToken}`).expect(200);
-    expect(res.body.data).toMatchObject({ id: userId, email: account.email });
+    expect(res.body.data.user).toMatchObject({ id: userId, email: account.email });
   });
 
   it.each([

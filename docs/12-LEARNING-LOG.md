@@ -440,3 +440,29 @@ Node is pinned in `.node-version` and Bun in `packageManager`, so CI uses the sa
 3. Why must the reset token be consumed in the same transaction as the password change?
 4. Why does a password reset log the user out of every device?
 5. Register succeeds even if the email can't be sent. Why is that OK here, and when would it not be?
+
+### 2026-11-08 — 4.7 Profile, settings, change password
+**What was built:**
+- `packages/shared/src/schemas/users.ts`: `updateProfileSchema`, `updateSettingsSchema`, `changePasswordSchema` (all **strict**), `timezoneSchema`, `THEMES`, `PublicSettings`.
+- `UsersService` / `UsersController` (`/users/me`): `GET` → `{ user, settings }`, `PATCH` profile, `PATCH /settings`, `POST /change-password` (204). `toPublicSettings` allow-lists the MVP settings.
+- `SessionService.revokeAllExcept(userId, familyId)`: change password keeps this device (the `sid` from 4.5) and logs out the others.
+- `WrongPasswordError` → 403 `WRONG_PASSWORD`; `AccountGoneError` → 401 for deleted accounts.
+- `withoutUndefined()` (`common/utils`); the validation pipe now gives each unknown key its own `{ field, message }`.
+- The `createUser` factory creates a settings row, like register does.
+- **Deferred:** change email (needs its own "verify the new address" flow, ADR-015), plus export and delete (FR-SET-005/006, later phases).
+**Concepts:**
+- *Cross-user isolation by construction:* no route takes a user ID (`/users/me`, never `/users/:id`), the ID only comes from the verified token, and every query is filtered by it. There's nothing for an attacker to change. The tests prove it anyway: Tina's edits never touch Juma, a body naming Juma's ID is refused, `/users/<juma-id>` is 404.
+- *Strict PATCH, lenient POST:* your 4.2 answer in practice. On PATCH, a dropped typo means "saved" when nothing was saved, so unknown keys are a 400. On POST we still strip, so older app versions sending an extra field keep working.
+- *401 vs 403 in a real case:* the app answers 401 with "refresh, then log out". A wrong *current* password is not "who are you?" (the token says), it's "you may not do this", so 403. Using 401 would log the user out for a typo.
+- *Server-owned facts:* the client says `onboardingCompleted: true`; the server picks the time and keeps the first one. A client must not be able to choose or backdate it.
+- *Validate against the platform:* time zones are checked with `Intl` (the same data the phone uses), stored in canonical spelling (`africa/dar_es_salaam` → `Africa/Dar_es_Salaam`), and fixed offsets like `+03:00` are refused because they ignore daylight saving.
+- *Absent vs `undefined`, for real:* Zod types optional fields as `T | undefined`; Prisma (with `exactOptionalPropertyTypes`) wants them absent. `withoutUndefined()` bridges the two. TypeScript can't prove a generic filter, so it has **one** documented lint exception rather than contorted code.
+**Checked it can fail (each probe confirmed it changed the code first):** loosening the profile schema to `z.object` → 4 tests fail; revoking *all* sessions on password change → 1 fails; answering a wrong password with 401 → 1 fails.
+**Checked:** 95 API unit + 42 shared + 74 e2e. Live production build: settings PATCH canonicalised the time zone, a typo key → 400 with the field named, wrong current password → 403; probe user deleted.
+**Phase 5 note:** the mobile app will validate time zones with the same schema. Hermes (React Native's JS engine) must support `Intl.DateTimeFormat` with `timeZone`; check on a device.
+**To learn:**
+1. Why is there no `GET /users/:id`, and what would you have to check on every request if there were?
+2. Why are PATCH bodies strict but POST bodies not?
+3. Why does a wrong *current* password return 403 instead of 401?
+4. Why does the client send `onboardingCompleted: true` instead of a timestamp?
+5. After changing your password, why stay logged in on this device but not on the others?

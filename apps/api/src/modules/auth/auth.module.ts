@@ -21,5 +21,7 @@ import { TokenService } from './token.service.js';
     // Global: every route in the app requires a token unless marked @Public().
     { provide: APP_GUARD, useClass: JwtAuthGuard },
   ],
+  // For UsersModule's change-password.
+  exports: [PasswordService, SessionService],
 })
 export class AuthModule {}

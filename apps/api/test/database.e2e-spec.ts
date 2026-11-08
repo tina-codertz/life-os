@@ -32,7 +32,7 @@ describe('Test database harness (e2e)', () => {
     const b = await createUser(prisma, { displayName: 'Tina' });
     expect(a.email).not.toBe(b.email);
     expect(b.displayName).toBe('Tina');
-    await prisma.userSettings.create({ data: { userId: a.id } });
+    expect(await prisma.userSettings.count({ where: { userId: a.id } })).toBe(1);
   });
 
   // Runs after the test above: proves the reset emptied both tables (and the

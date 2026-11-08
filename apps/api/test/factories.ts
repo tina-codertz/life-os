@@ -16,6 +16,7 @@ export function createUser(
       displayName: `Test User ${sequence}`,
       // Placeholder until 4.4 adds argon2; nothing can log in with it.
       passwordHash: 'not-a-real-hash',
+      settings: { create: {} }, // like register: every user has settings
       ...overrides,
     },
   });

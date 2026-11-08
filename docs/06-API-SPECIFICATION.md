@@ -52,7 +52,7 @@ Built in 4.1: `ResponseEnvelopeInterceptor` wraps whatever a controller returns 
 | 204 | Deleted / no content |
 | 400 | `VALIDATION_FAILED`: malformed or invalid input |
 | 401 | `UNAUTHENTICATED`: missing/expired token (with `WWW-Authenticate: Bearer`); `INVALID_CREDENTIALS` for a failed login; `INVALID_REFRESH_TOKEN` for a refresh token that's unknown, expired, revoked or reused |
-| 403 | `FORBIDDEN`: authenticated but action not allowed (e.g. unverified email for export) |
+| 403 | `FORBIDDEN`: authenticated but action not allowed (e.g. unverified email for export); `WRONG_PASSWORD` when confirming with the current password fails |
 | 404 | `*_NOT_FOUND`: also returned for other users' resources |
 | 409 | `CONFLICT` / `EMAIL_TAKEN` |
 | 422 | `BUSINESS_RULE_VIOLATION`: valid shape, invalid by rule (e.g. backfill > 7 days, subtask of subtask) |
@@ -76,6 +76,7 @@ create(@Body(new ZodValidationPipe(createTaskSchema)) body: CreateTaskInput) { �
                { "field": "done", "message": "Invalid input: expected boolean, received string" } ],
   "requestId": "…" } }
 ```
+- **PATCH bodies are strict** (`z.strictObject`): an unknown key is a 400 with `{ field: "<key>", message: "This field is not allowed." }`, so a typo can't "save" nothing and fields like `userId` are refused. Create bodies (POST) still drop unknown keys, so older app versions keep working.
 - Shape only. Rules that need the database or the user's state (email already taken, backfill > 7 days) are checked in the service and return 409/422.
 
 ## 2. Endpoints: MVP
@@ -119,12 +120,14 @@ Built (4.4–4.5): register `201` and login `200` return `{ user, accessToken, r
 ### Users & settings (`/users/me`)
 | Method | Path | Notes |
 |---|---|---|
-| GET | `/users/me` | user + settings. Built in 4.4: returns `PublicUser` (settings join in 4.7); `401` if the account no longer exists |
-| PATCH | `/users/me` | `{ displayName?, onboardingCompletedAt? }` |
-| PATCH | `/users/me/settings` | `{ timezone?, followDeviceTimezone?, weekStartsOn?, theme?, habitRemindersOn?, … }` |
-| POST | `/users/me/change-password` | `{ currentPassword, newPassword }` |
+| GET | `/users/me` | `{ user, settings }`. `401` if the account no longer exists |
+| PATCH | `/users/me` | `{ displayName?, onboardingCompleted?: true }` → `PublicUser`. The server sets `onboardingCompletedAt` (first time only); a client can't backdate it |
+| PATCH | `/users/me/settings` | `{ timezone?, followDeviceTimezone?, weekStartsOn? (0–6), theme?, habitRemindersOn?, eventReminderDefault? (minutes, null = off), crashReportsOn? }` → `PublicSettings`. `timezone` must be an IANA name (stored in canonical spelling; `+03:00` refused) |
+| POST | `/users/me/change-password` | `{ currentPassword, newPassword }` → `204`. Logs out every *other* device. Wrong current password → `403 WRONG_PASSWORD` (not 401, which the app treats as "log out") |
 | POST | `/users/me/export` | `202 { jobId }` → `GET /users/me/export/:jobId` returns status + download URL |
 | DELETE | `/users/me` | `{ password }` → `204`, soft-deletes and revokes sessions |
+
+Built in 4.7: GET/PATCH `/users/me`, PATCH settings, change-password. Not yet: **change email** (needs a verify-the-new-address flow, ADR-015), export (FR-SET-005), delete (FR-SET-006). There are deliberately **no `/users/:id` routes**: the user is always the one in the token.
 
 ### Today
 | Method | Path | Notes |

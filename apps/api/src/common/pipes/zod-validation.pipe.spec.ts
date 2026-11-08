@@ -9,6 +9,8 @@ const signUpSchema = z.object({
   profile: z.object({ name: z.string().min(1) }),
 });
 
+const notAllowed = (field: string) => ({ field, message: 'This field is not allowed.' });
+
 function validationError(pipe: ZodValidationPipe<z.ZodType>, value: unknown): AppException {
   try {
     pipe.transform(value);
@@ -48,6 +50,20 @@ describe('ZodValidationPipe', () => {
     const schema = z.object({ tags: z.array(z.string().max(3)) });
     const err = validationError(new ZodValidationPipe(schema), { tags: ['ok', 'too long'] });
     expect(err.details[0]?.field).toBe('tags.1');
+  });
+
+  it('gives each unknown key of a strict object its own detail', () => {
+    const schema = z.strictObject({ name: z.string(), nested: z.strictObject({ a: z.number() }) });
+    const err = validationError(new ZodValidationPipe(schema), {
+      name: 'ok',
+      nmae: 'typo',
+      role: 'ADMIN',
+      nested: { a: 1, b: 2 },
+    });
+    expect(err.details).toHaveLength(3);
+    expect(err.details).toEqual(
+      expect.arrayContaining([notAllowed('nmae'), notAllowed('role'), notAllowed('nested.b')]),
+    );
   });
 
   it('never echoes the rejected value', () => {

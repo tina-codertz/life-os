@@ -106,6 +106,18 @@ export class SessionService {
     });
   }
 
+  // Change password: everyone else is logged out, this device (`keepFamilyId`) stays in.
+  async revokeAllExcept(
+    userId: string,
+    keepFamilyId: string,
+    tx: Prisma.TransactionClient = this.prisma,
+  ): Promise<void> {
+    await tx.session.updateMany({
+      where: { userId, revokedAt: null, familyId: { not: keepFamilyId } },
+      data: { revokedAt: new Date() },
+    });
+  }
+
   private async revokeFamily(familyId: string): Promise<void> {
     await this.prisma.session.updateMany({
       where: { familyId, revokedAt: null },
