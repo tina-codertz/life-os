@@ -1,6 +1,8 @@
-import { Controller, Get, HttpCode, HttpStatus, Patch, Post } from '@nestjs/common';
+import { Controller, Get, HttpCode, HttpStatus, Patch, Post, UseGuards } from '@nestjs/common';
 import { ApiTags } from '@nestjs/swagger';
 import {
+  type ChangeEmailInput,
+  changeEmailSchema,
   type ChangePasswordInput,
   changePasswordSchema,
   type PublicSettings,
@@ -14,6 +16,8 @@ import { ZodBody } from '../../common/validation/zod-body.decorator.js';
 import { StrictRateLimit } from '../../security/rate-limit.js';
 import type { AuthUser } from '../auth/auth-user.js';
 import { CurrentUser } from '../auth/current-user.decorator.js';
+import { EmailChangeService } from '../auth/email-change.service.js';
+import { EmailVerifiedGuard } from '../auth/email-verified.guard.js';
 import { type Me, UsersService } from './users.service.js';
 
 // All routes need an access token (global JwtAuthGuard) and act on the caller only: "me"
@@ -21,7 +25,10 @@ import { type Me, UsersService } from './users.service.js';
 @ApiTags('users')
 @Controller('users/me')
 export class UsersController {
-  constructor(private readonly users: UsersService) {}
+  constructor(
+    private readonly users: UsersService,
+    private readonly emailChange: EmailChangeService,
+  ) {}
 
   @Get()
   me(@CurrentUser() user: AuthUser): Promise<Me> {
@@ -52,5 +59,18 @@ export class UsersController {
     @ZodBody(changePasswordSchema) body: ChangePasswordInput,
   ): Promise<void> {
     return this.users.changePassword(user.id, user.sessionId, body);
+  }
+
+  // Step 1 of change email: sends a confirmation link to the new address and a notice to the
+  // current one. Nothing changes until the link is opened (POST /auth/confirm-email-change).
+  @UseGuards(EmailVerifiedGuard)
+  @StrictRateLimit()
+  @Post('change-email')
+  @HttpCode(HttpStatus.NO_CONTENT)
+  changeEmail(
+    @CurrentUser() user: AuthUser,
+    @ZodBody(changeEmailSchema) body: ChangeEmailInput,
+  ): Promise<void> {
+    return this.emailChange.request(user.id, body);
   }
 }

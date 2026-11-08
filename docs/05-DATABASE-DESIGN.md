@@ -178,6 +178,7 @@ model AuthToken {
   tokenHash String        @unique
   expiresAt DateTime      @db.Timestamptz(3)
   usedAt    DateTime?     @db.Timestamptz(3)
+  newEmail  String? // EMAIL_CHANGE only (4.9)
   createdAt DateTime      @default(now()) @db.Timestamptz(3)
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
@@ -188,6 +189,7 @@ model AuthToken {
 enum AuthTokenType {
   EMAIL_VERIFICATION
   PASSWORD_RESET
+  EMAIL_CHANGE // 4.9
 }
 
 // ───────────── Organisation ─────────────

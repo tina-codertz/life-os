@@ -98,6 +98,7 @@ create(@Body(new ZodValidationPipe(createTaskSchema)) body: CreateTaskInput) { �
 | POST | `/auth/resend-verification` | (auth) | `204` |
 | POST | `/auth/forgot-password` | `{ email }` | `204` (always, even for unknown emails) |
 | POST | `/auth/reset-password` | `{ token, newPassword }` | `204`, revokes all sessions |
+| POST | `/auth/confirm-email-change` | `{ token }` | `204` (4.9). Switches the email, marks it verified, cancels outstanding links, tells the old address. `400 INVALID_LINK`; `409 EMAIL_TAKEN` if the address was taken meanwhile. Public, 5 / min |
 
 Built in 4.6 (emailed one-time links):
 - Register emails a verification link (`EMAIL_LINK_BASE_URL` + `verify-email?token=…`, default `lifeos://`). If sending fails, register still succeeds and the error is logged; the user can resend.
@@ -124,10 +125,11 @@ Built (4.4–4.5): register `201` and login `200` return `{ user, accessToken, r
 | PATCH | `/users/me` | `{ displayName?, onboardingCompleted?: true }` → `PublicUser`. The server sets `onboardingCompletedAt` (first time only); a client can't backdate it |
 | PATCH | `/users/me/settings` | `{ timezone?, followDeviceTimezone?, weekStartsOn? (0–6), theme?, habitRemindersOn?, eventReminderDefault? (minutes, null = off), crashReportsOn? }` → `PublicSettings`. `timezone` must be an IANA name (stored in canonical spelling; `+03:00` refused) |
 | POST | `/users/me/change-password` | `{ currentPassword, newPassword }` → `204`. Logs out every *other* device. Wrong current password → `403 WRONG_PASSWORD` (not 401, which the app treats as "log out") |
+| POST | `/users/me/change-email` | `{ newEmail, password }` → `204` (4.9). Verified email required (`403 EMAIL_NOT_VERIFIED`); wrong password `403 WRONG_PASSWORD`; taken `409 EMAIL_TAKEN`; same address → 400 on `newEmail`. Emails a link to the new address and a notice to the old; nothing changes yet. 5 / min |
 | POST | `/users/me/export` | `202 { jobId }` → `GET /users/me/export/:jobId` returns status + download URL |
 | DELETE | `/users/me` | `{ password }` → `204`, soft-deletes and revokes sessions |
 
-Built in 4.7: GET/PATCH `/users/me`, PATCH settings, change-password. Not yet: **change email** (needs a verify-the-new-address flow, ADR-015), export (FR-SET-005), delete (FR-SET-006). There are deliberately **no `/users/:id` routes**: the user is always the one in the token.
+Built in 4.7: GET/PATCH `/users/me`, PATCH settings, change-password; 4.9: change email. Not yet: export (FR-SET-005), delete (FR-SET-006). There are deliberately **no `/users/:id` routes**: the user is always the one in the token.
 
 ### Today
 | Method | Path | Notes |
@@ -238,7 +240,7 @@ Built in 4.7: GET/PATCH `/users/me`, PATCH settings, change-password. Not yet: *
 
 **Built in 4.8** (`src/security/rate-limit.ts`, `@nestjs/throttler`, in-memory counters, per route):
 - Default **100 / min**, counted **per user** when logged in and per IP otherwise (many mobile users share one public IP behind carrier NAT). This also covers `/auth/refresh`.
-- `@StrictRateLimit()` **5 / min**: register, login, verify-email, resend-verification, forgot-password, reset-password, change-password.
+- `@StrictRateLimit()` **5 / min**: register, login, verify-email, resend-verification, forgot-password, reset-password, change-password, change-email, confirm-email-change.
 - `/health` is never limited. Over the limit → `429 RATE_LIMITED` with `Retry-After` (seconds).
 - **Not yet:** the per-email limit (10 / hour / email, against one account attacked from many IPs), the separate refresh and default numbers above (30 and 120), export and AI limits (those endpoints don't exist yet). `RATE_LIMIT_ENABLED=false` turns limits off (only the general e2e run does this).
 

@@ -499,3 +499,27 @@ Node is pinned in `.node-version` and Bun in `packageManager`, so CI uses the sa
 3. Why doesn't the mobile app need CORS, and why should it never be `*`?
 4. Why does the order of the two global guards matter?
 5. Why is Swagger turned off in production?
+
+### 2026-11-08 — 4.9 Change email
+**What was built:**
+- Migration `add_email_change`: `EMAIL_CHANGE` link type and `AuthToken.newEmail`. Both additive, so safe to deploy before the code that uses them.
+- `EmailVerifiedGuard` (ADR-015) → 403 `EMAIL_NOT_VERIFIED`; route-level `@UseGuards`, after the global guards.
+- `EmailChangeService`: `request` (password check, same-address check, taken check, link to the new address, notice to the old) and `confirm` (one transaction: use the link, switch the email, mark it verified, delete outstanding links; then tell the old address).
+- `POST /users/me/change-email` and `POST /auth/confirm-email-change`, both 5/min. Shared `changeEmailSchema`, `confirmEmailChangeSchema`. Email templates with a masked address (`t***@example.org`).
+**Decisions:**
+- Taken new address → `409 EMAIL_TAKEN` (like register; you didn't pick, so I chose the simpler option).
+- **Sessions are kept on confirm** (a change from the plan I first gave you): confirming is a link click with no session, so the API can't tell "this device" from others, and logging out everyone gains nothing because the password didn't change. The protections are the password at request time, the notice to the old address, and the confirmation from the new one.
+**Concepts:**
+- *Prove both ends:* the password proves it's the owner (not just someone holding an unlocked phone); the link proves they control the new inbox. Only then does the email change.
+- *Tell the old address:* if it wasn't the owner, the old inbox is the only place they'll hear about it. The notice has no link (nothing to phish with) and masks the new address.
+- *Check twice:* "is the new address free?" at request time gives a quick answer; the unique index at confirm time is the real check (someone could register it in between).
+- *Old links die with the old address:* a reset link sitting in the old inbox could otherwise reset the account after the move.
+- *Additive migrations:* adding an enum value and a nullable column can't break running code. Renaming or dropping would need the expand/contract dance (docs/05).
+**Found while building:** my first edit script failed halfway (Prettier had put the providers list on one line), leaving the module unwired while tests still passed. The script stopped on the failed check, so I saw it; the rewrite adds explicit checks for every edit. One test raced the background reset email (the old inbox already had the notice); fixed by clearing the inbox first, then 3/3 green.
+**Checked it can fail (each probe confirmed it changed the code):** without the guard, without deleting old links, without translating the duplicate-email error at confirm: each fails a test.
+**Checked:** 101 API unit + 44 shared + 99 e2e (12 for change email: unverified 403; link to new + masked notice to old, nothing changed yet; confirm switches, verifies, notifies, works once; sessions kept; old reset link dies; wrong password 403; same address 400; taken 409; taken in between → 409 and nothing changed; only the newest link works; expired / other link types 400; login and strict body required). Live production build through Mailpit: request 204 → confirm 204 → login with the new email 200, the four expected emails, no tokens in logs; probe user deleted.
+**To learn:**
+1. Why does changing the email need both the password *and* a link sent to the new address?
+2. Why does the old address get a notice, and why does that notice contain no link?
+3. Why check "is the address free?" at request time if the database checks it again at confirm?
+4. Why must outstanding reset links be cancelled when the email changes?

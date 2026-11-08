@@ -123,7 +123,7 @@
 ### ADR-015 — Email verification is not required to start using the app
 - **Status:** Confirmed · 2026-11-04
 - **Decision:** New users can use the app right away, with a reminder banner. Verified email is required for data export and email change.
-- **Consequences:** Less drop-off at sign-up. The `EmailVerifiedGuard` applies only to sensitive endpoints.
+- **Consequences:** Less drop-off at sign-up. The `EmailVerifiedGuard` applies only to sensitive endpoints (built in 4.9; used by change-email, later export).
 
 ### ADR-014 — Local habit reminders
 - **Status:** Confirmed · 2026-11-04

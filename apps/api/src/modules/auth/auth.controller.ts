@@ -2,6 +2,8 @@ import { Controller, HttpCode, HttpStatus, Post } from '@nestjs/common';
 import { ApiTags } from '@nestjs/swagger';
 import {
   type AuthResult,
+  type ConfirmEmailChangeInput,
+  confirmEmailChangeSchema,
   type ForgotPasswordInput,
   forgotPasswordSchema,
   type LoginInput,
@@ -21,13 +23,17 @@ import { StrictRateLimit } from '../../security/rate-limit.js';
 import type { AuthUser } from './auth-user.js';
 import { AuthService } from './auth.service.js';
 import { CurrentUser } from './current-user.decorator.js';
+import { EmailChangeService } from './email-change.service.js';
 import { Public } from './public.decorator.js';
 
 // @Public() per method, not on the class: logout-all needs the guard.
 @ApiTags('auth')
 @Controller('auth')
 export class AuthController {
-  constructor(private readonly auth: AuthService) {}
+  constructor(
+    private readonly auth: AuthService,
+    private readonly emailChange: EmailChangeService,
+  ) {}
 
   // 201 Created (Nest's default for POST) → { data: { user, accessToken, refreshToken } }.
   @Public()
@@ -99,5 +105,17 @@ export class AuthController {
   @HttpCode(HttpStatus.NO_CONTENT)
   resetPassword(@ZodBody(resetPasswordSchema) body: ResetPasswordInput): Promise<void> {
     return this.auth.resetPassword(body);
+  }
+
+  // Step 2 of change email (step 1 is POST /users/me/change-email). Public: it's a link,
+  // possibly opened where the app isn't logged in.
+  @Public()
+  @StrictRateLimit()
+  @Post('confirm-email-change')
+  @HttpCode(HttpStatus.NO_CONTENT)
+  confirmEmailChange(
+    @ZodBody(confirmEmailChangeSchema) body: ConfirmEmailChangeInput,
+  ): Promise<void> {
+    return this.emailChange.confirm(body.token);
   }
 }

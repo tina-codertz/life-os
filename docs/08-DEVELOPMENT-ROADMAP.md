@@ -108,6 +108,7 @@ Each milestone below lists: **Objectives · Tasks · Dependencies · Learning ·
 | 7 | 4.6 Email verification + password reset (SMTP dev: Mailpit) | FR-AUTH-005/006 | One-time tokens | `AuthToken`, `notifications/` | e2e with Mailpit API | |
 | 7 | 4.7 Users/me + settings | FR-SET-001–004 | CRUD, authz | `modules/users/*` | e2e cross-user isolation test | |
 | 7 | 4.8 Throttling, Helmet, CORS, Swagger | NFR-SEC-004/005 | Security middleware | `main.ts` | 6th login → 429 | Swagger at `/api/docs` |
+| 7 | 4.9 Change email (added 2026-11-08) | FR-SET-001 | Two-step confirmation, `EmailVerifiedGuard` | `email-change.service.ts`, `AuthToken.newEmail` | e2e via Mailpit: request → confirm, races, old links | |
 
 **Milestone M4 acceptance:** a user can register, log in, refresh, log out and edit settings via Swagger, and all auth e2e tests pass.
 
@@ -188,7 +189,7 @@ Each module is built **end-to-end** (DB → API → tests → mobile → device 
 | M1 Architecture approved | Done | 2026-11-03 | 2026-11-04 | Docs 04–06 approved; ADR-012 left open until Phase 4 |
 | M2 Design system v1 | Not started | | | |
 | M3 Repo + tooling | Done | 2026-11-04 | 2026-11-07 | 3.1–3.9 done; CI green on `main` |
-| M4 Backend foundation | In review | 2026-11-07 | | 4.1 done (logging, request ID, error + success envelopes); 4.2 done (Zod validation pipe, shared schemas); 4.3 done (test-DB harness, factories); 4.4 done (register, argon2id, login, JWT, global auth guard, GET /users/me); 4.5 done (sessions, refresh rotation, reuse detection, logout, logout-all); 4.6 done (email verification, password reset, Mailpit); 4.7 done (profile, settings, change password; change email deferred); 4.8 done (rate limits, Helmet, CORS, Swagger). **Acceptance pending your click-through in Swagger**; open: change email, per-email rate limit |
+| M4 Backend foundation | In review | 2026-11-07 | | 4.1 done (logging, request ID, error + success envelopes); 4.2 done (Zod validation pipe, shared schemas); 4.3 done (test-DB harness, factories); 4.4 done (register, argon2id, login, JWT, global auth guard, GET /users/me); 4.5 done (sessions, refresh rotation, reuse detection, logout, logout-all); 4.6 done (email verification, password reset, Mailpit); 4.7 done (profile, settings, change password; change email deferred); 4.8 done (rate limits, Helmet, CORS, Swagger); 4.9 done (change email, EmailVerifiedGuard). **Acceptance pending your click-through in Swagger**; open: per-email rate limit |
 | M5 Mobile foundation | Not started | | | |
 | M6a Tasks | Not started | | | |
 | M6b Habits | Not started | | | |

@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import {
+  changeEmailSchema,
   changePasswordSchema,
   timezoneSchema,
   updateProfileSchema,
@@ -78,6 +79,22 @@ describe('changePasswordSchema', () => {
     expect(same.error?.issues[0]?.path).toEqual(['newPassword']);
     expect(
       changePasswordSchema.safeParse({ currentPassword: 'x', newPassword: '1234567890' }).success,
+    ).toBe(false);
+  });
+});
+
+describe('changeEmailSchema', () => {
+  it('normalises the new email like register does', () => {
+    expect(changeEmailSchema.parse({ newEmail: ' New@Example.COM ', password: 'x' })).toEqual({
+      newEmail: 'new@example.com',
+      password: 'x',
+    });
+  });
+
+  it('requires a password and rejects unknown keys', () => {
+    expect(changeEmailSchema.safeParse({ newEmail: 'a@b.co' }).success).toBe(false);
+    expect(
+      changeEmailSchema.safeParse({ newEmail: 'a@b.co', password: 'x', userId: 'u' }).success,
     ).toBe(false);
   });
 });

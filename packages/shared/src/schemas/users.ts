@@ -1,5 +1,10 @@
 import { z } from 'zod';
-import { DISPLAY_NAME_MAX_LENGTH, newPasswordSchema, PASSWORD_MAX_LENGTH } from './auth.ts';
+import {
+  DISPLAY_NAME_MAX_LENGTH,
+  emailSchema,
+  newPasswordSchema,
+  PASSWORD_MAX_LENGTH,
+} from './auth.ts';
 
 export const THEMES = ['SYSTEM', 'DARK', 'LIGHT'] as const;
 export type Theme = (typeof THEMES)[number];
@@ -69,6 +74,14 @@ export const changePasswordSchema = z
   });
 export type ChangePasswordInput = z.infer<typeof changePasswordSchema>;
 
+// Starting an email change (FR-SET-001): the password proves it's really the owner, not just
+// someone holding an unlocked phone. The change happens only after the new address is confirmed.
+export const changeEmailSchema = z.strictObject({
+  newEmail: emailSchema,
+  password: z.string().min(1, { error: 'Enter your password.' }).max(PASSWORD_MAX_LENGTH),
+});
+export type ChangeEmailInput = z.infer<typeof changeEmailSchema>;
+
 // Settings as the API returns them (FR-SET-002/003/004/007). Currency (v1.1) and AI (v2)
 // stay hidden until those features exist.
 export interface PublicSettings {
@@ -81,4 +94,4 @@ export interface PublicSettings {
   crashReportsOn: boolean;
 }
 
-export const USER_ERROR_CODES = ['WRONG_PASSWORD'] as const;
+export const USER_ERROR_CODES = ['WRONG_PASSWORD', 'EMAIL_NOT_VERIFIED'] as const;

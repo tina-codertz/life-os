@@ -103,7 +103,7 @@ export class AuthService {
 
   async verifyEmail(token: string): Promise<void> {
     await this.prisma.$transaction(async (tx) => {
-      const userId = await this.authTokens.consume(token, 'EMAIL_VERIFICATION', tx);
+      const { userId } = await this.authTokens.consume(token, 'EMAIL_VERIFICATION', tx);
       // `emailVerifiedAt: null` in the filter keeps the first verification date.
       await tx.user.updateMany({
         where: { id: userId, emailVerifiedAt: null },
@@ -134,7 +134,7 @@ export class AuthService {
     // Slow hash first, outside the transaction, so the transaction stays short.
     const passwordHash = await this.passwords.hash(newPassword);
     await this.prisma.$transaction(async (tx) => {
-      const userId = await this.authTokens.consume(token, 'PASSWORD_RESET', tx);
+      const { userId } = await this.authTokens.consume(token, 'PASSWORD_RESET', tx);
       await tx.user.update({ where: { id: userId }, data: { passwordHash } });
       // Opening a link sent to the address proves they own it.
       await tx.user.updateMany({

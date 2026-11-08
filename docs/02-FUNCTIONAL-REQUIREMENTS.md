@@ -209,6 +209,12 @@ FR-CAL-007 is **v2, maybe**.
 | FR-SET-006 | Delete account: confirm with password, soft-delete then purge within 30 days |
 | FR-SET-007 | Privacy: crash-report opt-out, AI opt-in (v2) |
 
+**Change email (FR-SET-001) AC** (built in 4.9):
+- Only with a verified current email (`403 EMAIL_NOT_VERIFIED`, ADR-015) and the current password (`403 WRONG_PASSWORD`).
+- The new address gets a confirmation link (1 hour, single use, only the newest works); the old address gets a notice (masked new address, no link). Nothing changes until the link is used.
+- On confirm: email switched and marked verified; outstanding reset/verification links (sent to the old address) stop working; the old address is told. Sessions stay (the password didn't change).
+- The new address must be free at request and at confirm time (`409 EMAIL_TAKEN`). Same address in another letter case → 400.
+
 ---
 
 ## Non-Functional Requirements

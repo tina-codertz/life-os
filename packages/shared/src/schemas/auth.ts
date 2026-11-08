@@ -67,6 +67,10 @@ const linkTokenSchema = z.string().min(1, { error: 'Missing token.' }).max(200);
 export const verifyEmailSchema = z.object({ token: linkTokenSchema });
 export type VerifyEmailInput = z.infer<typeof verifyEmailSchema>;
 
+// lifeos://confirm-email-change?token=…
+export const confirmEmailChangeSchema = z.object({ token: linkTokenSchema });
+export type ConfirmEmailChangeInput = z.infer<typeof confirmEmailChangeSchema>;
+
 export const forgotPasswordSchema = z.object({ email: emailSchema });
 export type ForgotPasswordInput = z.infer<typeof forgotPasswordSchema>;
 

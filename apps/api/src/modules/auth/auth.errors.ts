@@ -39,3 +39,15 @@ export class InvalidLinkError extends AppException {
     );
   }
 }
+
+// ADR-015: the app works unverified, but sensitive actions (change email, later export)
+// need a confirmed address first.
+export class EmailNotVerifiedError extends AppException {
+  constructor() {
+    super(
+      HttpStatus.FORBIDDEN,
+      'EMAIL_NOT_VERIFIED',
+      'Confirm your email address first. We can send the link again.',
+    );
+  }
+}
