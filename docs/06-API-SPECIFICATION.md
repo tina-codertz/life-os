@@ -40,7 +40,7 @@
 Built in 4.1: `ResponseEnvelopeInterceptor` wraps whatever a controller returns in `{ data }`. List endpoints return `new Page(items, meta)` to get `{ data, meta }`. `undefined` (204) and file downloads are not wrapped. Types: `ApiDataBody`, `ApiPageBody`, `PageMeta` in `packages/shared`. No exceptions, including `/health` (monitors check only the status code).
 
 ### Pagination, filtering, sorting
-- `?limit=30&cursor=<opaque>`. Max limit is 100.
+- `?limit=30&cursor=<opaque>`. Max limit is 100. Schema: `paginationQuerySchema` in `packages/shared`.
 - Filters are explicit query params (`?status=TODO&priority=HIGH&categoryId=…&dueFrom=2026-11-01&dueTo=2026-11-07&q=rent`).
 - `?sort=dueDate` / `?sort=-createdAt` (whitelisted fields only).
 
@@ -62,6 +62,21 @@ Built in 4.1: `ResponseEnvelopeInterceptor` wraps whatever a controller returns 
 | 503 | `SERVICE_UNAVAILABLE`: a dependency (e.g. the database) is down |
 
 The common codes live in `packages/shared` (`COMMON_ERROR_CODES`, `ApiErrorBody`). Built in 4.1: `AllExceptionsFilter` (`apps/api/src/common/filters`) maps every thrown value to this table; features throw `AppException(status, code, message, { details, cause })`.
+
+### Validation
+Built in 4.2. Request bodies, query strings and route params are validated with **Zod schemas from `packages/shared`**, the same schemas the mobile forms use, so client and server can't disagree about what's valid.
+```ts
+create(@Body(new ZodValidationPipe(createTaskSchema)) body: CreateTaskInput) { … }
+```
+- The controller receives the parsed value: query strings coerced to numbers/booleans, defaults applied, **unknown keys dropped** (a client can't sneak in `userId`).
+- Invalid input → 400 `VALIDATION_FAILED`, one detail per problem. `field` is the dotted path; a problem with the whole value (no body) has no `field`. Messages describe the rule, never the rejected value.
+```jsonc
+{ "error": { "code": "VALIDATION_FAILED", "message": "Some fields are invalid.",
+  "details": [ { "field": "title", "message": "Too small: expected string to have >=1 characters" },
+               { "field": "done", "message": "Invalid input: expected boolean, received string" } ],
+  "requestId": "…" } }
+```
+- Shape only. Rules that need the database or the user's state (email already taken, backfill > 7 days) are checked in the service and return 409/422.
 
 ## 2. Endpoints: MVP
 

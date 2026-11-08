@@ -30,6 +30,7 @@ jobs:
       - run: bun install --frozen-lockfile
       - run: bun run check
       - run: bun run --filter @life-os/api test
+      - run: bun run --filter @life-os/shared test
 
   api-e2e:
     name: API e2e + migration check

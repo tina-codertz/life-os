@@ -49,3 +49,6 @@ export interface ApiPageBody<T> {
   data: T[];
   meta: PageMeta;
 }
+
+// Zod schemas: the API validates requests with them, the mobile app validates forms with them.
+export * from './schemas/pagination.ts';

@@ -234,6 +234,11 @@ Node is pinned in `.node-version` and Bun in `packageManager`, so CI uses the sa
 2. Why is P2002 mapped to a generic `CONFLICT` here, when the register endpoint will want `EMAIL_TAKEN`? Where should that more specific error be thrown?
 3. Why are 4xx errors *not* logged by the filter, but 5xx errors are?
 4. Why might a 404 be the right answer when user A requests user B's task, even though it exists (docs/06)?
+**Your answers (2026-11-08):**
+- *`code` not `message`:* the code is the stable identifier; messages can be reworded and the app would stop recognising them. (Right. Add translation: once the app is in Swahili and English, the message differs per language but the code never does.)
+- *Where `EMAIL_TAKEN` is thrown:* in the service layer, in `AuthService`'s register method, because "is this email free?" is a business rule. (Right. One detail for 4.4: checking first and then inserting leaves a gap where two sign-ups with the same email both pass the check. The unique index still stops the second one with P2002, so the service should **also catch P2002 on `email`** and rethrow `EMAIL_TAKEN`. The filter can't do it: it only knows "some unique value clashed", not what that means to the business.)
+- *Why 5xx logged, 4xx not:* 5xx are problems a developer has to investigate (e.g. the database); the point is separating client-side from server-side errors. (Right. Note that 4xx aren't *invisible*: the request log line already records them at `warn` with status and request ID. The filter just doesn't add a stack trace, because a wrong password is not a bug, and logging a stack for every bad request would let anyone flood the logs.)
+- *404 for someone else's task:* if attackers can tell "exists" from "doesn't exist" they can enumerate other users' IDs. (Exactly. A 403 would confirm the task exists. In practice it falls out naturally: every query includes `where: { id, userId }`, so another user's task simply *is* not found.)
 
 ### 2026-11-07 — 4.1 Part 3: one success shape
 **What was built:** `ResponseEnvelopeInterceptor` (`src/common/interceptors`), registered with `APP_INTERCEPTOR`, wraps every controller result in `{ data }`. `Page` (`src/common/pagination`): return `new Page(items, { nextCursor, hasMore })` from a list endpoint to get `{ data, meta }`. `undefined` (for 204 No Content) and `StreamableFile` downloads pass through unwrapped. `/health` now returns `{ data: { status, db } }`. Types `ApiDataBody`, `ApiPageBody`, `PageMeta` in `packages/shared`.
@@ -249,4 +254,28 @@ Node is pinned in `.node-version` and Bun in `packageManager`, so CI uses the sa
 1. What's the difference between middleware, an interceptor and an exception filter? When does each run?
 2. Why must a DELETE that returns 204 have an empty body, and what would break if we wrapped it as `{ data: undefined }`?
 3. Why is `toEnvelope` exported as a plain function separate from the class?
+**Your answers (2026-11-08):**
+- *Middleware / interceptor / filter:* middleware works on incoming requests, an interceptor wraps the execution of a request, an exception filter handles errors. (Right. The order completes the picture: **middleware → guards → interceptors (before) → pipes → controller → interceptors (after)**, and the filter catches a throw from any of those steps. Middleware runs before Nest even knows which controller will handle the request; interceptors, guards and pipes do know. Pipes are what 4.2 adds.)
+- *204 empty body:* it says the request succeeded and there is nothing to return. (Right. And the spec forbids a body on a 204, so clients don't read one. `{ data: undefined }` serialises to `{}`, which *is* a body: Node drops it or, with some clients and proxies, the stray bytes get read as the start of the next response on the same connection.)
+- *Why `toEnvelope` is separate:* separation of concerns, reusability, testability. (Right. Concretely: the tests call `toEnvelope(value)` with plain values, no Nest `ExecutionContext` and no RxJS Observable to fake.)
 
+### 2026-11-08 — 4.2 Zod validation pipe + shared schemas
+**What was built:**
+- `ZodValidationPipe(schema)` (`apps/api/src/common/pipes`): validates one controller argument (`@Body`, `@Query`, `@Param`) and hands the controller the **parsed** value. Invalid input throws `AppException(400, 'VALIDATION_FAILED', …)` with one `{ field, message }` detail per problem; the filter from 4.1 turns it into the envelope.
+- First shared schema: `paginationQuerySchema` (`packages/shared/src/schemas`), `?limit` 1–100 (default 30) and an optional `cursor`. `packages/shared` now depends on `zod` and has its own Vitest tests, run in CI.
+- `createTestApp({ controllers })` mounts test-only endpoints, so the pipe is tested through the real app (logger → pipe → filter → envelope) before any feature uses it.
+- `rewriteRelativeImportExtensions` (API) and `allowImportingTsExtensions` (mobile) so both type-checks accept `shared`'s `.ts` imports. Checked that `node dist/main` and the Expo bundle both still load `shared`.
+**Concepts:**
+- *Pipe:* runs on a controller argument just before the controller, and can **transform** it (string `"5"` → number `5`) or **reject** it. Order: middleware → guards → interceptors → **pipes** → controller.
+- *Parse, don't validate:* the pipe doesn't just say yes/no; it returns a new value whose *type* proves it was checked. After the pipe, `body.title` is a `string`, not `unknown`.
+- *Strip unknown keys:* `z.object` drops fields it doesn't know. If a client sends `{ title, userId: "someone-else" }`, the controller never sees `userId`. This blocks *mass assignment* (copying the whole body into a database row). We strip rather than reject, so an older app version sending an extra field doesn't break.
+- *Shape vs rules:* the pipe checks **shape** (types, lengths, formats). Rules that need the database or the user's data ("email already taken", "backfill > 7 days") belong in the service: 409/422, not 400.
+- *One schema, two places:* the mobile form and the API use the same schema, so they can't disagree. The client check is for a nice UX; the server check is the one that counts, because anyone can call the API without the app.
+- *Don't echo input:* Zod messages describe the rule ("expected string to have >=12 characters"), never the value, so a rejected password never comes back in a response or log.
+**Mistake I made:** first draft of the "never echoes the value" test used a *valid* body, so nothing was thrown; the test failed instead of passing silently. A test that can't fail proves nothing; this one failed for the right reason, and the fix was the input, not the assertion.
+**Checked:** lint/format/typecheck clean; 46 API unit + 8 shared unit + 11 e2e tests (parsed body + coerced query reach the controller, unknown key dropped; 400 with `title`/`done` details; bad `?limit=500`; no body at all). Production build boots and serves `/health`; the iOS bundle builds.
+**To learn:**
+1. The pipe returns `result.data`, not the original `value`. What would go wrong if it returned `value` after a successful parse? (Think `?limit=5` and `{ userId }`.)
+2. Why is "email already taken" not checked in the Zod schema, even though Zod supports async refinements that could query the database?
+3. If the mobile app already validates the form with the same schema, why must the API validate again?
+4. Why do we *strip* unknown keys instead of rejecting them with `z.strictObject`? When would rejecting be the better choice?
