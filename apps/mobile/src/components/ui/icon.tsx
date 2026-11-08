@@ -23,6 +23,7 @@ import Palette from 'lucide-react-native/icons/palette';
 import Plus from 'lucide-react-native/icons/plus';
 import Search from 'lucide-react-native/icons/search';
 import RefreshCw from 'lucide-react-native/icons/refresh-cw';
+import Repeat from 'lucide-react-native/icons/repeat';
 import Smartphone from 'lucide-react-native/icons/smartphone';
 import Sun from 'lucide-react-native/icons/sun';
 import Tag from 'lucide-react-native/icons/tag';
@@ -63,6 +64,7 @@ const ICONS = {
   person: User,
   phone: Smartphone,
   refresh: RefreshCw,
+  repeat: Repeat,
   search: Search,
   signOut: LogOut,
   sun: Sun,

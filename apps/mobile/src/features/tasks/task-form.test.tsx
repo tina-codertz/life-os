@@ -3,6 +3,7 @@ import { router as appRouter, type Href } from 'expo-router';
 import { act, fireEvent, renderRouter, screen, waitFor } from 'expo-router/testing-library';
 import { authStore } from '@/features/auth/auth-instance';
 import { apiError, calls, resetMockApi, routes } from '@/test/mock-auth-instance';
+import { weekdayOf } from '@life-os/shared';
 import { addDays, formatDayLong, formatDue, localToday, monthOf } from './dates';
 
 jest.mock('@/features/auth/auth-instance', () => jest.requireActual('@/test/mock-auth-instance'));
@@ -34,6 +35,7 @@ const EXISTING: PublicTask = {
   completedAt: null,
   categoryId: WORK.id,
   parentId: null,
+  recurrenceRule: null,
   subtaskCount: 0,
   subtasksDone: 0,
   sortOrder: 0,
@@ -103,6 +105,7 @@ describe('task form', () => {
       categoryId: WORK.id,
       dueDate: addDays(localToday(ZONE), 1), // "tomorrow" in the user's zone
       dueTime: null,
+      recurrenceRule: null,
     });
     await waitFor(() => expect(router.getPathname()).toBe('/tasks'));
   });
@@ -397,6 +400,110 @@ describe('task form', () => {
       await waitFor(() =>
         expect(screen.getByRole('checkbox', { name: 'Transfer' })).not.toBeChecked(),
       );
+    });
+  });
+
+  describe('repeat', () => {
+    const DAY_NAME = {
+      MO: 'Mon',
+      TU: 'Tue',
+      WE: 'Wed',
+      TH: 'Thu',
+      FR: 'Fri',
+      SA: 'Sat',
+      SU: 'Sun',
+    };
+
+    it("can't be set until there is a date", async () => {
+      await openForm('/task-form');
+      await screen.findByLabelText('Title');
+      expect(screen.getByLabelText('Repeat, Pick a date first')).toBeOnTheScreen();
+    });
+
+    it.each([
+      ['Daily', 'FREQ=DAILY'],
+      ['Weekdays', 'FREQ=WEEKLY;BYDAY=MO,TU,WE,TH,FR'],
+    ])('%s is one tap', async (choice, rule) => {
+      createReturnsBody();
+      await openForm('/task-form');
+      await fireEvent.changeText(await screen.findByLabelText('Title'), 'Stretch');
+      await choose('Today');
+      await press('Repeat, Never');
+      await choose(choice);
+      await press('Add task');
+      await waitFor(() => expect(bodies('POST /tasks')).toHaveLength(1));
+      expect(bodies('POST /tasks')[0]).toMatchObject({ recurrenceRule: rule });
+    });
+
+    it('Weekly starts on the due date’s weekday; more days can be added, not the last removed', async () => {
+      createReturnsBody();
+      await openForm('/task-form');
+      await fireEvent.changeText(await screen.findByLabelText('Title'), 'Bins out');
+      await choose('Tomorrow');
+      const tomorrow = addDays(today(), 1);
+      const own = weekdayOf(tomorrow);
+      const other = own === 'FR' ? 'MO' : 'FR';
+
+      await press('Repeat, Never');
+      await choose('Weekly');
+      const ownChip = screen.getByRole('checkbox', { name: DAY_NAME[own] });
+      expect(ownChip).toBeChecked();
+      await fireEvent.press(ownChip); // the only day: stays
+      expect(screen.getByRole('checkbox', { name: DAY_NAME[own] })).toBeChecked();
+      await fireEvent.press(screen.getByRole('checkbox', { name: DAY_NAME[other] }));
+
+      await press('Add task');
+      await waitFor(() => expect(bodies('POST /tasks')).toHaveLength(1));
+      const days = ['MO', 'TU', 'WE', 'TH', 'FR', 'SA', 'SU'].filter(
+        (d) => d === own || d === other,
+      );
+      expect(bodies('POST /tasks')[0]).toMatchObject({
+        recurrenceRule: `FREQ=WEEKLY;BYDAY=${days.join(',')}`,
+      });
+    });
+
+    it('Monthly uses the due date’s day; Every few days takes a number', async () => {
+      createReturnsBody();
+      await openForm('/task-form');
+      await fireEvent.changeText(await screen.findByLabelText('Title'), 'Water');
+      await choose('Today');
+      await press('Repeat, Never');
+      await choose('Monthly');
+      expect(
+        screen.getByLabelText(`Repeat, Monthly on day ${Number(today().slice(8))}`),
+      ).toBeOnTheScreen();
+
+      await choose('Every few days');
+      await fireEvent.changeText(screen.getByLabelText('Every how many days?'), '3');
+      expect(screen.getByLabelText('Repeat, Every 3 days')).toBeOnTheScreen();
+      await press('Add task');
+      await waitFor(() => expect(bodies('POST /tasks')).toHaveLength(1));
+      expect(bodies('POST /tasks')[0]).toMatchObject({ recurrenceRule: 'FREQ=DAILY;INTERVAL=3' });
+    });
+
+    it('removing the date removes the repeat; editing shows the saved one', async () => {
+      createReturnsBody();
+      await openForm('/task-form');
+      await fireEvent.changeText(await screen.findByLabelText('Title'), 'Gym');
+      await choose('Today');
+      await press('Repeat, Never');
+      await choose('Daily');
+      await press('Remove due date');
+      expect(screen.getByLabelText('Repeat, Pick a date first')).toBeOnTheScreen();
+      await press('Add task');
+      await waitFor(() => expect(bodies('POST /tasks')).toHaveLength(1));
+      expect(bodies('POST /tasks')[0]).toMatchObject({ recurrenceRule: null });
+    });
+
+    it('editing shows the saved repeat', async () => {
+      await openForm(`/task-form?id=${EXISTING.id}`, {
+        ...EXISTING,
+        dueDate: today(),
+        recurrenceRule: 'FREQ=MONTHLY;BYMONTHDAY=1',
+      });
+      expect(
+        await screen.findByRole('button', { name: 'Repeat, Monthly on day 1' }),
+      ).toBeOnTheScreen();
     });
   });
 });

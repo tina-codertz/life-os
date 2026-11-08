@@ -124,21 +124,24 @@ model Category {
 // Tasks I (docs/05). Goal links, subtasks, recurrence and "pinned for today" columns arrive
 // with their modules (Goals, Tasks II, Today) as additive migrations.
 model Task {
-  id          String       @id @default(uuid(7)) @db.Uuid
-  userId      String       @db.Uuid
-  title       String       @db.VarChar(200)
-  description String?      @db.VarChar(5000)
-  priority    TaskPriority @default(NONE)
-  status      TaskStatus   @default(TODO)
-  dueDate     DateTime?    @db.Date // the user's local calendar date (ADR-006)
-  dueTime     Int?         @db.SmallInt // minutes after local midnight, 0–1439
-  completedAt DateTime?    @db.Timestamptz(3)
-  sortOrder   Int          @default(0)
-  categoryId  String?      @db.Uuid
-  parentId    String?      @db.Uuid // subtask → parent (one level, service-enforced; FR-TASK-005)
-  createdAt   DateTime     @default(now()) @db.Timestamptz(3)
-  updatedAt   DateTime     @updatedAt @db.Timestamptz(3)
-  deletedAt   DateTime?    @db.Timestamptz(3) // soft delete, restorable for 30 days
+  id                 String       @id @default(uuid(7)) @db.Uuid
+  userId             String       @db.Uuid
+  title              String       @db.VarChar(200)
+  description        String?      @db.VarChar(5000)
+  priority           TaskPriority @default(NONE)
+  status             TaskStatus   @default(TODO)
+  dueDate            DateTime?    @db.Date // the user's local calendar date (ADR-006)
+  dueTime            Int?         @db.SmallInt // minutes after local midnight, 0–1439
+  completedAt        DateTime?    @db.Timestamptz(3)
+  sortOrder          Int          @default(0)
+  categoryId         String?      @db.Uuid
+  parentId           String?      @db.Uuid // subtask → parent (one level, service-enforced; FR-TASK-005)
+  // Repeating (FR-TASK-006): each occurrence carries the rule; all share the first one's id.
+  recurrenceRule     String?      @db.VarChar(200) // RRULE subset, e.g. "FREQ=WEEKLY;BYDAY=MO,WE"
+  recurrenceSeriesId String?      @db.Uuid
+  createdAt          DateTime     @default(now()) @db.Timestamptz(3)
+  updatedAt          DateTime     @updatedAt @db.Timestamptz(3)
+  deletedAt          DateTime?    @db.Timestamptz(3) // soft delete, restorable for 30 days
 
   user     User      @relation(fields: [userId], references: [id], onDelete: Cascade)
   category Category? @relation(fields: [categoryId], references: [id], onDelete: SetNull)
@@ -149,6 +152,7 @@ model Task {
   @@index([userId, completedAt]) // history, stats
   @@index([userId, categoryId])
   @@index([parentId])
+  @@index([recurrenceSeriesId])
 }
 
 enum TaskPriority {

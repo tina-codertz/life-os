@@ -19,6 +19,7 @@ import { applyApiError, useZodForm } from '@/features/forms/zod-form';
 import { addDays, formatDue, localToday } from '@/features/tasks/dates';
 import { DueTimeRow } from '@/features/tasks/due-time-row';
 import { MonthCalendar } from '@/features/tasks/month-calendar';
+import { RepeatRow } from '@/features/tasks/repeat-row';
 import {
   createSubtasks,
   taskKeys,
@@ -77,6 +78,7 @@ export default function TaskForm() {
       categoryId: null,
       dueDate: null,
       dueTime: null,
+      recurrenceRule: null,
     },
   );
 
@@ -93,6 +95,7 @@ export default function TaskForm() {
         categoryId: task.categoryId,
         dueDate: task.dueDate,
         dueTime: task.dueTime,
+        recurrenceRule: task.recurrenceRule,
       });
     }
   }, [task, reset]);
@@ -123,6 +126,7 @@ export default function TaskForm() {
         'categoryId',
         'dueDate',
         'dueTime',
+        'recurrenceRule',
       ]);
     }
   });
@@ -213,8 +217,11 @@ export default function TaskForm() {
               value={field.value ?? null}
               onChange={(day) => {
                 field.onChange(day);
-                // No date, no time (the API refuses a time on its own).
-                if (day === null) setValue('dueTime', null);
+                // No date, no time or repeat (the API refuses either on its own).
+                if (day === null) {
+                  setValue('dueTime', null);
+                  setValue('recurrenceRule', null);
+                }
               }}
               today={today}
               weekStartsOn={weekStartsOn}
@@ -230,6 +237,18 @@ export default function TaskForm() {
               value={field.value ?? null}
               onChange={field.onChange}
               hasDate={dueDate != null}
+              error={fieldState.error?.message}
+            />
+          )}
+        />
+        <Controller
+          control={control}
+          name="recurrenceRule"
+          render={({ field, fieldState }) => (
+            <RepeatRow
+              value={field.value ?? null}
+              onChange={field.onChange}
+              dueDate={dueDate ?? null}
               error={fieldState.error?.message}
             />
           )}

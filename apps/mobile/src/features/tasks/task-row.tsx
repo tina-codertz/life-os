@@ -2,7 +2,8 @@ import type { PublicCategory, PublicTask } from '@life-os/shared';
 import { Pressable, View } from 'react-native';
 import { Icon, Text } from '@/components/ui';
 import { radius, spacing, type ThemeColors, useTheme } from '@/theme';
-import { formatDue } from './dates';
+import { parseRule, shortRule } from '@life-os/shared';
+import { formatDue, repeatsLabel } from './dates';
 
 const PRIORITY_LABEL: Record<PublicTask['priority'], string | null> = {
   NONE: null,
@@ -43,10 +44,16 @@ export function TaskRow({ task, category, today, onToggle, onOpen, onDelete }: T
   const badge = task.priority === 'NONE' ? null : PRIORITY_BADGE[task.priority](colors);
   const subtasks =
     task.subtaskCount > 0 ? `${task.subtasksDone} of ${task.subtaskCount} subtasks` : null;
-  const details = [due?.text, priority && `${priority} priority`, category?.name, subtasks].filter(
-    Boolean,
-  );
-  const meta = [due?.text, category?.name, subtasks].filter(Boolean).join(' · ');
+  const rule = task.recurrenceRule ? parseRule(task.recurrenceRule) : null;
+  const repeats = rule ? repeatsLabel(shortRule(rule)) : null;
+  const details = [
+    due?.text,
+    priority && `${priority} priority`,
+    category?.name,
+    repeats,
+    subtasks,
+  ].filter(Boolean);
+  const meta = [due?.text, category?.name, repeats, subtasks].filter(Boolean).join(' · ');
 
   return (
     <View

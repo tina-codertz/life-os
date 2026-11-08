@@ -1,4 +1,5 @@
 import type {
+  CompleteTaskResult,
   CreateTaskInput,
   PublicCategory,
   PublicTask,
@@ -16,6 +17,7 @@ import {
 import { useToast } from '@/components/ui';
 import { api } from '@/features/auth/auth-instance';
 import type { Paged } from '@/services/http';
+import { formatDayShort } from './dates';
 
 export type TaskFilter = 'TODO' | 'DONE' | 'ALL';
 
@@ -114,7 +116,7 @@ export function useToggleTask() {
   return useMutation({
     // includeSubtasks: complete the task's open subtasks too (the user was asked first).
     mutationFn: ({ id, done, includeSubtasks }: ToggleInput) =>
-      api().post<{ task: PublicTask }>(
+      api().post<CompleteTaskResult>(
         `/tasks/${id}/${done ? 'complete' : 'uncomplete'}`,
         includeSubtasks ? { includeSubtasks: true } : undefined,
       ),
@@ -136,6 +138,16 @@ export function useToggleTask() {
     onError: (_err, _vars, context) => {
       for (const [key, data] of context?.before ?? []) queryClient.setQueryData(key, data);
       toast({ message: "Couldn't update the task. Try again.", tone: 'error' });
+    },
+    // A repeating task: say when the next one is due (FR-TASK-006).
+    onSuccess: (result) => {
+      const next = result?.nextOccurrence;
+      if (next?.dueDate) {
+        toast({
+          message: `Done. The next one is due ${formatDayShort(next.dueDate)}.`,
+          tone: 'success',
+        });
+      }
     },
     onSettled: () => queryClient.invalidateQueries({ queryKey: taskKeys.all }),
   });

@@ -1,6 +1,7 @@
 import { Controller, Delete, Get, HttpCode, HttpStatus, Patch, Post } from '@nestjs/common';
 import {
   type CompleteTaskInput,
+  type CompleteTaskResult,
   completeTaskSchema,
   type CreateSubtaskInput,
   createSubtaskSchema,
@@ -88,7 +89,7 @@ export class TasksController {
     @CurrentUser() user: AuthUser,
     @taskId() id: string,
     @ZodBody(completeTaskSchema) body: CompleteTaskInput,
-  ): Promise<{ task: PublicTask }> {
+  ): Promise<CompleteTaskResult> {
     return this.tasks.complete(user.id, id, body.includeSubtasks ?? false);
   }
 

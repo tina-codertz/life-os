@@ -127,3 +127,18 @@ export function formatDayLong(day: string): string {
     .format(new Date(`${day}T00:00:00.000Z`))
     .replace(',', '');
 }
+
+// "repeats weekly", for a task row's details (from the rule's short name).
+export function repeatsLabel(short: string): string {
+  return short === 'Weekdays' ? 'repeats on weekdays' : `repeats ${short.toLowerCase()}`;
+}
+
+// "Mon 16 Nov": a day on its own, e.g. when the next repeat is created.
+export function formatDayShort(day: string): string {
+  return new Intl.DateTimeFormat('en-GB', {
+    timeZone: 'UTC',
+    weekday: 'short',
+    day: 'numeric',
+    month: 'short',
+  }).format(new Date(`${day}T00:00:00.000Z`));
+}

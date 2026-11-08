@@ -979,3 +979,33 @@ The project owner added **History: week / month / year** to the design (`docs/Li
 - One probe showed the "no card while searching" test passed too early, while results were still loading. It now waits for the found task to appear as a row.
 **Checks:** mobile tests: pure tests for the picker and the 70% rule, plus 5 screen tests. Probes: card repeated in the list, card while searching, swipe skipping the subtask question, priority ignored. Each makes a test fail.
 
+### 2026-11-08 — Tasks II Part 3: repeating tasks
+**What was built:**
+- **Shared rules** (`packages/shared/src/schemas/recurrence.ts`): a strict subset of the calendar-standard **RRULE** (daily, every N days, weekly on chosen days, monthly on a day), parsed into data and written back one way. `nextOccurrence()` and `nextDueDate()` are pure functions with 32 tests: month ends (31 → 30 Nov, 28/29 Feb), the leap year, weekdays across a week end, and a daylight-saving week.
+- **Database:** migration `add_task_recurrence` (`recurrenceRule`, `recurrenceSeriesId`, indexed).
+- **API:**
+  - `recurrenceRule` on tasks; it needs a date, and removing the date removes it.
+  - Completing a repeating task creates the next one **in the same transaction**: same title, notes, priority, category, time and rule, with its subtasks again as a fresh checklist.
+  - The next date is the occurrence after the due date, or **today or later** if the task was done late.
+  - No duplicates if you complete, untick and complete again. `POST /complete` returns `{ task, nextOccurrence }`.
+- **Phone:**
+  - The design's **Repeat** row ("Never ›"): Never, Daily, Weekdays, Weekly (weekday chips; the last day can't be removed), Monthly (on the due date's day), and Every few days (a number).
+  - Rows say "repeats weekly", and the highlighted card shows "⟲ Weekly" like the design.
+  - Completing says "Done. The next one is due Mon 16 Nov."
+**Concepts:**
+- *RRULE:* the calendar standard's way to write "every Monday and Wednesday". Using a small subset now means calendar events can reuse it later.
+- *Pure functions for date rules:* easy to test exhaustively, with no database or clock involved (today is passed in).
+- *One occurrence at a time:* only the next task exists, so the table stays small and editing the repeat only affects the future.
+- *Idempotency:* checking for a later occurrence before creating one makes "complete" safe to repeat.
+**Found while building:**
+- A probe showed hiding "repeats monthly" from a row's visible text went unnoticed, because the test only checked what screen readers hear. It now checks the visible text too.
+- A flaky test: the rate-limit test "counts logged-in users per user" timed out (5 s) about one run in seven. It does ~8 deliberately slow argon2 password operations, so it now has 20 s. That's a test timing problem, not an app bug.
+- The API had been started with `bun start dev` (no watch), so it ran old code after the subtask change. Use `bun run start:dev`.
+**Checks:** shared 95, API 114 unit + 145 e2e (8 new for repeat), mobile 321 (9 new). Probes: API (no duplicate check, subtasks not copied, date removal keeping the rule, no next occurrence), shared (late completion not moved to today) and phone (date removal, last weekday, monthly day, the message, the row text). Each makes a test fail. `bun run check` clean; Prisma schema matches migrations.
+
+**To learn:**
+1. Why store the repeat as an RRULE string instead of our own JSON shape?
+2. Why does a task completed three weeks late get its next date from *today*, not from its old due date?
+3. What stops complete → uncomplete → complete from creating two next tasks?
+4. Why can't the last weekday be unticked in Weekly?
+

@@ -1,15 +1,18 @@
 import { Injectable } from '@nestjs/common';
 import {
+  type CompleteTaskResult,
   type CreateSubtaskInput,
   type CreateTaskInput,
   type ListTasksQuery,
   MAX_SUBTASKS,
+  nextDueDate,
+  parseRule,
   type PublicTask,
   TASK_RESTORE_DAYS,
   type TaskDetail,
   type UpdateTaskInput,
 } from '@life-os/shared';
-import { toDbDate } from '../../common/dates.js';
+import { fromDbDate, localToday, toDbDate } from '../../common/dates.js';
 import { decodeCursor, pageOf } from '../../common/pagination/cursor.js';
 import { Page } from '../../common/pagination/page.js';
 import type { Prisma, Task } from '../../generated/prisma/client.js';
@@ -112,6 +115,7 @@ export class TasksService {
         categoryId: input.categoryId ?? null,
         dueDate: input.dueDate ? toDbDate(input.dueDate) : null,
         dueTime: input.dueTime ?? null,
+        recurrenceRule: input.recurrenceRule ?? null,
       },
     });
     return toPublicTask(task);
@@ -129,12 +133,20 @@ export class TasksService {
     if (input.sortOrder !== undefined) data.sortOrder = input.sortOrder;
     if (input.dueDate !== undefined) data.dueDate = input.dueDate ? toDbDate(input.dueDate) : null;
     if (input.dueTime !== undefined) data.dueTime = input.dueTime;
+    // Changing the repeat changes this task and the ones it creates, not finished ones.
+    if (input.recurrenceRule !== undefined) data.recurrenceRule = input.recurrenceRule;
 
-    // A time only means something on a day: removing the date removes the time too, and a time
-    // can't be set on a task that has (or will have) no date.
-    if (input.dueDate === null) data.dueTime = null;
+    // A time or a repeat only means something with a day: removing the date removes both, and
+    // neither can be set on a task that has (or will have) no date.
+    if (input.dueDate === null) {
+      data.dueTime = null;
+      data.recurrenceRule = null;
+    }
     const dateAfter = input.dueDate !== undefined ? input.dueDate : task.dueDate;
     if (input.dueTime != null && !dateAfter) throw fieldError('dueTime', 'A time needs a date.');
+    if (input.recurrenceRule != null && !dateAfter) {
+      throw fieldError('recurrenceRule', 'A repeating task needs a date.');
+    }
 
     return this.withCounts(await this.prisma.task.update({ where: { id: task.id }, data }));
   }
@@ -159,28 +171,81 @@ export class TasksService {
   }
 
   // Safe to repeat: completing a done task keeps its original completion time. Subtasks stay
-  // as they are unless `includeSubtasks` (FR-TASK-005: the app asks the user first).
-  async complete(
-    userId: string,
-    id: string,
-    includeSubtasks = false,
-  ): Promise<{ task: PublicTask }> {
+  // as they are unless `includeSubtasks` (FR-TASK-005: the app asks the user first). Completing
+  // a repeating task creates the next one in the same transaction (FR-TASK-006, docs/05).
+  async complete(userId: string, id: string, includeSubtasks = false): Promise<CompleteTaskResult> {
     const task = await this.findActive(userId, id);
     const now = new Date();
-    const done = await this.prisma.$transaction(async (tx) => {
+    const { done, next } = await this.prisma.$transaction(async (tx) => {
       if (includeSubtasks) {
         await tx.task.updateMany({
           where: { parentId: task.id, deletedAt: null, status: 'TODO' },
           data: { status: 'DONE', completedAt: now },
         });
       }
-      if (task.status === 'DONE') return task;
-      return tx.task.update({
+      if (task.status === 'DONE') return { done: task, next: null };
+      const completed = await tx.task.update({
         where: { id: task.id },
         data: { status: 'DONE', completedAt: now },
       });
+      return { done: completed, next: await this.createNextOccurrence(tx, completed) };
     });
-    return { task: await this.withCounts(done) };
+    return {
+      task: await this.withCounts(done),
+      nextOccurrence: next ? await this.withCounts(next) : null,
+    };
+  }
+
+  // The next task in a repeating series: same title, notes, priority, category, time and rule,
+  // its subtasks as a fresh checklist, due on the next date from today on (nextDueDate). Not
+  // created if a later one already exists, so complete → uncomplete → complete makes no copy.
+  private async createNextOccurrence(
+    tx: Prisma.TransactionClient,
+    task: Task,
+  ): Promise<Task | null> {
+    const rule = task.recurrenceRule ? parseRule(task.recurrenceRule) : null;
+    if (!rule || !task.dueDate) return null;
+    const seriesId = task.recurrenceSeriesId ?? task.id;
+    const later = await tx.task.findFirst({
+      where: {
+        userId: task.userId,
+        deletedAt: null,
+        OR: [{ id: seriesId }, { recurrenceSeriesId: seriesId }],
+        dueDate: { gt: task.dueDate },
+      },
+    });
+    if (later) return null;
+
+    const settings = await tx.userSettings.findUnique({ where: { userId: task.userId } });
+    const today = localToday(settings?.timezone ?? 'UTC');
+    const next = await tx.task.create({
+      data: {
+        userId: task.userId,
+        title: task.title,
+        description: task.description,
+        priority: task.priority,
+        categoryId: task.categoryId,
+        dueDate: toDbDate(nextDueDate(rule, fromDbDate(task.dueDate), today)),
+        dueTime: task.dueTime,
+        recurrenceRule: task.recurrenceRule,
+        recurrenceSeriesId: seriesId,
+      },
+    });
+    const steps = await tx.task.findMany({
+      where: { parentId: task.id, deletedAt: null },
+      orderBy: [{ sortOrder: 'asc' }, { id: 'asc' }],
+    });
+    if (steps.length > 0) {
+      await tx.task.createMany({
+        data: steps.map((step, i) => ({
+          userId: task.userId,
+          parentId: next.id,
+          title: step.title,
+          sortOrder: i,
+        })),
+      });
+    }
+    return next;
   }
 
   async uncomplete(userId: string, id: string): Promise<{ task: PublicTask }> {

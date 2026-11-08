@@ -57,7 +57,9 @@ describe('Rate limiting (e2e)', () => {
     await http().post('/api/v1/auth/forgot-password').send({ email: 'x@example.com' }).expect(204);
   });
 
-  it('counts logged-in users per user, not per IP', async () => {
+  // ~8 argon2 hashes/checks (2 sign-ups, 7 wrong passwords), each slow on purpose: on a busy
+  // machine that brushed the default 5 s limit about one run in seven, so it gets 20 s.
+  it('counts logged-in users per user, not per IP', { timeout: 20_000 }, async () => {
     const tina = await register('tina@example.com');
     const juma = await register('juma@example.com');
 

@@ -1,5 +1,6 @@
 import { z } from 'zod';
 import { paginationQuerySchema } from './pagination.ts';
+import { recurrenceRuleSchema } from './recurrence.ts';
 
 // Task priority (FR-TASK-001), same order as the database enum.
 export const PRIORITIES = ['NONE', 'LOW', 'MEDIUM', 'HIGH', 'URGENT'] as const;
@@ -33,6 +34,7 @@ const description = z
 const dueTime = z.number().int().min(0).max(1439);
 
 const NEEDS_A_DATE = { path: ['dueTime'], error: 'A time needs a date.' };
+const REPEAT_NEEDS_A_DATE = { path: ['recurrenceRule'], error: 'A repeating task needs a date.' };
 
 // POST /tasks. Unknown keys are dropped (POST convention); the owner comes from the token.
 export const createTaskSchema = z
@@ -43,8 +45,11 @@ export const createTaskSchema = z
     categoryId: z.uuid().nullable().optional(),
     dueDate: localDateSchema.nullable().optional(),
     dueTime: dueTime.nullable().optional(),
+    // FR-TASK-006, e.g. "FREQ=WEEKLY;BYDAY=MO,WE" (see recurrence.ts).
+    recurrenceRule: recurrenceRuleSchema.nullable().optional(),
   })
-  .refine((t) => t.dueTime == null || t.dueDate != null, NEEDS_A_DATE);
+  .refine((t) => t.dueTime == null || t.dueDate != null, NEEDS_A_DATE)
+  .refine((t) => t.recurrenceRule == null || t.dueDate != null, REPEAT_NEEDS_A_DATE);
 export type CreateTaskInput = z.infer<typeof createTaskSchema>;
 
 // PATCH /tasks/:id: strict, partial. `null` clears a field. Whether a time still has a date
@@ -56,6 +61,7 @@ export const updateTaskSchema = z.strictObject({
   categoryId: z.uuid().nullable().optional(),
   dueDate: localDateSchema.nullable().optional(),
   dueTime: dueTime.nullable().optional(),
+  recurrenceRule: recurrenceRuleSchema.nullable().optional(),
   sortOrder: z.number().int().min(0).max(1_000_000).optional(),
 });
 export type UpdateTaskInput = z.infer<typeof updateTaskSchema>;
@@ -94,12 +100,21 @@ export interface PublicTask {
   categoryId: string | null;
   // The parent's id on a subtask; null on a top-level task.
   parentId: string | null;
+  // How it repeats (FR-TASK-006), or null. Completing it creates the next one.
+  recurrenceRule: string | null;
   // Subtasks of this task (0 on a subtask), for "2 of 4" on the list.
   subtaskCount: number;
   subtasksDone: number;
   sortOrder: number;
   createdAt: string;
   updatedAt: string;
+}
+
+// POST /tasks/:id/complete. `nextOccurrence`: the next task created when a repeating task is
+// completed (null when it doesn't repeat, or the next one already exists).
+export interface CompleteTaskResult {
+  task: PublicTask;
+  nextOccurrence: PublicTask | null;
 }
 
 // GET /tasks/:id: the task with its subtasks, oldest first.

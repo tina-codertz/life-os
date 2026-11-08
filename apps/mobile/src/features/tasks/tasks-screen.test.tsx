@@ -38,6 +38,7 @@ const task = (overrides: Partial<PublicTask> = {}): PublicTask => {
     completedAt: null,
     categoryId: null,
     parentId: null,
+    recurrenceRule: null,
     subtaskCount: 0,
     subtasksDone: 0,
     sortOrder: 0,
@@ -409,6 +410,44 @@ describe('Tasks screen', () => {
       await openTasks();
       await screen.findByText('Someday');
       expect(screen.queryByTestId('focus-card')).toBeNull();
+    });
+  });
+
+  describe('repeating tasks', () => {
+    it('rows say how a task repeats; the card shows it like the design', async () => {
+      routes['GET /tasks'] = () =>
+        page([
+          dueToday({ title: 'Standup', recurrenceRule: 'FREQ=WEEKLY;BYDAY=MO,TU,WE,TH,FR' }),
+          task({
+            title: 'Rent',
+            dueDate: addDays(localToday(ZONE), 5),
+            recurrenceRule: 'FREQ=MONTHLY;BYMONTHDAY=1',
+          }),
+        ]);
+      await openTasks();
+      const card = await screen.findByTestId('focus-card');
+      expect(within(card).getByText('Weekdays')).toBeOnTheScreen();
+      expect(screen.getByRole('button', { name: /^Rent, .*, repeats monthly$/ })).toBeOnTheScreen();
+      // Seen as well as heard: the row's details line says it.
+      expect(screen.getByText(/· repeats monthly$/)).toBeOnTheScreen();
+    });
+
+    it('completing one says when the next is due', async () => {
+      const today = localToday(ZONE);
+      routes['GET /tasks'] = () =>
+        page([task({ title: 'Rent', dueDate: addDays(today, 5), recurrenceRule: 'FREQ=DAILY' })]);
+      routes['POST /tasks/t1/complete'] = () => ({
+        status: 200,
+        body: {
+          data: {
+            task: {},
+            nextOccurrence: { id: 't2', title: 'Rent', dueDate: '2026-11-16' },
+          },
+        },
+      });
+      await openTasks();
+      await fireEvent.press(await screen.findByRole('checkbox', { name: 'Rent' }));
+      expect(await screen.findByText('Done. The next one is due Mon 16 Nov.')).toBeOnTheScreen();
     });
   });
 });

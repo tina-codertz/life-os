@@ -1,5 +1,12 @@
 import type { INestApplication } from '@nestjs/common';
-import { type AuthResult, MAX_SUBTASKS, type PublicTask, type TaskDetail } from '@life-os/shared';
+import {
+  type AuthResult,
+  type CompleteTaskResult,
+  MAX_SUBTASKS,
+  nextDueDate,
+  type PublicTask,
+  type TaskDetail,
+} from '@life-os/shared';
 import request from 'supertest';
 import type { App } from 'supertest/types.js';
 import { PrismaService } from '../src/prisma/prisma.service.js';
@@ -50,6 +57,9 @@ describe('Tasks (e2e)', () => {
   const detail = async (who: AuthResult, id: string): Promise<TaskDetail> =>
     (await as(who).get(id).expect(200)).body.data;
 
+  const completeIt = async (who: AuthResult, id: string) =>
+    (await as(who).action(id, 'complete').expect(200)).body.data as CompleteTaskResult;
+
   beforeAll(async () => {
     app = await createTestApp();
     prisma = app.get(PrismaService);
@@ -79,6 +89,7 @@ describe('Tasks (e2e)', () => {
         completedAt: null,
         categoryId: null,
         parentId: null,
+        recurrenceRule: null,
         subtaskCount: 0,
         subtasksDone: 0,
         sortOrder: 0,
@@ -365,6 +376,109 @@ describe('Tasks (e2e)', () => {
     it('refuses unknown fields on complete', async () => {
       const task = await newTask(tina);
       await as(tina).action(task.id, 'complete', { everything: true }).expect(400);
+    });
+  });
+
+  describe('repeating tasks (FR-TASK-006)', () => {
+    it('stores the rule in its standard spelling; it needs a date and must be valid', async () => {
+      const task = await newTask(tina, {
+        dueDate: '2026-11-09',
+        recurrenceRule: 'FREQ=WEEKLY;BYDAY=WE,MO',
+      });
+      expect(task.recurrenceRule).toBe('FREQ=WEEKLY;BYDAY=MO,WE');
+
+      const noDate = await as(tina)
+        .create({ title: 'x', recurrenceRule: 'FREQ=DAILY' })
+        .expect(400);
+      expect(noDate.body.error.details).toEqual([
+        { field: 'recurrenceRule', message: 'A repeating task needs a date.' },
+      ]);
+      const bad = await as(tina)
+        .create({ title: 'x', dueDate: '2026-11-09', recurrenceRule: 'FREQ=YEARLY' })
+        .expect(400);
+      expect(bad.body.error.details[0].field).toBe('recurrenceRule');
+    });
+
+    it('"Pay rent, monthly on day 1": completing creates the next one on the 1st', async () => {
+      const category = (await as(tina).category('Home').expect(201)).body.data;
+      const rent = await newTask(tina, {
+        title: 'Pay rent',
+        priority: 'HIGH',
+        categoryId: category.id,
+        dueDate: '2099-12-01',
+        dueTime: 540,
+        recurrenceRule: 'FREQ=MONTHLY;BYMONTHDAY=1',
+      });
+      const { task, nextOccurrence } = await completeIt(tina, rent.id);
+      expect(task.status).toBe('DONE');
+      expect(nextOccurrence).toMatchObject({
+        title: 'Pay rent',
+        priority: 'HIGH',
+        categoryId: category.id,
+        dueDate: '2100-01-01',
+        dueTime: 540,
+        status: 'TODO',
+        recurrenceRule: 'FREQ=MONTHLY;BYMONTHDAY=1',
+      });
+      expect(titles(await as(tina).list('?status=TODO').expect(200))).toEqual(['Pay rent']);
+    });
+
+    it('day 31 lands on the last day of a shorter month', async () => {
+      const t = await newTask(tina, {
+        dueDate: '2099-10-31',
+        recurrenceRule: 'FREQ=MONTHLY;BYMONTHDAY=31',
+      });
+      expect((await completeIt(tina, t.id)).nextOccurrence?.dueDate).toBe('2099-11-30');
+    });
+
+    it('completed late, the next one is today or later (no pile of overdue copies)', async () => {
+      const t = await newTask(tina, {
+        dueDate: '2026-01-05',
+        recurrenceRule: 'FREQ=WEEKLY;BYDAY=MO',
+      });
+      // Tina's settings default to UTC.
+      const expected = nextDueDate(
+        { freq: 'WEEKLY', days: ['MO'] },
+        '2026-01-05',
+        new Date().toISOString().slice(0, 10),
+      );
+      expect((await completeIt(tina, t.id)).nextOccurrence?.dueDate).toBe(expected);
+    });
+
+    it('complete → uncomplete → complete makes only one next task', async () => {
+      const t = await newTask(tina, { dueDate: '2099-01-01', recurrenceRule: 'FREQ=DAILY' });
+      expect((await completeIt(tina, t.id)).nextOccurrence).not.toBeNull();
+      await as(tina).action(t.id, 'uncomplete').expect(200);
+      expect((await completeIt(tina, t.id)).nextOccurrence).toBeNull();
+      expect(await prisma.task.count({ where: { userId: tina.user.id } })).toBe(2);
+    });
+
+    it('the next one gets the subtasks again, as a fresh checklist', async () => {
+      const t = await newTask(tina, { dueDate: '2099-01-01', recurrenceRule: 'FREQ=DAILY' });
+      const step = (await as(tina).addSubtask(t.id, 'Water plants').expect(201)).body.data;
+      await as(tina).action(step.id, 'complete').expect(200);
+
+      const next = (await completeIt(tina, t.id)).nextOccurrence as PublicTask;
+      expect(next).toMatchObject({ subtaskCount: 1, subtasksDone: 0 });
+      const shown = (await as(tina).get(next.id).expect(200)).body.data as TaskDetail;
+      expect(shown.subtasks.map((s) => [s.title, s.status])).toEqual([['Water plants', 'TODO']]);
+    });
+
+    it('a task that doesn’t repeat creates nothing', async () => {
+      const t = await newTask(tina, { dueDate: '2099-01-01' });
+      expect((await completeIt(tina, t.id)).nextOccurrence).toBeNull();
+    });
+
+    it('editing: the rule can be changed or cleared; removing the date clears it', async () => {
+      const t = await newTask(tina, { dueDate: '2099-01-01', recurrenceRule: 'FREQ=DAILY' });
+      const changed = await as(tina)
+        .update(t.id, { recurrenceRule: 'FREQ=DAILY;INTERVAL=2' })
+        .expect(200);
+      expect(changed.body.data.recurrenceRule).toBe('FREQ=DAILY;INTERVAL=2');
+      const noDate = await as(tina).update(t.id, { dueDate: null }).expect(200);
+      expect(noDate.body.data.recurrenceRule).toBeNull();
+      const refused = await as(tina).update(t.id, { recurrenceRule: 'FREQ=DAILY' }).expect(400);
+      expect(refused.body.error.details[0].field).toBe('recurrenceRule');
     });
   });
 });

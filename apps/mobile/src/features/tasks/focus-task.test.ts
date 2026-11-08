@@ -15,6 +15,7 @@ const task = (o: Partial<PublicTask>): PublicTask => ({
   completedAt: null,
   categoryId: null,
   parentId: null,
+  recurrenceRule: null,
   subtaskCount: 0,
   subtasksDone: 0,
   sortOrder: 0,
