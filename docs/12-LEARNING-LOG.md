@@ -905,3 +905,10 @@ Done by me in Expo Go: registered with the real form, went through onboarding (n
 2. Why must creating the focus-area categories be safe to repeat?
 3. Why did the first rollback test pass even without the rollback, and how does blocking the re-read fix it?
 4. Why import each Lucide icon from its own file instead of `from 'lucide-react-native'`?
+
+### 2026-11-08 — Sign out asks first
+- Settings → Sign out now opens the phone's dialog: **"Sign out?"** / "Are you sure you want to sign out?", with **Cancel** and a red **Sign out**. Only the second one signs out.
+- Tests: the dialog's wording and buttons, and that Cancel keeps you signed in. Probe: signing out without asking makes 2 tests fail.
+
+**To learn:**
+1. Why confirm sign-out but not task deletion (which uses Undo instead)?

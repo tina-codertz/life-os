@@ -29,6 +29,14 @@ function chooseTheme(onChoose: (theme: Theme) => void) {
   Alert.alert('Appearance', undefined, buttons, { cancelable: true });
 }
 
+// Signing out asks first: it's easy to tap by accident and you'd have to sign in again.
+function confirmSignOut(signOut: () => void) {
+  Alert.alert('Sign out?', 'Are you sure you want to sign out?', [
+    { text: 'Cancel', style: 'cancel' },
+    { text: 'Sign out', style: 'destructive', onPress: signOut },
+  ]);
+}
+
 // The design's Settings screen: profile card, then preferences, then the account. Only rows
 // that work today are shown; Notifications, export, privacy and delete arrive with their phases.
 export default function Settings() {
@@ -60,7 +68,12 @@ export default function Settings() {
         </ListGroup>
       )}
       <ListGroup>
-        <ListRow icon="signOut" title="Sign out" tone="danger" onPress={() => void signOut()} />
+        <ListRow
+          icon="signOut"
+          title="Sign out"
+          tone="danger"
+          onPress={() => confirmSignOut(() => void signOut())}
+        />
       </ListGroup>
     </Screen>
   );

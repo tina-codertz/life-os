@@ -1,5 +1,6 @@
 import type { PublicUser } from '@life-os/shared';
-import { fireEvent, renderRouter, screen, waitFor } from 'expo-router/testing-library';
+import { act, fireEvent, renderRouter, screen, waitFor } from 'expo-router/testing-library';
+import { Alert, type AlertButton } from 'react-native';
 import type { FetchLike } from '@/services/http';
 import { authStore } from './auth-instance';
 import type { AuthState } from './auth-store';
@@ -70,6 +71,16 @@ async function open(state: AuthState, url = '/') {
   return renderRouter('src/app', { initialUrl: url });
 }
 
+// The confirmation dialog the app opened, and its buttons.
+async function pressSignOut() {
+  const alert = jest.spyOn(Alert, 'alert').mockImplementation(() => undefined);
+  await fireEvent.press(screen.getByRole('button', { name: 'Sign out' }));
+  const [title, message, buttons = []] = alert.mock.calls.at(-1) ?? [];
+  alert.mockRestore();
+  const choices: AlertButton[] = buttons;
+  return { title, message, buttons: choices };
+}
+
 describe('auth gate', () => {
   it.each([
     ['signed out', SIGNED_OUT, '/welcome'],
@@ -114,9 +125,25 @@ describe('auth gate', () => {
     await waitFor(() => expect(router.getPathname()).toBe('/today'));
   });
 
-  it('signing out from the app returns to welcome', async () => {
+  it('signing out asks first, then returns to welcome', async () => {
     const router = await open(RETURNING, '/more');
-    await fireEvent.press(screen.getByRole('button', { name: 'Sign out' }));
+    const dialog = await pressSignOut();
+    expect(dialog.title).toBe('Sign out?');
+    expect(dialog.message).toBe('Are you sure you want to sign out?');
+    expect(dialog.buttons.map((b) => [b.text, b.style])).toEqual([
+      ['Cancel', 'cancel'],
+      ['Sign out', 'destructive'],
+    ]);
+
+    await act(async () => dialog.buttons[1]?.onPress?.());
     await waitFor(() => expect(router.getPathname()).toBe('/welcome'));
+  });
+
+  it('Cancel keeps the user signed in', async () => {
+    const router = await open(RETURNING, '/more');
+    const dialog = await pressSignOut();
+    await act(async () => dialog.buttons[0]?.onPress?.());
+    expect(router.getPathname()).toBe('/more');
+    expect(authStore.getState().status).toBe('signedIn');
   });
 });
