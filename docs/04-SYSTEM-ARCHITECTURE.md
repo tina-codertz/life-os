@@ -195,7 +195,7 @@ export const taskKeys = {
 
 | Aspect | Decision (Proposed, ADR-004) |
 |---|---|
-| Password hashing | `argon2id` |
+| Password hashing | `argon2id` via `@node-rs/argon2` (prebuilt binaries, no install script, which Bun would skip), OWASP minimum: 19 MiB, 2 passes, 1 thread. Built in 4.4 (`PasswordService`) |
 | Access token | JWT, 15 min, signed HS256 (single service), claims: `sub`, `sid` |
 | Refresh token | Opaque random 256-bit, **stored hashed** in `Session` table, 30-day TTL, rotated on every refresh |
 | Reuse detection | Using an already-rotated refresh token revokes the whole session family |

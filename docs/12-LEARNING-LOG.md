@@ -312,3 +312,30 @@ Node is pinned in `.node-version` and Bun in `packageManager`, so CI uses the sa
 - *Factory vs shared user:* each test carries its own data, so it's predictable, ready for parallel runs, and clear about what it needs. (Right.)
 - *`$queryRaw` template:* the value is sent as a SQL **parameter**, not as SQL code, so it can't be injected. (Right. Mechanically: the tagged template splits the query into the fixed text (`… WHERE id = $1`) and the values, and sends them to Postgres separately. The value never becomes part of the SQL text, so `'; DROP TABLE "User"; --` is just an odd string to compare against.)
 **Follow-up (from your answer):** `resetDatabase` now runs the name check and the `TRUNCATE` inside one `prisma.$transaction(async (tx) => …)`, which keeps both on one connection, and both it and the global setup require `NODE_ENV=test`. Probe: `NODE_ENV=development bun run test:e2e` → "Refusing to run test database helpers with NODE_ENV="development"". Separate database user: deferred to deployment (Phase 10).
+
+### 2026-11-08 — 4.4 Part 1: register + password hashing
+**What was built:**
+- `registerSchema` / `loginSchema` / `PublicUser` in `packages/shared` (`schemas/auth.ts`). Email is trimmed and lowercased; password 10–128 characters and not in `COMMON_PASSWORDS` (the 1,000 most-used passwords of 10+ characters from SecLists, generated into `schemas/common-passwords.ts`, ~13 KB since it also ships in the app).
+- `PasswordService` (`modules/auth`): argon2id via `@node-rs/argon2` with OWASP's minimum (19 MiB, 2 passes, 1 thread).
+- `POST /auth/register` → `201 { data: { user } }`; creates the user and a default `UserSettings` row in one `create`.
+- `isUniqueViolation(err, 'User', 'email')` (`src/prisma/prisma-errors.ts`) + `EmailTakenError` (409 `EMAIL_TAKEN`).
+- `toPublicUser()`: lists the fields to send one by one.
+**Concepts:**
+- *Hashing, not encryption:* encryption can be reversed with a key; a hash can't. To log in we hash the attempt and compare. If the database leaks, the attacker has hashes, not passwords.
+- *Slow on purpose:* a normal hash (SHA-256) is built to be fast, so an attacker with a GPU tries billions of guesses per second. argon2id costs ~40 ms and 19 MiB **per guess**; the memory part is what GPUs are bad at.
+- *Salt:* random bytes mixed into each hash, so two users with the same password get different hashes and precomputed tables ("rainbow tables") are useless. argon2 stores salt and settings inside the hash string, so settings can be raised later.
+- *Common-password check:* length alone lets `1234567890` through. Attackers try the popular passwords first, so blocking them removes the cheapest guesses.
+- *Normalise before you store:* `Tina@Example.com` and `tina@example.com` must be one account. Lowercasing in the shared schema means the API, the database and the app all see the same value.
+- *The database is the real uniqueness check:* checking "does this email exist?" then inserting has a gap (*race condition*: two sign-ups both pass the check). The unique index can't be raced, so the service just inserts and translates P2002 into `EMAIL_TAKEN`.
+- *Allow-list the output:* `toPublicUser` names each field. `...user` would send `passwordHash`, and any column added later, to every client.
+**Found while building:**
+- Through the pg driver adapter, P2002 doesn't carry the usual `meta.target: ['email']`, only the index name `User_email_key`. A check copied from older Prisma tutorials would never match, and sign-ups would get the generic `CONFLICT` instead of `EMAIL_TAKEN`. Probed the real error first, then wrote the helper for both shapes.
+- I broke the helper on purpose to see which tests notice. The "two sign-ups at once" test still **passed**, because the filter's generic P2002 mapping also answers 409, and the test only checked status codes. Now it also requires `code: 'EMAIL_TAKEN'`, and fails when the helper is broken.
+- The pre-commit hook blocked my first commit: a cast (`as { cause?: … }`) on Prisma's untyped `meta` (replaced with an `isRecord` type guard at each level, so a different shape returns `false` instead of crashing), `.sort()` without a compare function (JavaScript sorts numbers *as text*: `[1000, 201].sort()` → `[1000, 201]`), and `.sort()` mutating the array (now `.toSorted()`).
+- Chose `@node-rs/argon2` over `argon2`: the latter compiles/downloads its binary in an install script, which Bun doesn't run by default.
+**Checked:** 65 API unit + 22 shared unit + 20 e2e (response has no password data; stored hash is argon2id; default settings created; `role: 'ADMIN'` ignored; duplicate in different case → 409; simultaneous sign-ups → exactly one 201 and one `EMAIL_TAKEN`; 400 details). Race test repeated 5×. Live production build: 201, then 409 `EMAIL_TAKEN`, then 400 for a common password; password absent from the logs. Probe user deleted from `lifeos_dev` afterwards.
+**To learn:**
+1. Why is a *slow* hash better for passwords, when we normally want code to be fast?
+2. What does the salt protect against, and why is it fine that it's stored right next to the hash?
+3. Register answers `EMAIL_TAKEN`, which tells anyone whether an email has an account. Why do we accept that here, but not on login or forgot-password?
+4. Why does `toPublicUser` list the fields one by one instead of removing `passwordHash` from the object?

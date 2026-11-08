@@ -98,6 +98,11 @@ create(@Body(new ZodValidationPipe(createTaskSchema)) body: CreateTaskInput) { �
 | POST | `/auth/forgot-password` | `{ email }` | `204` (always, even for unknown emails) |
 | POST | `/auth/reset-password` | `{ token, newPassword }` | `204`, revokes all sessions |
 
+Built so far (4.4 Part 1): `POST /auth/register` returns `201 { user }`; tokens are added in Part 2 (access) and 4.5 (refresh).
+- Body schema `registerSchema` (`packages/shared`): email trimmed + lowercased; password 10–128 characters and not one of the 1,000 most-used long passwords; `displayName` 1–80 after trimming. Unknown fields (`role`, `emailVerifiedAt`) are dropped.
+- `user` is a `PublicUser`: `{ id, email, displayName, emailVerifiedAt, onboardingCompletedAt, createdAt }`, built field by field, never including the hash.
+- Duplicate email (any case, including two simultaneous sign-ups) → `409 EMAIL_TAKEN`. Register necessarily reveals that an email has an account; login and forgot-password must not (FR-AUTH-001), and the 4.8 rate limit makes probing slow.
+
 ### Users & settings (`/users/me`)
 | Method | Path | Notes |
 |---|---|---|
