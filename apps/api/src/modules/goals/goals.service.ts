@@ -109,7 +109,10 @@ export class GoalsService {
   async remove(userId: string, id: string): Promise<void> {
     await this.findActive(this.prisma, userId, id);
     await this.prisma.$transaction([
-      this.prisma.task.updateMany({ where: { goalId: id, userId }, data: { goalId: null } }),
+      this.prisma.task.updateMany({
+        where: { goalId: id, userId },
+        data: { goalId: null, milestoneId: null },
+      }),
       this.prisma.goal.update({ where: { id }, data: { deletedAt: new Date() } }),
     ]);
   }
@@ -178,9 +181,14 @@ export class GoalsService {
     return this.prisma.$transaction(async (tx) => {
       await tx.task.updateMany({
         where: { goalId: id, userId, id: { notIn: taskIds } },
-        data: { goalId: null },
+        data: { goalId: null, milestoneId: null },
       });
-      await tx.task.updateMany({ where: { id: { in: taskIds }, userId }, data: { goalId: id } });
+      // A task moving here from another goal leaves that goal's milestone behind. (Spelled out:
+      // `NOT: { goalId: id }` would skip tasks with no goal, since NULL = id isn't false in SQL.)
+      await tx.task.updateMany({
+        where: { id: { in: taskIds }, userId, OR: [{ goalId: null }, { goalId: { not: id } }] },
+        data: { goalId: id, milestoneId: null },
+      });
       return this.detail(tx, await this.findActive(tx, userId, id));
     });
   }
@@ -247,23 +255,26 @@ export class GoalsService {
     };
   }
 
-  // One query for the linked-task counts of every goal in the list, not one per goal.
+  // One query for the linked-task counts of every goal (and milestone) in the list, not one per
+  // goal.
   private async toPublicList(db: Tx, goals: GoalWithLinks[]): Promise<PublicGoal[]> {
     const counts =
       goals.length === 0
         ? []
         : await db.task.groupBy({
-            by: ['goalId', 'status'],
+            by: ['goalId', 'milestoneId', 'status'],
             where: { goalId: { in: goals.map((g) => g.id) }, ...linkedTaskWhere },
             _count: { _all: true },
           });
+    const tally = (rows: typeof counts) => ({
+      total: rows.reduce((sum, r) => sum + r._count._all, 0),
+      done: rows.filter((r) => r.status === 'DONE').reduce((sum, r) => sum + r._count._all, 0),
+    });
     return goals.map((goal) => {
       const rows = counts.filter((r) => r.goalId === goal.id);
       const linked: LinkedCounts = {
-        tasks: {
-          total: rows.reduce((sum, r) => sum + r._count._all, 0),
-          done: rows.find((r) => r.status === 'DONE')?._count._all ?? 0,
-        },
+        tasks: tally(rows),
+        milestoneTasks: (milestoneId) => tally(rows.filter((r) => r.milestoneId === milestoneId)),
         habitIds: goal.habits.map((h) => h.habitId),
       };
       return toPublicGoal(goal, goal.milestones, linked);

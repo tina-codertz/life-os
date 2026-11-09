@@ -21,6 +21,7 @@ export function toPublicTask(task: Task, subtasks: SubtaskCounts = NO_SUBTASKS):
     completedAt: task.completedAt?.toISOString() ?? null,
     categoryId: task.categoryId,
     goalId: task.goalId,
+    milestoneId: task.milestoneId,
     parentId: task.parentId,
     recurrenceRule: task.recurrenceRule,
     subtaskCount: subtasks.total,

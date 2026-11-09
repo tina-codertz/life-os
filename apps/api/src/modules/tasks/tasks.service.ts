@@ -161,7 +161,7 @@ export class TasksService {
 
   async create(userId: string, input: CreateTaskInput): Promise<PublicTask> {
     if (input.categoryId) await this.assertOwnCategory(userId, input.categoryId);
-    if (input.goalId) await this.assertOwnGoal(userId, input.goalId);
+    const link = await this.goalLink(userId, input);
     const task = await this.prisma.task.create({
       data: {
         userId,
@@ -169,7 +169,8 @@ export class TasksService {
         description: input.description || null,
         priority: input.priority ?? 'NONE',
         categoryId: input.categoryId ?? null,
-        goalId: input.goalId ?? null,
+        goalId: link.goalId ?? null,
+        milestoneId: link.milestoneId ?? null,
         dueDate: input.dueDate ? toDbDate(input.dueDate) : null,
         dueTime: input.dueTime ?? null,
         recurrenceRule: input.recurrenceRule ?? null,
@@ -181,18 +182,19 @@ export class TasksService {
   async update(userId: string, id: string, input: UpdateTaskInput): Promise<PublicTask> {
     const task = await this.findActive(userId, id);
     if (input.categoryId) await this.assertOwnCategory(userId, input.categoryId);
-    if (input.goalId) {
-      // A subtask counts towards a goal through its task (FR-TASK-005 keeps it one level).
-      if (task.parentId) throw fieldError('goalId', 'Link the main task to a goal instead.');
-      await this.assertOwnGoal(userId, input.goalId);
+    // A subtask counts towards a goal through its task (FR-TASK-005 keeps it one level).
+    if (task.parentId && (input.goalId || input.milestoneId)) {
+      throw fieldError('goalId', 'Link the main task to a goal instead.');
     }
+    const link = await this.goalLink(userId, input, task);
 
     const data: Prisma.TaskUncheckedUpdateInput = {};
     if (input.title !== undefined) data.title = input.title;
     if (input.description !== undefined) data.description = input.description || null;
     if (input.priority !== undefined) data.priority = input.priority;
     if (input.categoryId !== undefined) data.categoryId = input.categoryId;
-    if (input.goalId !== undefined) data.goalId = input.goalId;
+    if (link.goalId !== undefined) data.goalId = link.goalId;
+    if (link.milestoneId !== undefined) data.milestoneId = link.milestoneId;
     if (input.sortOrder !== undefined) data.sortOrder = input.sortOrder;
     if (input.dueDate !== undefined) data.dueDate = input.dueDate ? toDbDate(input.dueDate) : null;
     if (input.dueTime !== undefined) data.dueTime = input.dueTime;
@@ -299,7 +301,8 @@ export class TasksService {
         description: task.description,
         priority: task.priority,
         categoryId: task.categoryId,
-        goalId: task.goalId, // the next one counts towards the same goal
+        goalId: task.goalId, // the next one counts towards the same goal and milestone
+        milestoneId: task.milestoneId,
         dueDate: toDbDate(nextDueDate(rule, fromDbDate(task.dueDate), today)),
         dueTime: task.dueTime,
         recurrenceRule: task.recurrenceRule,
@@ -377,6 +380,35 @@ export class TasksService {
       }
       throw err;
     }
+  }
+
+  // The goal and milestone a task ends up with (undefined = unchanged). A milestone decides the
+  // goal, so the two can't disagree; moving the task to another goal (or none) takes it off its
+  // old milestone.
+  private async goalLink(
+    userId: string,
+    input: { goalId?: string | null | undefined; milestoneId?: string | null | undefined },
+    current?: Pick<Task, 'goalId'>,
+  ): Promise<{ goalId?: string | null; milestoneId?: string | null }> {
+    if (input.milestoneId) {
+      const milestone = await this.prisma.milestone.findFirst({
+        where: { id: input.milestoneId, goal: { userId, deletedAt: null } },
+        select: { goalId: true },
+      });
+      if (!milestone) throw fieldError('milestoneId', 'Choose a milestone of one of your goals.');
+      if (input.goalId !== undefined && input.goalId !== milestone.goalId) {
+        throw fieldError('milestoneId', 'Choose a milestone of this goal.');
+      }
+      return { goalId: milestone.goalId, milestoneId: input.milestoneId };
+    }
+    if (input.goalId) await this.assertOwnGoal(userId, input.goalId);
+    const link: { goalId?: string | null; milestoneId?: string | null } = {};
+    if (input.milestoneId === null) link.milestoneId = null;
+    if (input.goalId !== undefined) {
+      link.goalId = input.goalId;
+      if (input.goalId !== current?.goalId) link.milestoneId = null;
+    }
+    return link;
   }
 
   // Like a category: the goal must be this user's, and not deleted.

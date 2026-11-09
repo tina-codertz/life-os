@@ -265,7 +265,7 @@ Built in 6.1 Part 1: `GET` (ordered by `sortOrder`, then name), `POST` (`201`), 
 | PUT | `/goals/:id/tasks` | `{ taskIds: [] }` replaces the linked set → `GoalDetail`; every id must be your own top-level task, or nothing changes (400 on `taskIds`) |
 | PUT | `/goals/:id/habits` | `{ habitIds: [] }` → `GoalDetail`; habits are shown on the goal, not counted in progress |
 
-Tasks also take `goalId` on POST / PATCH `/tasks` (your own, not-deleted goal; not on a subtask) and return it; a repeating task's next occurrence keeps it.
+Tasks also take `goalId` and `milestoneId` on POST / PATCH `/tasks` (your own, not-deleted goal; not on a subtask) and return them; a repeating task's next occurrence keeps both. A milestone sets the goal (sending a different `goalId` with it is a 400 on `milestoneId`); moving a task to another goal, or unlinking it, takes it off its milestone; deleting a milestone leaves its tasks on the goal. Each milestone carries `tasks: { total, done }` ("Due 28 Nov · 3 tasks"); ticking a milestone stays the user's choice. *(Milestone links added 2026-11-09, your choice for the design's task count.)*
 
 ### Calendar
 | Method | Path | Notes |

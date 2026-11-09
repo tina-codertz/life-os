@@ -142,6 +142,7 @@ model Task {
   sortOrder          Int          @default(0)
   categoryId         String?      @db.Uuid
   goalId             String?      @db.Uuid // FR-GOAL-004: the goal it counts towards
+  milestoneId        String?      @db.Uuid // a step of that goal (always the same goal)
   parentId           String?      @db.Uuid // subtask → parent (one level, service-enforced; FR-TASK-005)
   // Repeating (FR-TASK-006): each occurrence carries the rule; all share the first one's id.
   recurrenceRule     String?      @db.VarChar(200) // RRULE subset, e.g. "FREQ=WEEKLY;BYDAY=MO,WE"
@@ -150,16 +151,18 @@ model Task {
   updatedAt          DateTime     @updatedAt @db.Timestamptz(3)
   deletedAt          DateTime?    @db.Timestamptz(3) // soft delete, restorable for 30 days
 
-  user     User      @relation(fields: [userId], references: [id], onDelete: Cascade)
-  category Category? @relation(fields: [categoryId], references: [id], onDelete: SetNull)
-  goal     Goal?     @relation(fields: [goalId], references: [id], onDelete: SetNull)
-  parent   Task?     @relation("Subtasks", fields: [parentId], references: [id], onDelete: Cascade)
-  subtasks Task[]    @relation("Subtasks")
+  user      User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  category  Category?  @relation(fields: [categoryId], references: [id], onDelete: SetNull)
+  goal      Goal?      @relation(fields: [goalId], references: [id], onDelete: SetNull)
+  milestone Milestone? @relation(fields: [milestoneId], references: [id], onDelete: SetNull)
+  parent    Task?      @relation("Subtasks", fields: [parentId], references: [id], onDelete: Cascade)
+  subtasks  Task[]     @relation("Subtasks")
 
   @@index([userId, status, dueDate]) // Today + list filters
   @@index([userId, completedAt]) // history, stats
   @@index([userId, categoryId])
   @@index([goalId])
+  @@index([milestoneId])
   @@index([parentId])
   @@index([recurrenceSeriesId])
 }
@@ -291,7 +294,8 @@ model Milestone {
   createdAt   DateTime  @default(now()) @db.Timestamptz(3)
   updatedAt   DateTime  @updatedAt @db.Timestamptz(3)
 
-  goal Goal @relation(fields: [goalId], references: [id], onDelete: Cascade)
+  goal  Goal   @relation(fields: [goalId], references: [id], onDelete: Cascade)
+  tasks Task[]
 
   @@index([goalId, sortOrder])
 }

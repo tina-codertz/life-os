@@ -35,6 +35,7 @@ const EXISTING: PublicTask = {
   completedAt: null,
   categoryId: WORK.id,
   goalId: null,
+  milestoneId: null,
   parentId: null,
   recurrenceRule: null,
   subtaskCount: 0,

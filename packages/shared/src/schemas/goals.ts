@@ -96,6 +96,8 @@ export interface PublicMilestone {
   dueDate: string | null; // "2026-12-01"
   completedAt: string | null;
   sortOrder: number;
+  // Linked top-level tasks on this milestone ("Due 28 Nov · 3 tasks").
+  tasks: { total: number; done: number };
 }
 
 // Worked out on the server from the goal's mode: done / total milestones, done / total linked

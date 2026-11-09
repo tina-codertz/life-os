@@ -332,6 +332,86 @@ describe('Goals (e2e)', () => {
     });
   });
 
+  describe('tasks on milestones ("Due 28 Nov · 3 tasks")', () => {
+    it('a milestone sets the goal and counts its tasks', async () => {
+      const goal = await withMilestones(tina, ['Core screens', 'Release']);
+      const [core] = goal.milestones;
+      const a = await as(tina).newTask({ title: 'Habits', milestoneId: core!.id });
+      expect(a).toMatchObject({ goalId: goal.id, milestoneId: core!.id });
+      await as(tina).newTask({ title: 'Goals', milestoneId: core!.id });
+      await as(tina).newTask({ title: 'On the goal only', goalId: goal.id });
+      await as(tina).complete(a.id);
+      const read = (await as(tina).get(goal.id).expect(200)).body.data as GoalDetail;
+      expect(read.milestones.map((m) => m.tasks)).toEqual([
+        { total: 2, done: 1 },
+        { total: 0, done: 0 },
+      ]);
+      expect(read.tasks).toEqual({ total: 3, done: 1 });
+      expect(read.progress).toEqual({ percent: 0, done: 0, total: 2 }); // ticking stays yours
+    });
+
+    it('refuses another user’s milestone, or one of a different goal than the one sent', async () => {
+      const mine = await withMilestones(tina, ['A']);
+      const other = await newGoal(tina, { title: 'Other' });
+      const theirs = await withMilestones(juma, ['B']);
+      for (const body of [
+        { title: 'X', milestoneId: theirs.milestones[0]!.id },
+        { title: 'X', milestoneId: mine.milestones[0]!.id, goalId: other.id },
+      ]) {
+        const res = await http()
+          .post('/api/v1/tasks')
+          .set({ Authorization: `Bearer ${tina.accessToken}` })
+          .send(body)
+          .expect(400);
+        expect(res.body.error.details[0].field).toBe('milestoneId');
+      }
+    });
+
+    it('moving to another goal, unlinking, or removing the milestone takes the task off it', async () => {
+      const goal = await withMilestones(tina, ['A']);
+      const mid = goal.milestones[0]!.id;
+      const other = await newGoal(tina, { title: 'Other' });
+      const t1 = await as(tina).newTask({ title: '1', milestoneId: mid });
+      const t2 = await as(tina).newTask({ title: '2', milestoneId: mid });
+      const t3 = await as(tina).newTask({ title: '3', milestoneId: mid });
+      const t4 = await as(tina).newTask({ title: '4', milestoneId: mid });
+
+      // Same goal sent again: stays on the milestone. Milestone cleared: stays on the goal.
+      const same = await as(tina).patchTask(t1.id, { goalId: goal.id }).expect(200);
+      expect(same.body.data).toMatchObject({ goalId: goal.id, milestoneId: mid });
+      const off = await as(tina).patchTask(t1.id, { milestoneId: null }).expect(200);
+      expect(off.body.data).toMatchObject({ goalId: goal.id, milestoneId: null });
+      // Another goal: off the milestone.
+      const moved = await as(tina).patchTask(t2.id, { goalId: other.id }).expect(200);
+      expect(moved.body.data).toMatchObject({ goalId: other.id, milestoneId: null });
+      // Left out of PUT: unlinked from both.
+      await as(tina).linkTasks(goal.id, [t1.id, t4.id]).expect(200);
+      expect((await as(tina).task(t3.id).expect(200)).body.data).toMatchObject({
+        goalId: null,
+        milestoneId: null,
+      });
+      // Milestone removed: the task stays on the goal.
+      await as(tina).removeMilestone(goal.id, mid).expect(200);
+      expect((await as(tina).task(t4.id).expect(200)).body.data).toMatchObject({
+        goalId: goal.id,
+        milestoneId: null,
+      });
+    });
+
+    it('a repeating task’s next occurrence stays on the milestone', async () => {
+      const goal = await withMilestones(tina, ['A']);
+      const mid = goal.milestones[0]!.id;
+      const task = await as(tina).newTask({
+        title: 'Daily standup notes',
+        milestoneId: mid,
+        dueDate: today(),
+        recurrenceRule: 'FREQ=DAILY',
+      });
+      const { nextOccurrence } = await as(tina).complete(task.id);
+      expect(nextOccurrence).toMatchObject({ goalId: goal.id, milestoneId: mid });
+    });
+  });
+
   describe('linked habits (FR-GOAL-004)', () => {
     it('PUT replaces the set; a deleted habit drops out; others’ habits are refused', async () => {
       const goal = await newGoal(tina);

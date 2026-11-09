@@ -39,6 +39,7 @@ const task = (overrides: Partial<PublicTask> = {}): PublicTask => {
     completedAt: null,
     categoryId: null,
     goalId: null,
+    milestoneId: null,
     parentId: null,
     recurrenceRule: null,
     subtaskCount: 0,

@@ -1334,3 +1334,14 @@ Reminders arrive with the habit's name, tapping one opens the habit, a habit alr
 2. Why does `GoalHabit` use `(goalId, habitId)` as its primary key instead of its own id?
 3. Why should one bad id in `PUT /goals/:id/tasks` refuse the whole list?
 4. What is an N+1 query, and how does the goals list avoid it?
+
+### 2026-11-09 — Goals Part 1b: tasks on milestones (your choice)
+**What was built:** `Task.milestoneId` (migration `add_task_milestone`), so the design's "Due 28 Nov · 3 tasks" counts real tasks. A milestone sets the task's goal; moving the task to another goal, unlinking it or deleting the milestone takes it off; each milestone reports `tasks: { total, done }` from the same single query as the goal's counts. Your other answers (On track, the Completed section, the 4 Settings tiles) are for Part 2.
+**Found:** a real bug, caught by the new tests before it shipped. `NOT: { goalId: id }` meant to say "tasks not already on this goal", but SQL's `NULL = id` is *unknown*, not false, so `NOT` of it is unknown too and tasks with no goal were silently skipped: linking an unlinked task did nothing. Now spelled out as `goalId IS NULL OR goalId <> id`.
+**Concepts:**
+- *Three-valued logic:* in SQL a comparison with NULL is neither true nor false, and `WHERE` keeps only rows that are *true*. Any filter on a nullable column needs to say what NULL should do.
+- *Keeping two links consistent:* rather than trusting the app to send a matching goal and milestone, the server derives the goal from the milestone and refuses a mismatch, so the database can't hold a task on goal A's milestone but on goal B.
+**Checks:** 4 new e2e tests (23 for goals); all suites green (shared 162, API 116 + 208, mobile 453). Probes: 4 broken rules each fail a test.
+**To learn:**
+1. Why does `NOT (goalId = 'x')` skip rows where `goalId` is NULL?
+2. Why derive the goal from the milestone on the server instead of trusting both ids from the app?
