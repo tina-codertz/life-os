@@ -400,6 +400,11 @@ Node is pinned in `.node-version` and Bun in `packageManager`, so CI uses the sa
 2. Why is "every route protected unless `@Public()`" safer than adding `@UseGuards()` where needed?
 3. 401 or 403: which one for "no token", and which one for "valid token, but you're not an admin"?
 4. A user deletes their account. Why does their access token still pass the guard, and what limits the damage?
+**Your answers (2026-11-09):**
+- *Guard vs middleware:* middleware does general processing before the route (logging, parsing, changing the request); a guard decides whether the request may reach that route. The token check is a guard because "is this user authenticated?" must be answered before a protected endpoint runs. (Right. One more reason it *has* to be a guard in Nest: a guard gets the `ExecutionContext`, so it knows *which* handler is next and can read its `@Public()` label. Middleware runs before routing is resolved and can't see that.)
+- *Protected unless `@Public()`:* secure by default; every new route needs login automatically, and making one public is a deliberate act. (Exactly. The failure modes differ: forgetting `@Public()` gives a 401 you notice in the first test; forgetting `@UseGuards()` gives a silent hole.)
+- *401 vs 403:* 401 = no valid credentials (no, expired or invalid token); 403 = authenticated but not allowed. (Right. The app relies on this split: a 401 makes it try a refresh, a 403 never does.)
+- *Deleted account's token:* a JWT is self-contained and the guard only checks signature and expiry, not the database, so it stays valid until it expires. Damage is limited by the 15-minute lifetime, revoking the account's sessions so no new access tokens can be made, and loading the account for sensitive operations. (All three are what we do or will do: `/users/me` loads the user and answers 401 for a deleted one, and refresh refuses a deleted user. Revoking sessions on deletion belongs to the Delete account feature, which isn't built yet; noted for it.)
 
 ### 2026-11-08 — 4.5 Sessions: refresh rotation, logout, reuse detection
 **What was built:**
@@ -427,6 +432,12 @@ Node is pinned in `.node-version` and Bun in `packageManager`, so CI uses the sa
 3. Why is SHA-256 fine for refresh tokens when passwords need argon2?
 4. Two requests both read "not rotated yet" and then both write. What does the compare-and-set do differently, and why couldn't the old race test notice it was missing?
 5. After logout, the access token still works for up to 15 minutes. Why is that acceptable?
+**Your answers (2026-11-09):**
+- *Why refresh tokens are stored:* access tokens are short-lived and checked by signature alone; refresh tokens live long and mint new access tokens, so the server must track them to be able to cancel them. (Right: storing them is what makes logout, logout-all and reuse detection possible.)
+- *Revoking the whole family on reuse:* reuse suggests an old token was stolen, so every token of that login is cancelled and the real user logs in again. (Exactly. The key point: when a used token comes back, we can't tell whether the thief or the real user sent it, so neither copy can be trusted.)
+- *SHA-256 vs argon2:* passwords are chosen by people and can be weak or predictable, so they need slow hashing; refresh tokens are random from the server with high entropy, so they can't be guessed. (Right. 256 random bits can't be brute-forced however fast the hash is; slowness only helps against guessable inputs.)
+- *Compare-and-set and the old race test:* an atomic update that checks the value is still what we expect, so only one request can consume a token; without it both could read "valid" and both rotate. The old test ran the two requests effectively one after the other, so they never both read the token before either updated it. (Exactly what happened: over HTTP one request finished before the other read the row. The rewritten test holds each read until both have read, forcing that interleaving every time.)
+- *15 minutes after logout:* access tokens are stateless; logout revokes the refresh token so no new access tokens come, but one already issued stays valid until it expires. (Right. The alternative, a database check on every request, would cost a query per request to close a 15-minute window.)
 
 ### 2026-11-08 — 4.6 Email verification + password reset
 **What was built:**
