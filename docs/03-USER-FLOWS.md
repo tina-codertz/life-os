@@ -100,7 +100,7 @@ flowchart TD
 | 12 | Habit form | `(modals)/habit-form` | MVP | frequency pickers |
 | 13 | Calendar | `calendar` (pushed from Habits) | MVP | day / week / month segments |
 | 14 | Event form | `(modals)/event-form` | MVP | recurrence picker |
-| 15 | Goals list / detail / form | `goals.tsx`, `goal/[id].tsx`, `goal-form.tsx`, `milestone-form.tsx` | MVP | progress, milestones. *Built 2026-11-09:* opened from the Goals tile in Settings (the design's four tiles: Goals, Calendar, Insights, Ask Lio; the last two open `coming-soon` until built) |
+| 15 | Goals list / detail / form | `goals.tsx`, `goal/[id].tsx`, `goal-form.tsx`, `milestone-form.tsx` | MVP | progress, milestones. *Built 2026-11-09:* opened from a target button on the **Tasks header** (your choice, the same day: sections aren't buried in Settings, and each screen has one way in; the design's Settings tiles were removed). Calendar opens only from the Habits header; Ask Lio from the Lio page (`coming-soon` until v2); Insights and History move to Today's "This week" when Today is built |
 | 16 | More | `(tabs)/more` | MVP | menu |
 | 17 | Settings (5 sub-screens) | `settings/…` | MVP | export pending, delete confirm |
 | 18 | Finance dashboard / transactions / budgets / savings | `finance/…` | v1.1 | |

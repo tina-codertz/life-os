@@ -109,14 +109,22 @@ export default function Tasks() {
       <ScreenHeader
         title="Tasks"
         actions={
-          <IconButton
-            icon={searchOpen ? 'close' : 'search'}
-            accessibilityLabel={searchOpen ? 'Close search' : 'Search tasks'}
-            onPress={() => {
-              if (searchOpen) setSearch('');
-              setSearchOpen(!searchOpen);
-            }}
-          />
+          <>
+            {/* Goals open from here (your choice): goals are made of tasks. */}
+            <IconButton
+              icon="target"
+              accessibilityLabel="Goals"
+              onPress={() => router.push('/goals')}
+            />
+            <IconButton
+              icon={searchOpen ? 'close' : 'search'}
+              accessibilityLabel={searchOpen ? 'Close search' : 'Search tasks'}
+              onPress={() => {
+                if (searchOpen) setSearch('');
+                setSearchOpen(!searchOpen);
+              }}
+            />
+          </>
         }
       />
       {searchOpen && (

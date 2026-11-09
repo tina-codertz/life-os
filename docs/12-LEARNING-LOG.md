@@ -1374,3 +1374,9 @@ Reminders arrive with the habit's name, tapping one opens the habit, a habit alr
 **To learn:**
 1. Why check "a new goal clears the milestone" in the app when the server already enforces it?
 2. What's the difference between leaving `goalId` out of a PATCH and sending `goalId: null`?
+
+### 2026-11-09 — Fix: Goals, Calendar and Ask Lio each get one visible way in
+**Your feedback:** sections were buried in Settings, and Calendar could be opened from two places. You're right: I copied the design's Settings tiles and took "show all four" as the placement decision, instead of asking where each one should live.
+**Changed:** the four Settings tiles are gone. **Goals** opens from a target button on the Tasks header (your choice); **Ask Lio** is a row on the Lio page, the one Lio's bubble opens ("Coming soon" until the assistant in v2); **Calendar** opens only from the Habits header; **Insights** (and History) belong on Today's "This week" in the design, so they move there when Today is built (block 19).
+**Concept:** *one way in per screen.* A screen reachable from several places makes people wonder whether they're different screens, and every extra entry point is another place to keep in step.
+**Checks:** mobile 531 tests (new: Goals from the Tasks header, Ask Lio from the Lio page, no tiles in Settings); lint, typecheck and format clean.

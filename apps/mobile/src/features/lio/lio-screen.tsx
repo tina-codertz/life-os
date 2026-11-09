@@ -9,6 +9,8 @@ import {
   ErrorState,
   Icon,
   IconButton,
+  ListGroup,
+  ListRow,
   Mascot,
   Skeleton,
   SkeletonGroup,
@@ -33,6 +35,7 @@ export function LioScreen() {
       <>
         <LevelCard {...progress.data} />
         <DailyChestCard state={progress.data.dailyChest} />
+        <AskLioRow />
       </>
     );
   } else if (progress.error) {
@@ -112,6 +115,23 @@ function LevelCard({ level, streak }: Pick<Progress, 'level' | 'streak'>) {
         <LevelBar level={level} />
       </View>
     </Card>
+  );
+}
+
+// Ask Lio lives on Lio's own page (your choice); the assistant itself comes in v2.
+function AskLioRow() {
+  const { colors } = useTheme();
+  return (
+    <ListGroup>
+      <ListRow
+        icon="sparkle"
+        tint={colors.tile.peach}
+        title="Ask Lio"
+        value="Coming soon"
+        accessibilityHint="Plan your day or sum up your week with Lio"
+        onPress={() => router.push('/coming-soon')}
+      />
+    </ListGroup>
   );
 }
 

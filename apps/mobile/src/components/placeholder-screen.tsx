@@ -3,7 +3,7 @@ import { Screen } from '@/components/screen';
 import { Card, Mascot, Text } from '@/components/ui';
 import { spacing } from '@/theme';
 
-// Stand-in for screens whose real content comes in later steps (Money, Insights, Ask Lio). Same
+// Stand-in for screens whose real content comes in later steps (Money, Ask Lio). Same
 // header as the finished screens, and a card saying what will be here.
 export function PlaceholderScreen({
   title,
@@ -14,7 +14,7 @@ export function PlaceholderScreen({
   title: string;
   description: string;
   children?: ReactNode;
-  // False for a screen pushed over the tabs (Settings' Insights and Ask Lio tiles).
+  // False for a screen pushed over the tabs (Ask Lio, from the Lio page).
   tabBar?: boolean;
 }) {
   return (

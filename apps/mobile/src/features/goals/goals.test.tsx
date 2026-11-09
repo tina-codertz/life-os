@@ -139,21 +139,38 @@ beforeEach(async () => {
   await AsyncStorage.clear();
 });
 
-describe('Settings shortcuts (the design’s four tiles)', () => {
-  it.each([
-    ['Goals', '/goals'],
-    ['Calendar', '/calendar'],
-  ])('%s opens its screen', async (name, path) => {
-    const router = await open('/more');
-    await fireEvent.press(await screen.findByRole('button', { name }));
-    await waitFor(() => expect(router.getPathname()).toBe(path));
+describe('Where Goals and Ask Lio open from (your choice)', () => {
+  it('Goals opens from the Tasks header', async () => {
+    routes['GET /tasks'] = () => page([]);
+    const router = await open('/tasks');
+    await fireEvent.press(await screen.findByRole('button', { name: 'Goals' }));
+    await waitFor(() => expect(router.getPathname()).toBe('/goals'));
   });
 
-  it.each(['Insights', 'Ask Lio'])('%s says coming soon', async (name) => {
-    await open('/more');
-    await fireEvent.press(await screen.findByRole('button', { name }));
-    expect(await screen.findByRole('header', { name })).toBeOnTheScreen();
+  it('Ask Lio is on the Lio page and says coming soon', async () => {
+    routes['GET /progress'] = () => ({
+      status: 200,
+      body: {
+        data: {
+          xp: 0,
+          streak: { current: 0, best: 0 },
+          level: { level: 1, start: 0, next: 100, toNext: 100 },
+          dailyChest: 'locked',
+        },
+      },
+    });
+    await open('/lio');
+    await fireEvent.press(await screen.findByRole('button', { name: /^Ask Lio/ }));
+    expect(await screen.findByRole('header', { name: 'Ask Lio' })).toBeOnTheScreen();
     expect(screen.getByText('Coming soon')).toBeOnTheScreen();
+  });
+
+  it('Settings has no shortcut tiles', async () => {
+    await open('/more');
+    await screen.findByText('tina@example.com');
+    for (const name of ['Goals', 'Calendar', 'Insights', 'Ask Lio']) {
+      expect(screen.queryByRole('button', { name })).toBeNull();
+    }
   });
 });
 

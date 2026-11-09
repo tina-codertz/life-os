@@ -279,8 +279,8 @@ describe('every control can be named by a screen reader', () => {
     expect(unnamedControls()).toEqual([]);
   });
 
-  it.each(['insights', 'ask-lio'])('Coming soon: %s', async (feature) => {
-    await open(`/coming-soon?feature=${feature}`);
+  it('Ask Lio (coming soon)', async () => {
+    await open('/coming-soon');
     await screen.findByText('Coming soon');
     expect(unnamedControls()).toEqual([]);
   });
