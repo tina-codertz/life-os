@@ -15,6 +15,14 @@ export interface Progress {
   streak: { current: number; best: number };
   // Lio's level (FR-GAME-003), worked out on the server from the XP total.
   level: ProgressLevel;
+  // The Lio page's daily chest: ready once a task is completed today, +40 XP once a day.
+  dailyChest: 'locked' | 'ready' | 'collected';
+}
+
+// POST /progress/daily-chest and POST /habits/:id/chest: what was added, and the progress after.
+export interface ChestReward {
+  amount: number;
+  progress: Progress;
 }
 
 export interface ProgressLevel {
@@ -37,3 +45,6 @@ export function levelOf(xp: number): ProgressLevel {
   const next = xpForLevel(level + 1);
   return { level, start: xpForLevel(level), next, toNext: next - total };
 }
+
+// A chest that isn't ready: no task completed today, or not a milestone day (422).
+export const PROGRESS_ERROR_CODES = ['CHEST_NOT_READY'] as const;

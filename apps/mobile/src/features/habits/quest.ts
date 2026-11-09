@@ -1,4 +1,4 @@
-import type { HabitDay, HabitSchedule, PublicHabit } from '@life-os/shared';
+import { type HabitDay, type HabitSchedule, isMilestone, type PublicHabit } from '@life-os/shared';
 import type { IconName } from '@/components/ui';
 import { addDays } from '@/features/tasks/dates';
 
@@ -36,9 +36,8 @@ const weekday = (day: string) => new Date(`${day}T00:00:00.000Z`).getUTCDay();
 const isDue = (schedule: HabitSchedule, day: string) =>
   schedule.frequency !== 'WEEKLY_DAYS' || schedule.weekdays.includes(weekday(day));
 
-// A milestone is every 7th day of the streak, and the challenge's last day: a 🎁 on the path.
-export const isMilestone = (day: number, goal: number) =>
-  day > 0 && (day % 7 === 0 || day === goal);
+// The milestone rule (every 7th day, and the challenge's last day) is shared with the server.
+export { isMilestone } from '@life-os/shared';
 
 export type PathNode =
   | { kind: 'done' | 'missed'; date: string }

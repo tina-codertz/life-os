@@ -99,6 +99,7 @@ function serve(onboarded = true) {
     dueToday: true,
     today: null,
     streak: { current: 3, best: 3, unit: 'days' },
+    chest: null,
     createdAt: '2026-10-01T00:00:00.000Z',
     updatedAt: '2026-10-01T00:00:00.000Z',
   };
@@ -118,6 +119,7 @@ function serve(onboarded = true) {
         xp: 1240,
         streak: { current: 3, best: 3 },
         level: { level: 5, start: 1000, next: 1500, toNext: 260 },
+        dailyChest: 'ready',
       },
     },
   });
@@ -210,6 +212,12 @@ describe('every control can be named by a screen reader', () => {
   it('Lio page', async () => {
     await open('/lio');
     await screen.findByText('260 XP to level 6');
+    expect(unnamedControls()).toEqual([]);
+  });
+
+  it('Chest reward (daily)', async () => {
+    await open('/chest?kind=daily');
+    await screen.findByText('Chest opened!');
     expect(unnamedControls()).toEqual([]);
   });
 

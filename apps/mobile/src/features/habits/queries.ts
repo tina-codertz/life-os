@@ -1,4 +1,5 @@
 import type {
+  ChestReward,
   CreateHabitInput,
   HabitCheckInResult,
   HabitDay,
@@ -144,6 +145,30 @@ export function useDeleteHabit() {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: (id: string) => api().delete<void>(`/habits/${id}`),
+    onSettled: () => queryClient.invalidateQueries({ queryKey: habitKeys.all }),
+  });
+}
+
+// Open a chest: the Lio page's daily one, or a habit's 🎁 on a milestone day (+40 XP). The
+// answer carries the progress after, so the chips and level update at once.
+export type ChestKind = { kind: 'daily' } | { kind: 'habit'; habitId: string };
+
+export function useCollectChest() {
+  const queryClient = useQueryClient();
+  const toast = useToast();
+  return useMutation({
+    mutationFn: (chest: ChestKind) =>
+      api().post<ChestReward>(
+        chest.kind === 'daily' ? '/progress/daily-chest' : `/habits/${chest.habitId}/chest`,
+      ),
+    onSuccess: (reward) => queryClient.setQueryData(progressKey, reward.progress),
+    onError: (err) =>
+      toast({
+        message: isApiError(err, 'CHEST_NOT_READY')
+          ? err.message
+          : "Couldn't open the chest. Try again.",
+        tone: 'error',
+      }),
     onSettled: () => queryClient.invalidateQueries({ queryKey: habitKeys.all }),
   });
 }

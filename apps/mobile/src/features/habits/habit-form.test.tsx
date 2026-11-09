@@ -30,6 +30,7 @@ const READ: PublicHabit = {
   dueToday: true,
   today: null,
   streak: { current: 3, best: 3, unit: 'days' },
+  chest: null,
   createdAt: '2026-10-01T00:00:00.000Z',
   updatedAt: '2026-10-01T00:00:00.000Z',
 };

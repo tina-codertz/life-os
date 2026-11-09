@@ -1211,3 +1211,27 @@ Still open (History, to discuss): what the design's calendar button on Week / Ye
 1. Why is a rule that's only checked in the app ("is this name free?") not enough when two requests arrive at once?
 2. Why read a generated migration before applying it?
 
+### 2026-11-09 — Habits I step 2d: chests (+40 XP)
+**What was built:**
+- **The habit chest (🎁):** the day a check-in takes the streak to a milestone (every 7th day, or the challenge's last day), today's circle on the path turns amber with a gift. Tapping it (or "Open your chest" on the habit detail) opens the chest.
+- **The daily chest:** on the Lio page, an amber card that's locked until you complete a task today, then shows Open, then "opened".
+- **The Chest reward screen** (the design's): confetti, "Chest opened!", "+40 XP", the day streak, the level, and Collect.
+- **API:** `POST /progress/daily-chest`, `POST /habits/:id/chest`, `dailyChest` on `/progress`, `chest` on every habit. The milestone rule (`isMilestone`) moved to shared code, so the app's 🎁 and the server's rule match.
+**Rules (your call: cover both):**
+- XP is paid only on Collect.
+- Collecting twice pays once, because the ledger key is unique.
+- A collected chest stays collected, even if you undo the task or check-in.
+- A milestone reached *yesterday* doesn't open a chest today: the chest belongs to the day that reached it.
+**Found while building:**
+- A probe showed no test covered "day 7 was yesterday, today not done". Added.
+- A History test assumed today wasn't the first day of the week. It failed on Monday 9 November, so it now expects "Same as last week" then.
+**Checks:**
+- Tests: API e2e 3 new; chests on the phone 6.
+- Probes: 4 server-side and 4 app-side each make a test fail.
+- Totals: mobile 439, API 116 + 183, shared 139.
+- Not seen on the simulator: it was signed out.
+
+**To learn:**
+1. Why is the XP paid when you tap Collect, not when the chest screen opens?
+2. Why does the habit chest belong to *today's* date in its ledger key, not to "day 7"?
+

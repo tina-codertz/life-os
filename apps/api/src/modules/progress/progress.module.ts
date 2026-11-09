@@ -8,6 +8,6 @@ import { XpService } from './xp.service.js';
 @Module({
   controllers: [ProgressController],
   providers: [ProgressService, XpService],
-  exports: [XpService],
+  exports: [XpService, ProgressService],
 })
 export class ProgressModule {}

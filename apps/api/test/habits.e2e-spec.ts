@@ -94,6 +94,7 @@ describe('Habits (e2e)', () => {
         dueToday: true,
         today: null,
         streak: { current: 0, best: 0, unit: 'days' },
+        chest: null,
         createdAt: expect.any(String),
         updatedAt: expect.any(String),
       });

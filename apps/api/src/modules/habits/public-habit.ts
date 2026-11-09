@@ -1,6 +1,7 @@
 import {
   CATEGORY_COLORS,
   type CategoryColor,
+  type HabitChest,
   type HabitSchedule as PublicSchedule,
   type HabitStreak,
   type PublicHabit,
@@ -69,6 +70,7 @@ export function toPublicHabit(
   today: string,
   todays: HabitCompletion | undefined,
   streak: HabitStreak,
+  chest: HabitChest | null = null,
 ): PublicHabit {
   const schedule = scheduleOn(habit, today);
   return {
@@ -86,6 +88,7 @@ export function toPublicHabit(
     dueToday: today >= fromDbDate(habit.startDate) && isDueOn(schedule, today),
     today: todays ? toPublicCompletion(todays) : null,
     streak,
+    chest,
     createdAt: habit.createdAt.toISOString(),
     updatedAt: habit.updatedAt.toISOString(),
   };

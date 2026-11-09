@@ -123,6 +123,11 @@ export interface HabitDay {
   count: number;
 }
 
+export interface HabitChest {
+  streakDay: number;
+  collected: boolean;
+}
+
 export interface PublicHabitCompletion {
   localDate: string;
   count: number;
@@ -148,6 +153,8 @@ export interface PublicHabit {
   today: PublicHabitCompletion | null;
   // FR-HAB-003, worked out on the server with the shared streak engine.
   streak: HabitStreak;
+  // Today's 🎁: set when today's check-in took the streak to a milestone day (isMilestone).
+  chest: HabitChest | null;
   createdAt: string;
   updatedAt: string;
 }

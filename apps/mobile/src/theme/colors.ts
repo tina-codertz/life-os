@@ -16,7 +16,8 @@ export interface ThemeColors {
   success: { default: string; soft: string };
   danger: { text: string; fill: string; soft: string };
   // Amber: badges and rewards; text on it uses reward.text.
-  reward: { fill: string; text: string };
+  // `wash`: the chest screen's warm glow at the top (the design's #FDE8B0 fading out).
+  reward: { fill: string; text: string; wash: string; shade: string };
   // Pastel tiles behind icons and chips; text on them is text.primary or text.label.
   tile: {
     sky: string;
@@ -91,7 +92,7 @@ export const lightColors: ThemeColors = {
   success: { default: '#17784C', soft: '#DDF1E4' },
   // Darker than the design's #D2405B (3.6:1 on its own pink tile).
   danger: { text: '#B42F4A', fill: '#C2334B', soft: '#FBDDE2' },
-  reward: { fill: '#F6C85F', text: '#3A2A00' },
+  reward: { fill: '#F6C85F', text: '#3A2A00', wash: '#FDE8B0', shade: '#C99A2E' },
   tile: {
     sky: '#D5E3EA',
     lime: '#E5EFC1',
@@ -179,7 +180,7 @@ export const darkColors: ThemeColors = {
   },
   success: { default: '#5FD38D', soft: '#1D3328' },
   danger: { text: '#FF8A9C', fill: '#C2334B', soft: '#3D2128' },
-  reward: { fill: '#F6C85F', text: '#3A2A00' },
+  reward: { fill: '#F6C85F', text: '#3A2A00', wash: '#3A3018', shade: '#B88A24' },
   tile: {
     sky: '#21313A',
     lime: '#2C3320',

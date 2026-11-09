@@ -14,6 +14,7 @@ export default function AppLayout() {
       />
       <Stack.Screen name="habit/[id]" options={{ headerShown: false }} />
       <Stack.Screen name="lio" options={{ headerShown: false }} />
+      <Stack.Screen name="chest" options={{ headerShown: false }} />
       <Stack.Screen
         name="calendar"
         options={{

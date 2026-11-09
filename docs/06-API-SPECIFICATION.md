@@ -232,11 +232,18 @@ Built in 6.1 Part 1: `GET` (ordered by `sortOrder`, then name), `POST` (`201`), 
 ### Progress (XP and the overall streak; Habits I step 2b, gamification pieces brought forward)
 | Method | Path | Notes |
 |---|---|---|
-| GET | `/progress` | `{ xp, streak: { current, best }, level: { level, start, next, toNext } }`: the ⚡ and 🔥 chips and Lio's level |
+| GET | `/progress` | `{ xp, streak: { current, best }, level: { level, start, next, toNext }, dailyChest }`: the ⚡ and 🔥 chips, Lio's level, the daily chest (`locked` / `ready` / `collected`) |
+| POST | `/progress/daily-chest` | `200 { amount: 40, progress }`. Ready once a top-level task is completed today (user's zone); `422 CHEST_NOT_READY` before. Safe to repeat; pays once a day |
+| POST | `/habits/:id/chest` | `200 { amount: 40, progress }`. Ready when today's check-in took a day-counted streak to a milestone (every 7th day, or the challenge's last day; shared `isMilestone`); `422 CHEST_NOT_READY` otherwise. Safe to repeat; pays once per habit and day |
 
 - **XP is a ledger** (`XpEvent`, one row per award, unique on `(userId, source, sourceKey)`), so an award can't pay twice and undoing deletes it. The total is the sum of what still stands.
 - **Amounts** (shared `XP`, from the design): a top-level task completed **+15** (subtasks earn nothing), a habit day reaching its target **+5**, a chest **+40** (step 2d).
 - **Levels (FR-GAME-003, 2026-11-08):** worked out on the server from the XP total (`levelOf` in shared). Level L starts at 50·L·(L−1) XP (0, 100, 300, 600, 1000, 1500…), so each level takes 100 XP more than the last.
+- **Chests (Habits I step 2d, 2026-11-09):**
+  - Ledger keys are `daily:<day>` and `habit:<id>:<day>`.
+  - XP is paid only when collected.
+  - A collected chest stays collected, even if the task or check-in that opened it is later undone.
+  - Every habit carries `chest: { streakDay, collected } | null` for today.
 - **Taking it back:** un-completing a task, undoing a check-in, or lowering a day's count below the target takes the XP back.
 - **Same transaction:** awards are made in the same transaction as the completion, so points and completions can't drift. It's a direct `XpService` call rather than the domain events ADR-001 sketched.
 - **The 🔥 streak** counts days in a row (in the user's zone) with a habit day done or a top-level task completed. Today with nothing yet doesn't break it.

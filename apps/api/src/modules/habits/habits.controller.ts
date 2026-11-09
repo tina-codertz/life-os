@@ -1,5 +1,6 @@
 import { Controller, Delete, Get, HttpCode, HttpStatus, Param, Patch, Post } from '@nestjs/common';
 import {
+  type ChestReward,
   type CreateHabitInput,
   createHabitSchema,
   type HabitCheckInInput,
@@ -87,6 +88,13 @@ export class HabitsController {
     @ZodQuery(habitDaysQuerySchema) query: HabitDaysQuery,
   ): Promise<HabitDay[]> {
     return this.habits.days(user.id, id, query);
+  }
+
+  // Open today's 🎁 on a milestone day (+40 XP). 200 every time, as it's safe to repeat.
+  @Post(':id/chest')
+  @HttpCode(HttpStatus.OK)
+  collectChest(@CurrentUser() user: AuthUser, @habitId() id: string): Promise<ChestReward> {
+    return this.habits.collectChest(user.id, id);
   }
 
   @Get(':id/stats')

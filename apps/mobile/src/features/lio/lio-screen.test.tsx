@@ -18,6 +18,7 @@ const PROGRESS: Progress = {
   xp: 1240,
   streak: { current: 12, best: 21 },
   level: { level: 5, start: 1000, next: 1500, toNext: 260 },
+  dailyChest: 'locked',
 };
 
 async function open(url: string, progress: Progress = PROGRESS) {
@@ -66,6 +67,7 @@ describe('Lio', () => {
       xp: 0,
       streak: { current: 0, best: 0 },
       level: { level: 1, start: 0, next: 100, toNext: 100 },
+      dailyChest: 'locked',
     });
     expect(await screen.findByText('100 XP to level 2')).toBeOnTheScreen();
     expect(screen.queryByText(/days? strong!/)).toBeNull();

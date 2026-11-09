@@ -78,6 +78,7 @@ describe.each([
     ['lock on a future circle', colors.quest.lockIcon, colors.quest.idle],
     ['star on today', colors.text.onAccent, colors.accent.fill],
     ['flame on a chip', colors.flame, colors.bg.surface],
+    ['gift on a ready chest circle', colors.reward.text, colors.reward.fill],
   ])('%s ≥ 3:1', (_icon, fg, bg) => {
     expect(contrast(fg, bg)).toBeGreaterThanOrEqual(3);
   });

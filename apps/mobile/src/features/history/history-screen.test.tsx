@@ -104,7 +104,10 @@ describe('History', () => {
     await openHistory();
 
     expect(await screen.findByLabelText(`${thisWeek} completed`)).toBeOnTheScreen();
-    expect(screen.getByText(`+${thisWeek - 2} vs last week`)).toBeOnTheScreen();
+    // On the week's first day both weeks have 2: no change.
+    expect(
+      screen.getByText(thisWeek === 2 ? 'Same as last week' : `+${thisWeek - 2} vs last week`),
+    ).toBeOnTheScreen();
     expect(historyRequests().at(-1)?.route).toBe(
       `GET /tasks/history?from=${addDays(WEEK, -7)}&to=${addDays(WEEK, 6)}&include=tasks`,
     );

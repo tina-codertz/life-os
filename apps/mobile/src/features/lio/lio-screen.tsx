@@ -1,10 +1,13 @@
+import type { Progress } from '@life-os/shared';
 import { router } from 'expo-router';
 import { ScrollView, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { ScreenWash } from '@/components/screen';
 import {
+  Button,
   Card,
   ErrorState,
+  Icon,
   IconButton,
   Mascot,
   Skeleton,
@@ -14,10 +17,11 @@ import {
 import { ProgressChips } from '@/features/habits/progress-chips';
 import { useProgress } from '@/features/habits/queries';
 import { radius, spacing, useTheme } from '@/theme';
+import { LevelBar } from './level-bar';
 
-// The design's Lio page, opened from Lio's bubble: the 🔥 / ⚡ chips and Lio's level card
-// ("12 days strong!", "Lio · Level 5", "260 XP to level 6"). The design's daily chest, weekly
-// challenge and badges come with their own steps.
+// The design's Lio page, opened from Lio's bubble: the 🔥 / ⚡ chips, Lio's level card
+// ("12 days strong!", "Lio · Level 5", "260 XP to level 6") and the daily chest. The design's
+// weekly challenge and badges come with their own steps.
 export function LioScreen() {
   const insets = useSafeAreaInsets();
   const { colors } = useTheme();
@@ -25,7 +29,12 @@ export function LioScreen() {
 
   let body: React.ReactNode;
   if (progress.data) {
-    body = <LevelCard {...progress.data} />;
+    body = (
+      <>
+        <LevelCard {...progress.data} />
+        <DailyChestCard state={progress.data.dailyChest} />
+      </>
+    );
   } else if (progress.error) {
     body = (
       <Card>
@@ -40,6 +49,7 @@ export function LioScreen() {
     body = (
       <SkeletonGroup label="Loading your level">
         <Skeleton shape="block" height={300} />
+        <Skeleton shape="block" height={80} />
       </SkeletonGroup>
     );
   }
@@ -73,15 +83,8 @@ export function LioScreen() {
   );
 }
 
-function LevelCard({
-  level,
-  streak,
-}: {
-  level: { level: number; start: number; next: number; toNext: number };
-  streak: { current: number };
-}) {
+function LevelCard({ level, streak }: Pick<Progress, 'level' | 'streak'>) {
   const { colors } = useTheme();
-  const fraction = (level.next - level.toNext - level.start) / (level.next - level.start);
   return (
     <Card variant="elevated" style={{ alignItems: 'center', paddingVertical: spacing.xl }}>
       {streak.current > 0 && (
@@ -105,29 +108,61 @@ function LevelCard({
       <Text variant="callout" tone="secondary">
         {level.toNext.toLocaleString('en-GB')} XP to level {level.level + 1}
       </Text>
-      <View
-        accessible
-        accessibilityRole="progressbar"
-        accessibilityLabel={`Level ${level.level + 1}`}
-        accessibilityValue={{ min: 0, max: 100, now: Math.round(fraction * 100) }}
-        style={{
-          alignSelf: 'stretch',
-          height: 10,
-          marginTop: spacing.md,
-          borderRadius: radius.full,
-          backgroundColor: colors.chart.track,
-          overflow: 'hidden',
-        }}
-      >
-        <View
-          style={{
-            width: `${Math.round(fraction * 100)}%`,
-            height: '100%',
-            borderRadius: radius.full,
-            backgroundImage: `linear-gradient(90deg, ${colors.accent.fill}, ${colors.accent.fillEnd})`,
-          }}
-        />
+      <View style={{ alignSelf: 'stretch', marginTop: spacing.md }}>
+        <LevelBar level={level} />
       </View>
     </Card>
+  );
+}
+
+const CHEST_TEXT: Record<Progress['dailyChest'], { title: string; detail: string }> = {
+  locked: { title: 'Daily chest', detail: 'Finish one task to open it' },
+  ready: { title: 'Daily chest is ready', detail: 'Open it for +40 XP' },
+  collected: { title: 'Daily chest opened', detail: 'A new one comes tomorrow' },
+};
+
+// The design's amber card: locked until a task is done today, then Open.
+function DailyChestCard({ state }: { state: Progress['dailyChest'] }) {
+  const { colors } = useTheme();
+  const { title, detail } = CHEST_TEXT[state];
+  return (
+    <View
+      style={{
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: spacing.md,
+        backgroundColor: colors.reward.fill,
+        borderRadius: radius.xl,
+        padding: spacing.lg,
+      }}
+    >
+      <View
+        style={{
+          width: 48,
+          height: 48,
+          borderRadius: radius.full,
+          backgroundColor: 'rgba(255,255,255,0.6)',
+          alignItems: 'center',
+          justifyContent: 'center',
+        }}
+      >
+        <Icon name={state === 'locked' ? 'lock' : 'gift'} size={22} color={colors.reward.text} />
+      </View>
+      <View style={{ flex: 1 }} accessible>
+        <Text variant="bodyStrong" style={{ color: colors.reward.text }}>
+          {title}
+        </Text>
+        <Text variant="caption" style={{ color: colors.reward.text }}>
+          {detail}
+        </Text>
+      </View>
+      {state === 'ready' && (
+        <Button
+          title="Open"
+          size="sm"
+          onPress={() => router.push({ pathname: '/chest', params: { kind: 'daily' } })}
+        />
+      )}
+    </View>
   );
 }

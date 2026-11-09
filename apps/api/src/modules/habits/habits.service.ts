@@ -1,6 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import {
   addDays,
+  type ChestReward,
   computeStats,
   computeStreaks,
   type CreateHabitInput,
@@ -11,17 +12,22 @@ import {
   type HabitStats,
   type HabitStreak,
   HABIT_BACKFILL_DAYS,
+  type HabitChest,
+  isMilestone,
   type HabitCheckInInput,
   type HabitSchedule as ScheduleInput,
   localToday,
   MAX_HABITS,
   type PublicHabit,
   type UpdateHabitInput,
+  XP,
 } from '@life-os/shared';
 import { fromDbDate, toDbDate } from '../../common/dates.js';
 import type { HabitCompletion, Prisma } from '../../generated/prisma/client.js';
 import { isUniqueViolation } from '../../prisma/prisma-errors.js';
 import { PrismaService } from '../../prisma/prisma.service.js';
+import { ChestNotReadyError, habitChestKey } from '../progress/chest.errors.js';
+import { ProgressService } from '../progress/progress.service.js';
 import { XpService } from '../progress/xp.service.js';
 import {
   CheckInOutOfRangeError,
@@ -58,6 +64,7 @@ export class HabitsService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly xp: XpService,
+    private readonly progress: ProgressService,
   ) {}
 
   async list(userId: string, archived: boolean): Promise<PublicHabit[]> {
@@ -77,7 +84,11 @@ export class HabitsService {
       if (list) list.push(c);
       else byHabit.set(c.habitId, [c]);
     }
-    return habits.map((h) => this.toPublic(h, byHabit.get(h.id) ?? [], day));
+    const collected = await this.collectedChests(
+      userId,
+      habits.map((h) => habitChestKey(h.id, day.today)),
+    );
+    return habits.map((h) => this.toPublic(h, byHabit.get(h.id) ?? [], day, collected));
   }
 
   async get(userId: string, id: string): Promise<PublicHabit> {
@@ -223,6 +234,19 @@ export class HabitsService {
     return out;
   }
 
+  // Open today's 🎁 (+40 XP), on the day the streak reaches a milestone. Safe to repeat; once
+  // collected it stays collected, even if today's check-in is undone.
+  async collectChest(userId: string, id: string): Promise<ChestReward> {
+    const habit = await this.findActive(userId, id);
+    const shown = await this.present(userId, habit);
+    if (habit.archivedAt || !shown.chest) throw new ChestNotReadyError('habit');
+    const { today } = await this.userDay(userId);
+    await this.prisma.$transaction((tx) =>
+      this.xp.award(tx, userId, 'CHEST', habitChestKey(habit.id, today)),
+    );
+    return { amount: XP.CHEST, progress: await this.progress.get(userId) };
+  }
+
   // The detail screen's Consistency and Total days (the shared engine, over every check-in).
   async stats(userId: string, id: string): Promise<HabitStats> {
     const habit = await this.findActive(userId, id);
@@ -250,13 +274,42 @@ export class HabitsService {
     const completions = await this.prisma.habitCompletion.findMany({
       where: { habitId: habit.id },
     });
-    return this.toPublic(habit, completions, await this.userDay(userId));
+    const day = await this.userDay(userId);
+    const collected = await this.collectedChests(userId, [habitChestKey(habit.id, day.today)]);
+    return this.toPublic(habit, completions, day, collected);
   }
 
-  private toPublic(habit: HabitWithSchedules, completions: HabitCompletion[], day: UserDay) {
+  private toPublic(
+    habit: HabitWithSchedules,
+    completions: HabitCompletion[],
+    day: UserDay,
+    collected: ReadonlySet<string>,
+  ) {
     const input = this.streakInput(habit, completions, day);
     const todays = completions.find((c) => fromDbDate(c.localDate) === day.today);
-    return toPublicHabit(habit, day.today, todays, computeStreaks(input));
+    const streak = computeStreaks(input);
+    // Today's 🎁: today is done and took a day-counted streak to a milestone.
+    let chest: HabitChest | null = null;
+    if (
+      streak.unit === 'days' &&
+      (todays?.count ?? 0) >= habit.targetCount &&
+      isMilestone(streak.current, habit.goalDays)
+    ) {
+      chest = {
+        streakDay: streak.current,
+        collected: collected.has(habitChestKey(habit.id, day.today)),
+      };
+    }
+    return toPublicHabit(habit, day.today, todays, streak, chest);
+  }
+
+  // Which of these chest keys have been collected (paid into the XP ledger).
+  private async collectedChests(userId: string, keys: string[]): Promise<Set<string>> {
+    const events = await this.prisma.xpEvent.findMany({
+      where: { userId, source: 'CHEST', sourceKey: { in: keys } },
+      select: { sourceKey: true },
+    });
+    return new Set(events.map((e) => e.sourceKey));
   }
 
   private async streakOf(userId: string, habit: HabitWithSchedules): Promise<HabitStreak> {

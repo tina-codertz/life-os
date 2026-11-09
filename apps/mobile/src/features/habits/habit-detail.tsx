@@ -119,6 +119,7 @@ function HabitDetail({ habit }: { habit: PublicHabit }) {
 
   const count = habit.today?.count ?? 0;
   const doneToday = count >= habit.targetCount;
+  const chestToOpen = doneToday && Boolean(habit.chest && !habit.chest.collected);
   const unit = habit.streak.unit === 'days' ? 'day' : 'week';
   const consistency = stats.data?.consistency;
 
@@ -159,9 +160,9 @@ function HabitDetail({ habit }: { habit: PublicHabit }) {
       {habit.dueToday || doneToday ? (
         <Button
           title={todayButtonTitle(habit, count, doneToday)}
-          variant={doneToday ? 'secondary' : 'primary'}
+          variant={doneToday && !chestToOpen ? 'secondary' : 'primary'}
           size="lg"
-          icon="check"
+          icon={chestToOpen ? 'gift' : 'check'}
           onPress={() => press({ kind: 'today', date: today, done: doneToday, count })}
         />
       ) : null}
@@ -170,6 +171,7 @@ function HabitDetail({ habit }: { habit: PublicHabit }) {
 }
 
 function todayButtonTitle(habit: PublicHabit, count: number, doneToday: boolean): string {
+  if (doneToday && habit.chest && !habit.chest.collected) return 'Open your chest';
   if (doneToday) return 'Done today';
   if (habit.targetCount > 1) {
     return `Add one · ${count} of ${habit.targetCount}${habit.unit ? ` ${habit.unit}` : ''}`;

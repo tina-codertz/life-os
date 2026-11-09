@@ -146,4 +146,98 @@ describe('Progress: XP and the overall streak (e2e)', () => {
     expect((await progress(juma)).xp).toBe(0);
     await http().get('/api/v1/progress').expect(401);
   });
+
+  describe('chests (+40 XP)', () => {
+    it('the daily chest opens after a task today, pays once, and stays collected', async () => {
+      expect((await progress(tina)).dailyChest).toBe('locked');
+      const locked = await post(tina, '/progress/daily-chest').expect(422);
+      expect(locked.body.error.code).toBe('CHEST_NOT_READY');
+
+      // A subtask isn't enough; a top-level task is.
+      const task = (await post(tina, '/tasks', { title: 'Pay rent' }).expect(201)).body.data;
+      const sub = (
+        await post(tina, `/tasks/${task.id}/subtasks`, { title: 'Find bill' }).expect(201)
+      ).body.data;
+      await post(tina, `/tasks/${sub.id}/complete`).expect(200);
+      expect((await progress(tina)).dailyChest).toBe('locked');
+      await post(tina, `/tasks/${task.id}/complete`).expect(200);
+      expect((await progress(tina)).dailyChest).toBe('ready');
+
+      const opened = await post(tina, '/progress/daily-chest').expect(200);
+      expect(opened.body.data).toMatchObject({
+        amount: 40,
+        progress: { xp: 55, dailyChest: 'collected' },
+      });
+      await post(tina, '/progress/daily-chest').expect(200); // again: no more XP
+      expect((await progress(tina)).xp).toBe(55);
+
+      // Un-completing the task takes its 15 back; the chest stays.
+      await post(tina, `/tasks/${task.id}/uncomplete`).expect(200);
+      expect(await progress(tina)).toMatchObject({ xp: 40, dailyChest: 'collected' });
+      // Another user's chest is their own.
+      expect((await progress(juma)).dailyChest).toBe('locked');
+    });
+
+    it('a habit’s chest opens on a milestone day (day 7), pays once, and stays collected', async () => {
+      const read = (
+        await post(tina, '/habits', {
+          name: 'Read',
+          color: 'violet',
+          startDate: addDays(today(), -6),
+          schedule: { frequency: 'DAILY' },
+        }).expect(201)
+      ).body.data;
+      for (const back of [6, 5, 4, 3, 2, 1]) {
+        await post(tina, `/habits/${read.id}/completions`, {
+          localDate: addDays(today(), -back),
+        }).expect(201);
+      }
+      const get = async () =>
+        (await http().get(`/api/v1/habits/${read.id}`).set(auth(tina)).expect(200)).body.data;
+      // Day 6 so far: no chest yet.
+      expect((await get()).chest).toBeNull();
+      expect((await post(tina, `/habits/${read.id}/chest`).expect(422)).body.error.code).toBe(
+        'CHEST_NOT_READY',
+      );
+
+      await post(tina, `/habits/${read.id}/completions`, { localDate: today() }).expect(201);
+      expect((await get()).chest).toEqual({ streakDay: 7, collected: false });
+      const opened = await post(tina, `/habits/${read.id}/chest`).expect(200);
+      // 7 days × 5, plus the chest.
+      expect(opened.body.data).toMatchObject({ amount: 40, progress: { xp: 75 } });
+      await post(tina, `/habits/${read.id}/chest`).expect(200);
+      expect((await progress(tina)).xp).toBe(75);
+      expect((await get()).chest).toEqual({ streakDay: 7, collected: true });
+
+      // Undoing today takes today's 5 back; the chest's 40 stay.
+      await http()
+        .delete(`/api/v1/habits/${read.id}/completions/${today()}`)
+        .set(auth(tina))
+        .expect(200);
+      expect((await progress(tina)).xp).toBe(70);
+      // Someone else can't open it.
+      await post(juma, `/habits/${read.id}/chest`).expect(404);
+    });
+
+    it('day 7 reached yesterday: today’s chest waits for today’s check-in', async () => {
+      const walk = (
+        await post(tina, '/habits', {
+          name: 'Walk',
+          color: 'green',
+          startDate: addDays(today(), -7),
+          schedule: { frequency: 'DAILY' },
+        }).expect(201)
+      ).body.data;
+      for (const back of [7, 6, 5, 4, 3, 2, 1]) {
+        await post(tina, `/habits/${walk.id}/completions`, {
+          localDate: addDays(today(), -back),
+        }).expect(201);
+      }
+      const habit = (await http().get(`/api/v1/habits/${walk.id}`).set(auth(tina)).expect(200)).body
+        .data;
+      expect(habit.streak.current).toBe(7);
+      expect(habit.chest).toBeNull();
+      await post(tina, `/habits/${walk.id}/chest`).expect(422);
+    });
+  });
 });

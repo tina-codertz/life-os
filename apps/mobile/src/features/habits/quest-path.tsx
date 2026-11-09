@@ -44,7 +44,7 @@ export function QuestPath({ habit, nodes, canChange, onPressDay }: QuestPathProp
               borderRadius: radius.full,
               alignItems: 'center',
               justifyContent: 'center',
-              ...circleStyle(node, colors),
+              ...circleStyle(node, habit, colors),
             }}
           >
             <NodeIcon node={node} habit={habit} />
@@ -82,7 +82,13 @@ export function QuestPath({ habit, nodes, canChange, onPressDay }: QuestPathProp
               <Pressable
                 accessibilityRole="button"
                 accessibilityLabel={todayLabel(node, habit)}
-                accessibilityHint={node.done ? 'Undo today’s check-in' : 'Check in for today'}
+                accessibilityHint={
+                  chestReady(node, habit)
+                    ? 'Opens the chest'
+                    : node.done
+                      ? 'Undo today’s check-in'
+                      : 'Check in for today'
+                }
                 onPress={() => onPressDay(node)}
                 testID="quest-today"
                 style={({ pressed }) => ({
@@ -152,7 +158,18 @@ export function QuestPath({ habit, nodes, canChange, onPressDay }: QuestPathProp
   );
 }
 
-function circleStyle(node: PathNode, colors: ReturnType<typeof useTheme>['colors']) {
+// Today's milestone, chest not opened yet: an amber 🎁 circle.
+const chestReady = (node: PathNode, habit: PublicHabit) =>
+  node.kind === 'today' && node.done && Boolean(habit.chest && !habit.chest.collected);
+
+function circleStyle(
+  node: PathNode,
+  habit: PublicHabit,
+  colors: ReturnType<typeof useTheme>['colors'],
+) {
+  if (chestReady(node, habit)) {
+    return { backgroundColor: colors.reward.fill, boxShadow: `0 6px 0 ${colors.reward.shade}` };
+  }
   if (node.kind === 'done' || (node.kind === 'today' && node.done)) {
     return { backgroundColor: colors.quest.done, boxShadow: `0 6px 0 ${colors.quest.doneShade}` };
   }
@@ -179,6 +196,9 @@ function NodeIcon({ node, habit }: { node: PathNode; habit: PublicHabit }) {
     case 'locked':
       return <Icon name="lock" size={24} color={colors.quest.lockIcon} />;
     case 'today':
+      if (chestReady(node, habit)) {
+        return <Icon name="gift" size={32} color={colors.reward.text} />;
+      }
       if (node.done) return <Icon name="check" size={32} color={colors.quest.doneIcon} />;
       // A count habit shows how far today has got ("3/8"); otherwise the design's star.
       if (habit.targetCount > 1 && node.count > 0) {
@@ -194,6 +214,9 @@ function NodeIcon({ node, habit }: { node: PathNode; habit: PublicHabit }) {
 }
 
 function todayLabel(node: Extract<PathNode, { kind: 'today' }>, habit: PublicHabit): string {
+  if (chestReady(node, habit)) {
+    return `Today, ${habit.name}, done. Day ${habit.chest?.streakDay} chest to open`;
+  }
   if (node.done) return `Today, ${habit.name}, done`;
   if (habit.targetCount > 1) {
     return `Today, ${habit.name}, ${node.count} of ${habit.targetCount}${habit.unit ? ` ${habit.unit}` : ''}`;

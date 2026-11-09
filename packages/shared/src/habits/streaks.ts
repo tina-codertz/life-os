@@ -139,3 +139,8 @@ export function computeStats(input: StreakInput): HabitStats {
     totalDays,
   };
 }
+
+// A milestone is every 7th day of a streak, and the challenge's last day: a 🎁 on the path,
+// and a chest to open the day it's reached. (Streaks counted in weeks have none.)
+export const isMilestone = (day: number, goal: number): boolean =>
+  day > 0 && (day % 7 === 0 || day === goal);
