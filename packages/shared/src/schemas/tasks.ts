@@ -44,6 +44,8 @@ export const createTaskSchema = z
     description: description.nullable().optional(),
     priority: z.enum(PRIORITIES).optional(),
     categoryId: z.uuid().nullable().optional(),
+    // FR-GOAL-004: the goal this task counts towards.
+    goalId: z.uuid().nullable().optional(),
     dueDate: localDateSchema.nullable().optional(),
     dueTime: dueTime.nullable().optional(),
     // FR-TASK-006, e.g. "FREQ=WEEKLY;BYDAY=MO,WE" (see recurrence.ts).
@@ -60,6 +62,7 @@ export const updateTaskSchema = z.strictObject({
   description: description.nullable().optional(),
   priority: z.enum(PRIORITIES).optional(),
   categoryId: z.uuid().nullable().optional(),
+  goalId: z.uuid().nullable().optional(),
   dueDate: localDateSchema.nullable().optional(),
   dueTime: dueTime.nullable().optional(),
   recurrenceRule: recurrenceRuleSchema.nullable().optional(),
@@ -135,6 +138,8 @@ export interface PublicTask {
   dueTime: number | null; // minutes after local midnight
   completedAt: string | null;
   categoryId: string | null;
+  // The goal it counts towards (FR-GOAL-004), or null.
+  goalId: string | null;
   // The parent's id on a subtask; null on a top-level task.
   parentId: string | null;
   // How it repeats (FR-TASK-006), or null. Completing it creates the next one.

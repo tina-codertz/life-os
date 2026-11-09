@@ -31,6 +31,7 @@ const task = (title: string, completedAt: string): PublicTask => ({
   dueTime: null,
   completedAt,
   categoryId: null,
+  goalId: null,
   parentId: null,
   recurrenceRule: null,
   subtaskCount: 0,

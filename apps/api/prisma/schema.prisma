@@ -29,6 +29,7 @@ model User {
   categories Category[]
   tasks      Task[]
   habits     Habit[]
+  goals      Goal[]
   xpEvents   XpEvent[]
 }
 
@@ -119,6 +120,7 @@ model Category {
 
   user  User   @relation(fields: [userId], references: [id], onDelete: Cascade)
   tasks Task[]
+  goals Goal[]
 
   @@unique([userId, name])
 }
@@ -139,6 +141,7 @@ model Task {
   completedAt        DateTime?    @db.Timestamptz(3)
   sortOrder          Int          @default(0)
   categoryId         String?      @db.Uuid
+  goalId             String?      @db.Uuid // FR-GOAL-004: the goal it counts towards
   parentId           String?      @db.Uuid // subtask → parent (one level, service-enforced; FR-TASK-005)
   // Repeating (FR-TASK-006): each occurrence carries the rule; all share the first one's id.
   recurrenceRule     String?      @db.VarChar(200) // RRULE subset, e.g. "FREQ=WEEKLY;BYDAY=MO,WE"
@@ -149,12 +152,14 @@ model Task {
 
   user     User      @relation(fields: [userId], references: [id], onDelete: Cascade)
   category Category? @relation(fields: [categoryId], references: [id], onDelete: SetNull)
+  goal     Goal?     @relation(fields: [goalId], references: [id], onDelete: SetNull)
   parent   Task?     @relation("Subtasks", fields: [parentId], references: [id], onDelete: Cascade)
   subtasks Task[]    @relation("Subtasks")
 
   @@index([userId, status, dueDate]) // Today + list filters
   @@index([userId, completedAt]) // history, stats
   @@index([userId, categoryId])
+  @@index([goalId])
   @@index([parentId])
   @@index([recurrenceSeriesId])
 }
@@ -195,6 +200,7 @@ model Habit {
   user        User              @relation(fields: [userId], references: [id], onDelete: Cascade)
   schedules   HabitSchedule[]
   completions HabitCompletion[]
+  goals       GoalHabit[]
 
   @@index([userId, archivedAt])
 }
@@ -234,6 +240,72 @@ model HabitCompletion {
 
   @@unique([habitId, localDate])
   @@index([userId, localDate])
+}
+
+// ───────────── Goals (FR-GOAL; Goals step, docs/05) ─────────────
+
+model Goal {
+  id             String       @id @default(uuid(7)) @db.Uuid
+  userId         String       @db.Uuid
+  title          String       @db.VarChar(120)
+  description    String?      @db.VarChar(5000)
+  status         GoalStatus   @default(ACTIVE)
+  progressMode   ProgressMode @default(MILESTONES)
+  manualProgress Int?         @db.SmallInt // 0–100 when MANUAL (CHECK in the migration)
+  targetDate     DateTime?    @db.Date // the user's local day
+  completedAt    DateTime?    @db.Timestamptz(3) // FR-GOAL-005
+  categoryId     String?      @db.Uuid
+  // v1.1 savings goals add targetAmountMinor + currency here.
+  createdAt      DateTime     @default(now()) @db.Timestamptz(3)
+  updatedAt      DateTime     @updatedAt @db.Timestamptz(3)
+  deletedAt      DateTime?    @db.Timestamptz(3) // soft delete
+
+  user       User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  category   Category?   @relation(fields: [categoryId], references: [id], onDelete: SetNull)
+  milestones Milestone[]
+  tasks      Task[]
+  habits     GoalHabit[]
+
+  @@index([userId, status, targetDate])
+}
+
+enum GoalStatus {
+  ACTIVE
+  COMPLETED
+  ABANDONED
+}
+
+enum ProgressMode {
+  MILESTONES
+  TASKS
+  MANUAL
+}
+
+model Milestone {
+  id          String    @id @default(uuid(7)) @db.Uuid
+  goalId      String    @db.Uuid
+  title       String    @db.VarChar(120)
+  dueDate     DateTime? @db.Date
+  completedAt DateTime? @db.Timestamptz(3)
+  sortOrder   Int       @default(0)
+  createdAt   DateTime  @default(now()) @db.Timestamptz(3)
+  updatedAt   DateTime  @updatedAt @db.Timestamptz(3)
+
+  goal Goal @relation(fields: [goalId], references: [id], onDelete: Cascade)
+
+  @@index([goalId, sortOrder])
+}
+
+// FR-GOAL-004: habits that count towards a goal (shown on it; progress doesn't use them).
+model GoalHabit {
+  goalId  String @db.Uuid
+  habitId String @db.Uuid
+
+  goal  Goal  @relation(fields: [goalId], references: [id], onDelete: Cascade)
+  habit Habit @relation(fields: [habitId], references: [id], onDelete: Cascade)
+
+  @@id([goalId, habitId])
+  @@index([habitId])
 }
 
 // ───────────── Progress (XP; gamification pieces brought forward for the quest path) ─────────────

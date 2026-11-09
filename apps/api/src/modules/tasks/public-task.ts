@@ -20,6 +20,7 @@ export function toPublicTask(task: Task, subtasks: SubtaskCounts = NO_SUBTASKS):
     dueTime: task.dueTime,
     completedAt: task.completedAt?.toISOString() ?? null,
     categoryId: task.categoryId,
+    goalId: task.goalId,
     parentId: task.parentId,
     recurrenceRule: task.recurrenceRule,
     subtaskCount: subtasks.total,

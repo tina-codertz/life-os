@@ -250,18 +250,22 @@ Built in 6.1 Part 1: `GET` (ordered by `sortOrder`, then name), `POST` (`201`), 
 - **The 🔥 streak** counts days in a row (in the user's zone) with a habit day done or a top-level task completed. Today with nothing yet doesn't break it.
 
 ### Goals
+*Built 2026-11-09 (Goals Part 1).* Every goal (`PublicGoal`) carries its milestones in order, `progress: { percent, done, total }` worked out from its mode, `tasks: { total, done }` (linked top-level tasks) and `habitIds`. Errors: `GOAL_NOT_FOUND` / `MILESTONE_NOT_FOUND` (404, also for another user's), `GOAL_LIMIT_REACHED` (100) / `MILESTONE_LIMIT_REACHED` (50) (422).
+
 | Method | Path | Notes |
 |---|---|---|
-| GET | `/goals?status=ACTIVE` | includes `progress: { percent, done, total }` |
-| POST | `/goals` | `{ title, description?, categoryId?, targetDate?, progressMode }` |
-| GET | `/goals/:id` | milestones, linked tasks summary, linked habits |
-| PATCH | `/goals/:id` | incl. `manualProgress`, `status` |
-| DELETE | `/goals/:id` | soft |
-| POST | `/goals/:id/milestones` | `{ title, dueDate? }` |
-| PATCH | `/goals/:id/milestones/:mid` | `{ title?, dueDate?, completed?: boolean, sortOrder? }` |
-| DELETE | `/goals/:id/milestones/:mid` | |
-| PUT | `/goals/:id/tasks` | `{ taskIds: [] }`, replaces the linked set |
-| PUT | `/goals/:id/habits` | `{ habitIds: [] }` |
+| GET | `/goals?status=ACTIVE` | soonest `targetDate` first, none last; the app groups by status (FR-GOAL-006) |
+| POST | `/goals` | `{ title, description?, categoryId?, targetDate?, progressMode? (MILESTONES), manualProgress? }` → 201 `PublicGoal` |
+| GET | `/goals/:id` | `GoalDetail`: the goal + `linkedTasks` (to do first, then done) |
+| PATCH | `/goals/:id` | strict; incl. `manualProgress` (0–100) and `status`: `COMPLETED` records `completedAt` once, `ACTIVE`/`ABANDONED` clear it |
+| DELETE | `/goals/:id` | 204, soft; its tasks stay but are unlinked |
+| POST | `/goals/:id/milestones` | `{ title, dueDate? }` → 201 `PublicGoal` (added at the end) |
+| PATCH | `/goals/:id/milestones/:milestoneId` | `{ title?, dueDate?, completed?: boolean, sortOrder? }` → `PublicGoal`; `completed: true` keeps the first date; `sortOrder` moves it and renumbers the rest |
+| DELETE | `/goals/:id/milestones/:milestoneId` | → `PublicGoal` |
+| PUT | `/goals/:id/tasks` | `{ taskIds: [] }` replaces the linked set → `GoalDetail`; every id must be your own top-level task, or nothing changes (400 on `taskIds`) |
+| PUT | `/goals/:id/habits` | `{ habitIds: [] }` → `GoalDetail`; habits are shown on the goal, not counted in progress |
+
+Tasks also take `goalId` on POST / PATCH `/tasks` (your own, not-deleted goal; not on a subtask) and return it; a repeating task's next occurrence keeps it.
 
 ### Calendar
 | Method | Path | Notes |

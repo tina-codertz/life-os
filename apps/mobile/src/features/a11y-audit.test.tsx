@@ -32,6 +32,7 @@ const task = (o: Partial<PublicTask>): PublicTask => ({
   dueTime: 540,
   completedAt: null,
   categoryId: 'c1',
+  goalId: null,
   parentId: null,
   recurrenceRule: 'FREQ=MONTHLY;BYMONTHDAY=1',
   subtaskCount: 2,

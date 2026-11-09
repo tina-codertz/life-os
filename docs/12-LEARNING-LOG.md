@@ -1315,3 +1315,22 @@ Reminders arrive with the habit's name, tapping one opens the habit, a habit alr
 2. The old test was green with the bug. What does a passing test actually prove?
 3. Why does a stored local date (not a UTC timestamp) make a time-zone change harmless to past days?
 
+
+### 2026-11-09 — Goals Part 1: the goals API
+**What was built:**
+- Migration `add_goals` (additive): `Goal`, `Milestone`, `GoalHabit` (join table), `Task.goalId`, and a CHECK that keeps manual progress within 0–100.
+- `goalProgress()` in `packages/shared`: milestones done / total, linked tasks done / total, or the manual percentage. One pure function for the API now and the app's instant updates later.
+- `modules/goals`: list (soonest target first), create, read (with linked tasks), update (completing records the date once), soft delete (unlinks its tasks), milestones (add, tick, rename, move, remove; each answers with the whole goal so the ring is current), and `PUT` to replace the linked tasks or habits.
+- Tasks take a `goalId` (yours, not on a subtask), and a repeating task's next occurrence keeps it.
+- `IdParam` takes a parameter name, for the second ID in `/goals/:id/milestones/:milestoneId`.
+**Concepts:**
+- *Computed, not stored:* progress is worked out on every read from rows that already exist, so it can never disagree with them. Storing a percentage would need updating from every place a milestone or task changes.
+- *Join table:* a goal has many habits and a habit can serve many goals, so the links live in their own table (`GoalHabit`) with a two-column primary key, which also stops linking the same habit twice.
+- *All or nothing:* `PUT /goals/:id/tasks` checks every id first; one bad id refuses the whole request instead of linking some of the list.
+- *Avoiding N+1 queries:* the list counts linked tasks for all goals in one `groupBy`, not one query per goal.
+**Checks:** 19 new API e2e tests (also: another user gets 404 on all 8 routes, the database refuses 150%), 8 shared tests; all suites green (shared 162, API 116 + 204, mobile 453). Probes: removing user scoping, the unlink on delete, the goal on the next occurrence, "keep the first done date", or the subtask check each fails a test.
+**To learn:**
+1. Why compute progress on every read instead of storing it on the goal?
+2. Why does `GoalHabit` use `(goalId, habitId)` as its primary key instead of its own id?
+3. Why should one bad id in `PUT /goals/:id/tasks` refuse the whole list?
+4. What is an N+1 query, and how does the goals list avoid it?
