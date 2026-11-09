@@ -1235,3 +1235,6 @@ Still open (History, to discuss): what the design's calendar button on Week / Ye
 1. Why is the XP paid when you tap Collect, not when the chest screen opens?
 2. Why does the habit chest belong to *today's* date in its ledger key, not to "day 7"?
 
+
+### 2026-11-09 — M7a accepted on a real device
+Habits I passed your check on the phone: habits, check-in / undo / backfill, the habit detail, Lio's bubble and page, both chests, Calendar from Habits, the Money tab and onboarding's first habit.
