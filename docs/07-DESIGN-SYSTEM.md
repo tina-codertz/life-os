@@ -168,6 +168,7 @@ Primitives live in `src/components/ui/`, and feature components in `src/features
 - Icons: **Lucide**, the design's own set (`lucide-react-native` + `react-native-svg`, ADR-021), with the design's 1.9 stroke. They're named by meaning in `components/ui/icon.tsx` (e.g. `calendar`, `tasks`, `flame`), and each icon is imported on its own so only the ones used are bundled. Icons are decorative, so the button or row around them carries the label. Categories store a Lucide name (`briefcase`, `book-open`, …).
 - 20 pt default in rows and buttons, 17–24 pt in tiles.
 - **Lio the mascot** (`assets/mascot/`, from the design export): happy (welcome, sign-in logo), sleepy (empty states), planning ("coming soon"), excited, focused and celebrating (for later: focus timer, rewards). Marked decorative wherever the text beside it already says everything.
+- **App icon (2026-11-09):** happy Lio on a white → `accent.soft` (#E4E0FB) gradient, 1024×1024 with no transparency (`assets/images/icon.png`, used for iOS and in Expo Go's project list); Android's adaptive icon uses the same art inside the 66% safe circle, plus a one-colour silhouette for themed icons. A light background on purpose: the mascot art was cut out from white, and its edges show a white fringe on dark or violet colours. The design export has no app icon; the splash image is still Expo's placeholder.
 - Category/habit icons are chosen from a curated subset (~60), with the stored name validated server-side.
 
 ## 10. Inspiration references (from brief)
