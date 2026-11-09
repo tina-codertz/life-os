@@ -1380,3 +1380,5 @@ Reminders arrive with the habit's name, tapping one opens the habit, a habit alr
 **Changed:** the four Settings tiles are gone. **Goals** opens from a target button on the Tasks header (your choice); **Ask Lio** is a row on the Lio page, the one Lio's bubble opens ("Coming soon" until the assistant in v2); **Calendar** opens only from the Habits header; **Insights** (and History) belong on Today's "This week" in the design, so they move there when Today is built (block 19).
 **Concept:** *one way in per screen.* A screen reachable from several places makes people wonder whether they're different screens, and every extra entry point is another place to keep in step.
 **Checks:** mobile 531 tests (new: Goals from the Tasks header, Ask Lio from the Lio page, no tiles in Settings); lint, typecheck and format clean.
+
+**M8 passed (2026-11-09):** you checked Goals on your phone: goals and milestones from the Tasks header, ticking milestones, linking a task to a goal and milestone, Ask Lio on the Lio page, no tiles in Settings. Goals is done; next is block 17, Calendar.

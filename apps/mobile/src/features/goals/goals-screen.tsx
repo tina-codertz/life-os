@@ -23,7 +23,7 @@ const newGoal = () => router.push('/goal-form');
 
 // The design's Goals screen: "3 active", the goal with the closest deadline as the big card,
 // the other active goals two to a row, then (your choice) the completed ones. Abandoned goals
-// aren't shown. Opened from the Goals tile in Settings.
+// aren't shown. Opened from the target button on the Tasks header.
 export function GoalsScreen() {
   const goals = useGoals();
   const categories = useCategories();
