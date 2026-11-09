@@ -3,6 +3,7 @@ import ArrowRight from 'lucide-react-native/icons/arrow-right';
 import BookOpen from 'lucide-react-native/icons/book-open';
 import Briefcase from 'lucide-react-native/icons/briefcase';
 import Calendar from 'lucide-react-native/icons/calendar';
+import ChartColumn from 'lucide-react-native/icons/chart-column';
 import Check from 'lucide-react-native/icons/check';
 import ChevronLeft from 'lucide-react-native/icons/chevron-left';
 import ChevronRight from 'lucide-react-native/icons/chevron-right';
@@ -38,6 +39,7 @@ import X from 'lucide-react-native/icons/x';
 import Zap from 'lucide-react-native/icons/zap';
 import Target from 'lucide-react-native/icons/target';
 import Star from 'lucide-react-native/icons/star';
+import Sparkle from 'lucide-react-native/icons/sparkle';
 import SlidersHorizontal from 'lucide-react-native/icons/sliders-horizontal';
 import Pencil from 'lucide-react-native/icons/pencil';
 import Music from 'lucide-react-native/icons/music';
@@ -64,6 +66,7 @@ const ICONS = {
   music: Music,
   pencil: Pencil,
   sliders: SlidersHorizontal,
+  sparkle: Sparkle,
   star: Star,
   target: Target,
   zap: Zap,
@@ -72,6 +75,7 @@ const ICONS = {
   book: BookOpen,
   briefcase: Briefcase,
   calendar: Calendar,
+  chart: ChartColumn,
   check: Check,
   chevronLeft: ChevronLeft,
   chevronRight: ChevronRight,

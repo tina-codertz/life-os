@@ -1345,3 +1345,22 @@ Reminders arrive with the habit's name, tapping one opens the habit, a habit alr
 **To learn:**
 1. Why does `NOT (goalId = 'x')` skip rows where `goalId` is NULL?
 2. Why derive the goal from the milestone on the server instead of trusting both ids from the app?
+
+### 2026-11-09 — Goals Part 2: the Goals and Goal detail screens
+**What was built:**
+- **Goals** (`/goals`, from the Goals tile in Settings): "3 active", the closest deadline as the big card (ring, category chip, "4 of 6 milestones", tick milestones right there), the other active goals as tiles two to a row, then a **Completed** section (your choice); abandoned goals are hidden. An empty state with New goal.
+- **Goal detail** (`/goal/[id]`): the purple card with a white ring, "Target 20 Dec", "42 days left" and **On track / Behind** (your rule, `features/goals/pace.ts`: progress against the share of time gone since the goal was made, 10 points of slack; "3 days overdue" after the target); the milestone timeline (✓ "Done 2 Nov", ★ "Due 28 Nov · 3 tasks", 🔒 later); linked tasks ("Linked task · Today 10:00", +15 XP); Edit and Add milestone.
+- **Sheets:** the goal sheet (title, category, target date, what progress counts, a % field for "I'll set it", notes; editing adds Mark goal complete / Mark as not done and Delete, which asks first) and the milestone sheet (title, due date; Delete asks first).
+- **Settings:** the design's four tiles; Insights and Ask Lio open a "coming soon" screen (your choice).
+- Shared pieces: `ProgressRing` (SVG), `ChoiceGroup` and `DateRow` (moved out of the task sheet, which still passes all its tests).
+**Concepts:**
+- *Optimistic update with the same rule as the server:* ticking a milestone recomputes the ring with the shared `goalProgress()`, so the instant answer and the server's answer can't differ; on failure both caches go back.
+- *Cache keys as a hierarchy:* goal queries live under `["tasks", "goals"]`, so anything that refreshes tasks also refreshes goals (a linked task's progress), with no extra wiring.
+- *SVG arcs:* a ring is a circle stroke with `strokeDasharray` = the circumference and `strokeDashoffset` = the part not done; rotated −90° so it starts at 12 o'clock.
+**Checked that a worry wasn't a bug:** after "Add milestone" the URL still held the detail's `id` (the goal), which would make the sheet think it was editing a milestone. A test now checks what the sheet *shows* ("New milestone"): each screen's own parameters are separate, so it was fine.
+**Checks:** 28 goal tests (screens, sheets, optimistic tick and rollback, pace rule), the accessibility audit covers Goals, Goal detail, both sheets and the coming-soon screens, 24 new contrast checks; mobile 529 tests; lint, typecheck, format and expo-doctor clean. Probes: removing the optimistic tick, the rollback, changing the pace rule, showing abandoned goals or hiding the task count each fails a test. Not seen on the simulator (signed out).
+**To learn:**
+1. Why recompute the ring on the phone with the same function the server uses, instead of waiting for the server?
+2. How does putting goals under the `tasks` query key keep a goal's progress fresh when a linked task is completed?
+3. How do `strokeDasharray` and `strokeDashoffset` draw a partial ring?
+4. "On track" compares progress with time gone. When would that rule be unfair, and how could it be improved?

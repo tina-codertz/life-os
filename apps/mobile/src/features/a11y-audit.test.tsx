@@ -1,4 +1,4 @@
-import type { HistoryDay, PublicTask, PublicUser } from '@life-os/shared';
+import type { GoalDetail, HistoryDay, PublicTask, PublicUser } from '@life-os/shared';
 import { router as appRouter, type Href } from 'expo-router';
 import { act, fireEvent, renderRouter, screen } from 'expo-router/testing-library';
 import { authStore } from '@/features/auth/auth-instance';
@@ -126,11 +126,61 @@ function serve(onboarded = true) {
       },
     },
   });
+  routes['GET /goals'] = () => ({
+    status: 200,
+    body: { data: [GOAL, { ...GOAL, id: 'g2', title: 'Learn NestJS' }] },
+  });
+  routes['GET /goals/g1'] = () => ({ status: 200, body: { data: GOAL } });
   routes['GET /tasks/history'] = () => {
     const days: HistoryDay[] = [{ date: TODAY, count: 1, tasks: [TASKS[2] as PublicTask] }];
     return { status: 200, body: { data: { from: TODAY, to: TODAY, total: 1, days } } };
   };
 }
+
+// A goal with each kind of milestone (done, next with tasks, later) and a linked task.
+const GOAL: GoalDetail = {
+  id: 'g1',
+  title: 'Ship Life OS MVP',
+  description: null,
+  status: 'ACTIVE',
+  progressMode: 'MILESTONES',
+  manualProgress: null,
+  targetDate: '2027-01-20',
+  completedAt: null,
+  categoryId: 'c1',
+  progress: { percent: 33, done: 1, total: 3 },
+  milestones: [
+    {
+      id: 'm1',
+      title: 'PRD',
+      dueDate: null,
+      completedAt: `${TODAY}T08:00:00.000Z`,
+      sortOrder: 0,
+      tasks: { total: 0, done: 0 },
+    },
+    {
+      id: 'm2',
+      title: 'Core screens',
+      dueDate: '2026-12-28',
+      completedAt: null,
+      sortOrder: 1,
+      tasks: { total: 3, done: 1 },
+    },
+    {
+      id: 'm3',
+      title: 'Release',
+      dueDate: null,
+      completedAt: null,
+      sortOrder: 2,
+      tasks: { total: 0, done: 0 },
+    },
+  ],
+  tasks: { total: 1, done: 0 },
+  habitIds: [],
+  createdAt: '2026-11-01T09:00:00.000Z',
+  updatedAt: '2026-11-01T09:00:00.000Z',
+  linkedTasks: [TASKS[0] as PublicTask],
+};
 
 async function open(url: Href, signedIn: 'no' | 'new' | 'yes' = 'yes') {
   resetMockApi();
@@ -197,6 +247,41 @@ describe('every control can be named by a screen reader', () => {
   it('Settings', async () => {
     await open('/more');
     await screen.findByText('tina@example.com');
+    expect(unnamedControls()).toEqual([]);
+  });
+
+  it('Goals: the big card with milestones, and a tile', async () => {
+    await open('/goals');
+    await screen.findByTestId('goal-hero');
+    expect(unnamedControls()).toEqual([]);
+  });
+
+  it('Goal detail: the ring, the milestone timeline and a linked task', async () => {
+    await open('/goal/g1');
+    await screen.findByRole('button', { name: /^Core screens, / });
+    expect(unnamedControls()).toEqual([]);
+  });
+
+  it('Goal sheet, with the calendar and manual progress open', async () => {
+    await open('/goal-form?id=g1');
+    await screen.findByDisplayValue('Ship Life OS MVP'); // filled in from the goal first
+    // The target date's chip shows the date; pressing it opens the calendar.
+    await fireEvent.press(await screen.findByRole('radio', { name: /2027/ }));
+    await screen.findByTestId('month-calendar');
+    await fireEvent.press(screen.getByRole('radio', { name: 'I’ll set it' }));
+    await screen.findByLabelText('Progress (%)');
+    expect(unnamedControls()).toEqual([]);
+  });
+
+  it('Milestone sheet (editing)', async () => {
+    await open('/milestone-form?goalId=g1&id=m2');
+    await screen.findByDisplayValue('Core screens');
+    expect(unnamedControls()).toEqual([]);
+  });
+
+  it.each(['insights', 'ask-lio'])('Coming soon: %s', async (feature) => {
+    await open(`/coming-soon?feature=${feature}`);
+    await screen.findByText('Coming soon');
     expect(unnamedControls()).toEqual([]);
   });
 

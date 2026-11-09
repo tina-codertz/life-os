@@ -19,3 +19,4 @@ export { IconTile, type IconTileProps } from './icon-tile';
 export { ListGroup, ListRow, type ListRowProps } from './list-group';
 export { Mascot, type MascotMood } from './mascot';
 export { SegmentedControl, type SegmentedControlProps } from './segmented-control';
+export { ProgressRing } from './progress-ring';

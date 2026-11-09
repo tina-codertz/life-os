@@ -3,19 +3,22 @@ import { Screen } from '@/components/screen';
 import { Card, Mascot, Text } from '@/components/ui';
 import { spacing } from '@/theme';
 
-// Stand-in for screens whose real content comes in later steps (Calendar, Money). Same
+// Stand-in for screens whose real content comes in later steps (Money, Insights, Ask Lio). Same
 // header as the finished screens, and a card saying what will be here.
 export function PlaceholderScreen({
   title,
   description,
   children,
+  tabBar = true,
 }: {
   title: string;
   description: string;
   children?: ReactNode;
+  // False for a screen pushed over the tabs (Settings' Insights and Ask Lio tiles).
+  tabBar?: boolean;
 }) {
   return (
-    <Screen title={title}>
+    <Screen title={title} tabBar={tabBar}>
       <Card style={{ alignItems: 'center', paddingVertical: spacing.xl }}>
         <Mascot mood="planning" height={96} decorative />
         <Text variant="title3" style={{ textAlign: 'center' }}>

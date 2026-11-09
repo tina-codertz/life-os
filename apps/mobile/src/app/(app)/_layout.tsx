@@ -27,19 +27,26 @@ export default function AppLayout() {
           headerTintColor: colors.text.primary,
         }}
       />
-      <Stack.Screen
-        name="history"
-        options={{
-          title: '',
-          headerTransparent: true,
-          headerShadowVisible: false,
-          headerBackButtonDisplayMode: 'minimal',
-          headerTintColor: colors.text.primary,
-        }}
-      />
+      {/* Pushed from Settings: a transparent header with just the back button. */}
+      {['history', 'goals', 'coming-soon'].map((name) => (
+        <Stack.Screen
+          key={name}
+          name={name}
+          options={{
+            title: '',
+            headerTransparent: true,
+            headerShadowVisible: false,
+            headerBackButtonDisplayMode: 'minimal',
+            headerTintColor: colors.text.primary,
+          }}
+        />
+      ))}
+      <Stack.Screen name="goal/[id]" options={{ headerShown: false }} />
       <Stack.Screen name="sheet-demo" options={sheetOptions([0.5, 1], colors.bg.elevated)} />
       <Stack.Screen name="task-form" options={sheetOptions([0.85, 1], colors.bg.elevated)} />
       <Stack.Screen name="habit-form" options={sheetOptions([0.9, 1], colors.bg.elevated)} />
+      <Stack.Screen name="goal-form" options={sheetOptions([0.9, 1], colors.bg.elevated)} />
+      <Stack.Screen name="milestone-form" options={sheetOptions([0.6, 1], colors.bg.elevated)} />
     </Stack>
   );
 }

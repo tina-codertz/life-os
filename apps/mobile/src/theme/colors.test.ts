@@ -39,7 +39,11 @@ function textPairs(c: ThemeColors): [string, string, string][] {
     );
   }
   for (const [name, bg] of Object.entries(c.categoryTile)) {
-    pairs.push([`text.primary on categoryTile.${name}`, c.text.primary, bg]);
+    // Goal tiles: the title (primary) and "Due 31 Jan" (label).
+    pairs.push(
+      [`text.primary on categoryTile.${name}`, c.text.primary, bg],
+      [`text.label on categoryTile.${name}`, c.text.label, bg],
+    );
   }
   pairs.push(
     ['ink button label', c.ink.text, c.ink.fill],
@@ -79,8 +83,17 @@ describe.each([
     ['star on today', colors.text.onAccent, colors.accent.fill],
     ['flame on a chip', colors.flame, colors.bg.surface],
     ['gift on a ready chest circle', colors.reward.text, colors.reward.fill],
+    ['lock on a later milestone', colors.text.secondary, colors.tile.neutral],
+    ['tick on a done milestone', colors.quest.doneIcon, colors.quest.done],
+    ['star on the next milestone', colors.text.onAccent, colors.accent.fill],
   ])('%s ≥ 3:1', (_icon, fg, bg) => {
     expect(contrast(fg, bg)).toBeGreaterThanOrEqual(3);
+  });
+
+  // A goal tile's ring is drawn in its category's colour on that category's pastel.
+  it.each(Object.keys(colors.category))('goal ring %s is visible (≥ 3:1) on its tile', (name) => {
+    const key = name as keyof typeof colors.category;
+    expect(contrast(colors.category[key], colors.categoryTile[key])).toBeGreaterThanOrEqual(3);
   });
 
   it.each(Object.entries(colors.category))(

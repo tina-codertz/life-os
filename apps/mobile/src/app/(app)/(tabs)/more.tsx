@@ -1,10 +1,12 @@
 import type { Theme } from '@life-os/shared';
 import { router } from 'expo-router';
-import { Alert, type AlertButton, Platform, View } from 'react-native';
+import { Alert, type AlertButton, Platform, Pressable, View } from 'react-native';
 import { Screen } from '@/components/screen';
 import {
   Card,
   ErrorState,
+  type IconName,
+  IconTile,
   ListGroup,
   ListRow,
   Skeleton,
@@ -62,6 +64,7 @@ export default function Settings() {
   return (
     <Screen title="Settings" subtitle="Profile and preferences">
       <AccountCard me={me} />
+      <Shortcuts />
       {settings && (
         <ListGroup>
           <ListRow
@@ -106,6 +109,66 @@ export default function Settings() {
         />
       </ListGroup>
     </Screen>
+  );
+}
+
+// The design's four shortcut tiles under the profile. Insights and Ask Lio aren't built yet,
+// so they open a "coming soon" screen (your choice: show all four).
+function Shortcuts() {
+  const { colors } = useTheme();
+  const tiles: { label: string; icon: IconName; tint: string; open: () => void }[] = [
+    {
+      label: 'Goals',
+      icon: 'target',
+      tint: colors.tile.lavender,
+      open: () => router.push('/goals'),
+    },
+    {
+      label: 'Calendar',
+      icon: 'calendar',
+      tint: colors.tile.sky,
+      open: () => router.push('/calendar'),
+    },
+    {
+      label: 'Insights',
+      icon: 'chart',
+      tint: colors.tile.lime,
+      open: () => router.push({ pathname: '/coming-soon', params: { feature: 'insights' } }),
+    },
+    {
+      label: 'Ask Lio',
+      icon: 'sparkle',
+      tint: colors.tile.peach,
+      open: () => router.push({ pathname: '/coming-soon', params: { feature: 'ask-lio' } }),
+    },
+  ];
+  return (
+    <View style={{ flexDirection: 'row', gap: spacing.sm }}>
+      {tiles.map((tile) => (
+        <Pressable
+          key={tile.label}
+          accessibilityRole="button"
+          accessibilityLabel={tile.label}
+          onPress={tile.open}
+          style={({ pressed }) => ({
+            flex: 1,
+            minWidth: 0,
+            backgroundColor: tile.tint,
+            borderRadius: radius.xl,
+            borderCurve: 'continuous',
+            padding: spacing.md - 4,
+            paddingVertical: spacing.md,
+            gap: spacing.md,
+            opacity: pressed ? 0.8 : 1,
+          })}
+        >
+          <IconTile icon={tile.icon} tint="rgba(255,255,255,0.75)" size={36} round />
+          <Text variant="calloutStrong" numberOfLines={1} adjustsFontSizeToFit>
+            {tile.label}
+          </Text>
+        </Pressable>
+      ))}
+    </View>
   );
 }
 
