@@ -106,7 +106,7 @@ Each user story follows: *As a user, I want … so that …*, followed by accept
 3. **DST:** irrelevant to the date-based model. Tests cover the spring-forward and fall-back days.
 4. **Streak for `DAILY`:** consecutive scheduled days with a completion. Today not yet completed does **not** break the streak until the day ends.
 5. **Streak for `WEEKLY_DAYS`:** non-scheduled days are skipped (neither break nor extend).
-6. **Streak for `TIMES_PER_WEEK`:** streak counted in *weeks* meeting the target (week start from user preference, Monday default).
+6. **Streak for `TIMES_PER_WEEK`:** streak counted in *weeks* meeting the target (week start from user preference, Monday default). A week cut short by the start date or a schedule change (fewer than 7 of its days under this rule) is never missed: it counts if it reached the target, otherwise it's skipped. A target changed mid-week applies to the running week.
 7. **Frequency change:** applies from the change date forward. Previous periods are evaluated with the old rule (stored via `HabitSchedule` versions, see [05](05-DATABASE-DESIGN.md)).
 8. **Created mid-period:** days before `startDate` are never "missed".
 9. **Duplicate check-in** for the same `localDate` is idempotent (unique constraint).

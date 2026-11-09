@@ -76,8 +76,13 @@ function periods(input: StreakInput): Period[] {
   const out: Period[] = [];
   let week: { key: string; done: number; target: number; days: number } | null = null;
   const closeWeek = (pending: boolean) => {
-    if (week)
-      out.push({ ok: week.done >= week.target, pending: pending && week.done < week.target });
+    if (week) {
+      const ok = week.done >= week.target;
+      // A week cut short by the start date or a schedule change (fewer than 7 of its days
+      // under this rule) is never missed (rules 7 and 8): it counts only if it reached the
+      // target anyway.
+      if (ok || pending || week.days === 7) out.push({ ok, pending: pending && !ok });
+    }
     week = null;
   };
 
@@ -87,7 +92,9 @@ function periods(input: StreakInput): Period[] {
     if (rule.frequency === 'TIMES_PER_WEEK') {
       const key = weekOf(day, input.weekStartsOn);
       if (week && week.key !== key) closeWeek(false);
-      week ??= { key, done: 0, target: rule.timesPerWeek ?? 1, days: 0 };
+      week ??= { key, done: 0, target: 1, days: 0 };
+      // The newest rule in the week sets its target, so a change applies to the running week.
+      week.target = rule.timesPerWeek ?? 1;
       week.days += 1;
       if (isDone(input, day)) week.done += 1;
       continue;

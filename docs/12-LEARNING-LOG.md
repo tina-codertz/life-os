@@ -1297,3 +1297,21 @@ Habits I passed your check on the phone: habits, check-in / undo / backfill, the
 1. Why does the plan stop at 60 reminders, and what happens if you don't open the app for three weeks?
 2. Why is notification permission asked when you first save a reminder, not when the app starts?
 
+### 2026-11-09 — M7b accepted on a real device
+Reminders arrive with the habit's name, tapping one opens the habit, a habit already done today gets no reminder, and Settings → Notifications Off stops them. (The detail subtitle first looked missing: the phone still had data from before the API restart; a reload showed it.)
+
+### 2026-11-09 — Habits II: the streak test matrix
+**What was built:** the rest of the matrix from docs/08 in `packages/shared/src/habits/streaks.spec.ts`: time-zone changes (flying east and west, and every frequency judged by its stored local dates), daylight saving for every frequency (the US spring-forward and fall-back days, besides the existing EU one), and schedule changes between frequencies (daily ↔ N a week, Mon/Wed/Fri → daily, a target change mid-week). Plus one API e2e test that moves an account to Kiritimati (UTC+14).
+**Found:** a real bug. A week cut short by the start date or a schedule change was judged like a full week, so "3 times a week" starting on a Sunday, or switching from daily on a Thursday, gave a week that couldn't reach 3 and counted as **missed**, which could break a running streak and lowered Consistency. An existing test had that behaviour written in (33% where it should be 50%).
+**The fix:** such a week counts if it reached the target and is skipped otherwise (rules 7 and 8: a change never makes you miss), and the newest rule in a week sets its target. Rule 6 in docs/02 now says so.
+**Concepts:**
+- *A test matrix:* listing the dimensions (frequency, zone change, DST, schedule change) and testing their combinations finds bugs that each rule tested alone misses: every rule here passed alone; the bug lived where two met.
+- *A test can encode a bug:* the old test was green because it asserted the wrong number. A test proves the code does what the test says, not that the test says the right thing.
+- *Why the date model makes zones and DST easy:* check-ins store the local calendar day, so a zone change or a 23-hour day never moves them; only "which day is today" changes.
+**Postponed until needed:** cached streaks and the nightly job (docs/08 week 15): streaks are computed per request, which is fast at this size.
+**Checks:** shared 154 (11 new), API 116 + 185 e2e, mobile 453; lint, format and typecheck clean. Probe: the 4 partial-week tests failed before the fix.
+**To learn:**
+1. Every rule passed its own test, yet the combination had a bug. Why are bugs more likely where two rules meet?
+2. The old test was green with the bug. What does a passing test actually prove?
+3. Why does a stored local date (not a UTC timestamp) make a time-zone change harmless to past days?
+

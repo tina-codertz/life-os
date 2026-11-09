@@ -83,7 +83,7 @@ describe('WEEKLY_DAYS (rule 5)', () => {
 
 describe('TIMES_PER_WEEK (rule 6)', () => {
   it('counts weeks that reached the target; this week still running doesn’t break it', () => {
-    // Week of 26 Oct (only Sun 1 Nov is in range, so 1 of 3: missed), 2–8 Nov: 3 done.
+    // Week of 26 Oct (only Sun 1 Nov is in range: too short to be missed), 2–8 Nov: 3 done.
     // Today is Mon 9 Nov: the new week has just started.
     const s = computeStreaks(
       input({
@@ -212,8 +212,149 @@ describe('computeStats (the habit detail tiles)', () => {
       }),
     );
     // Week of 2 Nov: 3 of 3; week of 9 Nov: 1 of 3; the week of the 16th is still running.
-    // (The 1st, a Sunday, is its own week before them, with nothing done.)
+    // The 1st, a Sunday, is a one-day first week: it can't reach 3, so it isn't missed (rule 8).
     expect(s.totalDays).toBe(4);
-    expect(s.consistency).toBe(33);
+    expect(s.consistency).toBe(50);
+  });
+});
+
+// The rest of the matrix: each frequency × time-zone change × daylight saving × schedule change.
+describe('time-zone changes (rules 1 and 2)', () => {
+  it('flying east: "today" jumps ahead, yesterday’s check-in still counts', () => {
+    // Done 5–7 Nov in Dar es Salaam; landing in Tokyo it's already the 8th, not done yet.
+    const s = computeStreaks(input({ startDate: '2026-11-05', done: days('2026-11-05', 3) }));
+    expect(s.current).toBe(3);
+  });
+
+  it('flying west: a check-in on a day that is "tomorrow" again isn’t lost or counted twice', () => {
+    // Done 5–8 Nov in Tokyo, then in Los Angeles it's the 7th again.
+    const before = input({ startDate: '2026-11-05', done: days('2026-11-05', 4) });
+    const west = { ...before, today: '2026-11-07' };
+    expect(computeStreaks(west).current).toBe(3); // 5, 6, 7: the 8th hasn't come yet here
+    expect(dayState(west, '2026-11-08')).toBe('done'); // kept, shown as done
+    // When the 8th arrives in Los Angeles it counts once.
+    expect(computeStreaks({ ...west, today: '2026-11-08' }).current).toBe(4);
+  });
+
+  it('every frequency judges days by their stored local date, not by the new zone', () => {
+    const done = ['2026-11-02', '2026-11-04', '2026-11-06'];
+    for (const schedules of [[MON_WED_FRI], [THREE_A_WEEK]]) {
+      const there = computeStreaks(input({ schedules, startDate: '2026-11-02', done }));
+      const back = computeStreaks(
+        input({ schedules, startDate: '2026-11-02', done, today: '2026-11-07' }),
+      );
+      expect(back).toEqual(there);
+    }
+  });
+});
+
+describe('daylight saving (rule 3) for every frequency', () => {
+  // United States: spring forward Sun 8 Mar 2026, fall back Sun 1 Nov 2026.
+  it('daily across the spring-forward day', () => {
+    const s = computeStreaks(
+      input({ startDate: '2026-03-07', today: '2026-03-09', done: days('2026-03-07', 3) }),
+    );
+    expect(s.current).toBe(3);
+  });
+
+  it('Mon/Wed/Fri across the fall-back weekend', () => {
+    const s = computeStreaks(
+      input({
+        schedules: [{ ...MON_WED_FRI, effectiveFrom: '2026-10-26' }],
+        startDate: '2026-10-26',
+        today: '2026-11-06',
+        done: ['2026-10-26', '2026-10-28', '2026-10-30', '2026-11-02', '2026-11-04', '2026-11-06'],
+      }),
+    );
+    expect(s.current).toBe(6);
+  });
+
+  it('3 times a week: the fall-back Sunday stays in its week', () => {
+    // Weeks from Monday: 26 Oct – 1 Nov holds the DST Sunday.
+    const s = computeStreaks(
+      input({
+        schedules: [{ ...THREE_A_WEEK, effectiveFrom: '2026-10-26' }],
+        startDate: '2026-10-26',
+        today: '2026-11-09',
+        done: ['2026-10-27', '2026-10-29', '2026-11-01', '2026-11-03', '2026-11-05', '2026-11-07'],
+      }),
+    );
+    expect(s).toEqual({ current: 2, best: 2, unit: 'weeks' });
+  });
+});
+
+describe('schedule changes (rule 7) between every pair of frequencies', () => {
+  it('daily → 3 times a week on a Thursday: the cut-short week isn’t missed', () => {
+    // Daily Mon 2 – Wed 4, all done; 3 a week from Thu 5, done once by Sun 8 (now Mon 9).
+    const s = computeStreaks(
+      input({
+        schedules: [DAILY, { ...THREE_A_WEEK, effectiveFrom: '2026-11-05' }],
+        startDate: '2026-11-02',
+        today: '2026-11-09',
+        done: [...days('2026-11-02', 3), '2026-11-07'],
+      }),
+    );
+    expect(s.current).toBe(3); // the 3 daily days; Thu–Sun (4 days) neither breaks nor adds
+    expect(s.unit).toBe('weeks');
+  });
+
+  it('3 times a week → daily on a Wednesday: Mon–Tue alone can’t reach 3, so they don’t break it', () => {
+    const s = computeStreaks(
+      input({
+        schedules: [
+          { ...THREE_A_WEEK, effectiveFrom: '2026-10-26' },
+          { ...DAILY, effectiveFrom: '2026-11-04' },
+        ],
+        startDate: '2026-10-26',
+        today: '2026-11-08',
+        // Week of 26 Oct: 3 done. Mon 2: done. Then daily from Wed 4 to Sun 8.
+        done: ['2026-10-26', '2026-10-28', '2026-10-30', '2026-11-02', ...days('2026-11-04', 5)],
+      }),
+    );
+    expect(s).toEqual({ current: 6, best: 6, unit: 'days' }); // 1 week + 5 days
+  });
+
+  it('a cut-short week that did reach its target still counts', () => {
+    const s = computeStreaks(
+      input({
+        schedules: [
+          { ...THREE_A_WEEK, effectiveFrom: '2026-11-02' },
+          { ...DAILY, effectiveFrom: '2026-11-05' },
+        ],
+        startDate: '2026-11-02',
+        done: [...days('2026-11-02', 3), ...days('2026-11-05', 4)],
+      }),
+    );
+    expect(s.current).toBe(5); // the week (Mon–Wed, 3 of 3) + Thu–Sun daily
+  });
+
+  it('changing the target mid-week applies to the running week', () => {
+    // 3 a week until Wed 4, then 2 a week; done Mon and Thu.
+    const s = computeStreaks(
+      input({
+        schedules: [
+          { ...THREE_A_WEEK, effectiveFrom: '2026-11-02' },
+          { ...THREE_A_WEEK, timesPerWeek: 2, effectiveFrom: '2026-11-05' },
+        ],
+        startDate: '2026-11-02',
+        today: '2026-11-09',
+        done: ['2026-11-02', '2026-11-05'],
+      }),
+    );
+    expect(s.current).toBe(1);
+  });
+
+  it('Mon/Wed/Fri → daily: the old days off stay off, every day counts after', () => {
+    const s = computeStreaks(
+      input({
+        schedules: [
+          { ...MON_WED_FRI, effectiveFrom: '2026-11-02' },
+          { ...DAILY, effectiveFrom: '2026-11-06' },
+        ],
+        startDate: '2026-11-02',
+        done: ['2026-11-02', '2026-11-04', ...days('2026-11-06', 3)],
+      }),
+    );
+    expect(s.current).toBe(5);
   });
 });

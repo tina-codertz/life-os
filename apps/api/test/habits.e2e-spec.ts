@@ -301,6 +301,36 @@ describe('Habits (e2e)', () => {
       });
     });
 
+    it('a time-zone change keeps past days and moves "today" to the new zone (rules 1, 2)', async () => {
+      const habit = await newHabit(tina, { startDate: addDays(today(), -1) });
+      const home = today();
+      await as(tina).checkIn(habit.id, { localDate: home }).expect(201);
+      // Fly to Kiritimati (UTC+14): its date is the same as Dar es Salaam's or one day ahead.
+      const AWAY = 'Pacific/Kiritimati';
+      await prisma.userSettings.update({
+        where: { userId: tina.user.id },
+        data: { timezone: AWAY },
+      });
+      const away = localToday(AWAY);
+      const moved = (await as(tina).get(habit.id).expect(200)).body.data as PublicHabit;
+      // The check-in keeps its day; the streak isn't broken by the new "today" not being done.
+      expect(moved.streak).toMatchObject({ current: 1 });
+      expect(moved.today?.localDate ?? null).toBe(away === home ? home : null);
+      const res = await http()
+        .get(`/api/v1/habits/${habit.id}/days?from=${home}&to=${home}`)
+        .set({ Authorization: `Bearer ${tina.accessToken}` })
+        .expect(200);
+      expect((res.body.data as HabitDay[])[0]?.state).toBe('done');
+      // Check-ins now follow the new zone's day: tomorrow there is still refused.
+      await as(tina)
+        .checkIn(habit.id, { localDate: addDays(away, 1) })
+        .expect(422);
+      if (away !== home) {
+        const next = await as(tina).checkIn(habit.id, { localDate: away }).expect(201);
+        expect((next.body.data as HabitCheckInResult).streak).toMatchObject({ current: 2 });
+      }
+    });
+
     it('days: each day\u2019s state, for the path and the calendar', async () => {
       const habit = await newHabit(tina, { startDate: addDays(today(), -2) });
       await as(tina)
