@@ -23,6 +23,7 @@ const READ: PublicHabit = {
   targetCount: 1,
   unit: null,
   goalDays: 21,
+  reminderTimes: [],
   startDate: '2026-10-01',
   archivedAt: null,
   sortOrder: 0,
@@ -85,6 +86,7 @@ describe('habit sheet', () => {
       targetCount: 8,
       unit: 'glasses',
       goalDays: 30,
+      reminderTimes: [],
       schedule: { frequency: 'WEEKLY_DAYS', weekdays: [0, 1, 3, 5] },
     });
     await waitFor(() => expect(router.getPathname()).toBe('/habits'));

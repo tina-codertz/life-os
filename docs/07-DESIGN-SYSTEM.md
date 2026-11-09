@@ -101,6 +101,10 @@ Primitives live in `src/components/ui/`, and feature components in `src/features
   - a ✕ Close (not in the design) so you can leave without collecting.
   - Left out until they exist: the design's "Streak freeze" and "Week warrior" tiles.
   - On the path, today's circle turns amber with a 🎁 (`reward.fill` / `reward.shade`) until it's opened; the habit detail's button says "Open your chest". The Lio page has the amber daily chest card (locked / ready with Open / opened).
+- **Reminders (Habits II):**
+  - `ReminderRow` in the habit sheet, like New task's Time row: up to 3 time pills, each with ✕ ("Remove the 21:00 reminder"), and "Add a reminder" (Android dialog, iOS wheel + "Add 21:00").
+  - The habit detail subtitle reads "Every day · reminder 21:00", as in the design.
+  - Settings gets the design's **Notifications** row (bell, peach): habit reminders On / Off in the phone's own dialog.
 - The Lio page: the 🔥 / ⚡ chips (`ProgressChips`, shared with Habits), and the level card ("N days strong!" ink pill, Lio, "Lio · Level N", "X XP to level N+1", a purple progress bar).
 
 | Component | Variants / props | States |

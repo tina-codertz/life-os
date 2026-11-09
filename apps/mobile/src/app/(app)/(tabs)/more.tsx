@@ -12,7 +12,7 @@ import {
   Text,
 } from '@/components/ui';
 import { useSession } from '@/features/auth/session';
-import { useMe, useSetTheme } from '@/features/users/queries';
+import { useMe, useSetHabitReminders, useSetTheme } from '@/features/users/queries';
 import { radius, spacing, useTheme } from '@/theme';
 
 const THEME_LABEL: Record<Theme, string> = { LIGHT: 'Light', DARK: 'Dark', SYSTEM: 'System' };
@@ -30,6 +30,17 @@ function chooseTheme(onChoose: (theme: Theme) => void) {
   Alert.alert('Appearance', undefined, buttons, { cancelable: true });
 }
 
+// Notifications: for now, habit reminders on or off (the phone's own choice dialog, like
+// Appearance). Turning them off cancels the scheduled reminders; on schedules them again.
+function chooseReminders(onChoose: (on: boolean) => void) {
+  const buttons: AlertButton[] = [
+    { text: 'On', onPress: () => onChoose(true) },
+    { text: 'Off', onPress: () => onChoose(false) },
+  ];
+  if (Platform.OS === 'ios') buttons.push({ text: 'Cancel', style: 'cancel' });
+  Alert.alert('Habit reminders', undefined, buttons, { cancelable: true });
+}
+
 // Signing out asks first: it's easy to tap by accident and you'd have to sign in again.
 function confirmSignOut(signOut: () => void) {
   Alert.alert('Sign out?', 'Are you sure you want to sign out?', [
@@ -39,12 +50,13 @@ function confirmSignOut(signOut: () => void) {
 }
 
 // The design's Settings screen: profile card, then preferences, then the account. Only rows
-// that work today are shown; Notifications, export, privacy and delete arrive with their phases.
+// that work today are shown; export, privacy and delete arrive with their phases.
 export default function Settings() {
   const { signOut } = useSession();
   const { colors } = useTheme();
   const me = useMe();
   const setTheme = useSetTheme();
+  const setReminders = useSetHabitReminders();
   const settings = me.data?.settings;
 
   return (
@@ -59,6 +71,14 @@ export default function Settings() {
             value={THEME_LABEL[settings.theme]}
             accessibilityHint="Choose light, dark or system"
             onPress={() => chooseTheme((theme) => setTheme.mutate(theme))}
+          />
+          <ListRow
+            icon="bell"
+            tint={colors.tile.peach}
+            title="Notifications"
+            value={settings.habitRemindersOn ? 'On' : 'Off'}
+            accessibilityHint="Turn habit reminders on or off"
+            onPress={() => chooseReminders((on) => setReminders.mutate(on))}
           />
           <ListRow
             icon="globe"

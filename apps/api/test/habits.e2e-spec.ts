@@ -87,6 +87,7 @@ describe('Habits (e2e)', () => {
         targetCount: 1,
         unit: null,
         goalDays: 21,
+        reminderTimes: [],
         startDate: today(),
         archivedAt: null,
         sortOrder: 0,
@@ -211,6 +212,20 @@ describe('Habits (e2e)', () => {
       });
       expect(versions.map((v) => v.frequency)).toEqual(['DAILY', 'WEEKLY_DAYS']);
       expect(versions[1]?.effectiveFrom.toISOString().slice(0, 10)).toBe(today());
+    });
+
+    it('reminder times (FR-HAB-006): sorted, no repeats, up to 3, can be cleared', async () => {
+      const habit = await newHabit(tina, { reminderTimes: [1260, 480, 1260] });
+      expect(habit.reminderTimes).toEqual([480, 1260]);
+      const bad = await as(tina)
+        .update(habit.id, { reminderTimes: [1, 2, 3, 4] })
+        .expect(400);
+      expect(bad.body.error.details[0].field).toBe('reminderTimes');
+      await as(tina)
+        .update(habit.id, { reminderTimes: [1440] })
+        .expect(400);
+      const cleared = await as(tina).update(habit.id, { reminderTimes: [] }).expect(200);
+      expect(cleared.body.data.reminderTimes).toEqual([]);
     });
 
     it('PATCH is strict and changes only what is sent', async () => {

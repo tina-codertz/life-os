@@ -1,10 +1,12 @@
 import { Stack } from 'expo-router';
 import { sheetOptions } from '@/components/sheet';
+import { useHabitReminders } from '@/features/reminders/use-habit-reminders';
 import { useTheme } from '@/theme';
 
 // Signed in and onboarded. Tabs at the root; detail screens get pushed over them.
 export default function AppLayout() {
   const { colors } = useTheme();
+  useHabitReminders();
   return (
     <Stack screenOptions={{ contentStyle: { backgroundColor: colors.bg.canvas } }}>
       <Stack.Screen name="(tabs)" options={{ headerShown: false }} />

@@ -10,7 +10,7 @@ import { router, useLocalSearchParams } from 'expo-router';
 import { type ReactNode, useEffect, useRef, useState } from 'react';
 import { type Control, Controller, useWatch } from 'react-hook-form';
 import type { z } from 'zod';
-import { Alert, ScrollView, View } from 'react-native';
+import { Alert, Linking, ScrollView, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Button, Chip, IconButton, ListGroup, ListRow, Text, TextField } from '@/components/ui';
 import { applyApiError, useZodForm } from '@/features/forms/zod-form';
@@ -22,6 +22,8 @@ import {
   useHabits,
   useUpdateHabit,
 } from '@/features/habits/queries';
+import { askForReminderPermission } from '@/features/reminders/notifications';
+import { ReminderRow } from '@/features/reminders/reminder-row';
 import { spacing, useTheme } from '@/theme';
 
 const COLOR_NAMES: Record<CategoryColor, string> = {
@@ -61,6 +63,7 @@ export default function HabitForm() {
     targetCount: 1,
     unit: null,
     goalDays: 21,
+    reminderTimes: [],
     schedule: { frequency: 'DAILY' },
   });
 
@@ -76,6 +79,7 @@ export default function HabitForm() {
         targetCount: habit.targetCount,
         unit: habit.unit,
         goalDays: habit.goalDays,
+        reminderTimes: habit.reminderTimes,
         schedule: habit.schedule,
       });
     }
@@ -92,8 +96,27 @@ export default function HabitForm() {
         await create.mutateAsync(values);
       }
       router.back();
+      // A reminder needs notifications: asked the first time one is saved, not at launch.
+      if (values.reminderTimes?.length && !(await askForReminderPermission())) {
+        Alert.alert(
+          'Notifications are off',
+          'Life OS can’t remind you until notifications are allowed in Settings.',
+          [
+            { text: 'Not now', style: 'cancel' },
+            { text: 'Open Settings', onPress: () => void Linking.openSettings() },
+          ],
+        );
+      }
     } catch (err) {
-      applyApiError(err, setError, ['name', 'icon', 'color', 'targetCount', 'unit', 'goalDays']);
+      applyApiError(err, setError, [
+        'name',
+        'icon',
+        'color',
+        'targetCount',
+        'unit',
+        'goalDays',
+        'reminderTimes',
+      ]);
     }
   });
 
@@ -205,6 +228,17 @@ export default function HabitForm() {
                 ))}
               </View>
             </ListRow>
+          )}
+        />
+        <Controller
+          control={control}
+          name="reminderTimes"
+          render={({ field, fieldState }) => (
+            <ReminderRow
+              value={field.value ?? []}
+              onChange={field.onChange}
+              error={fieldState.error?.message}
+            />
           )}
         />
       </ListGroup>

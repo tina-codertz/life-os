@@ -10,6 +10,7 @@ const habit = (o: Partial<PublicHabit> = {}): PublicHabit => ({
   targetCount: 1,
   unit: null,
   goalDays: 21,
+  reminderTimes: [],
   startDate: '2026-10-01',
   archivedAt: null,
   sortOrder: 0,

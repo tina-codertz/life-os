@@ -33,7 +33,7 @@ export function scheduleLabel(schedule: HabitSchedule): string {
 }
 
 const weekday = (day: string) => new Date(`${day}T00:00:00.000Z`).getUTCDay();
-const isDue = (schedule: HabitSchedule, day: string) =>
+export const isDue = (schedule: HabitSchedule, day: string) =>
   schedule.frequency !== 'WEEKLY_DAYS' || schedule.weekdays.includes(weekday(day));
 
 // The milestone rule (every 7th day, and the challenge's last day) is shared with the server.

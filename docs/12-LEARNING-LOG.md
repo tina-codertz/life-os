@@ -1238,3 +1238,33 @@ Still open (History, to discuss): what the design's calendar button on Week / Ye
 
 ### 2026-11-09 — M7a accepted on a real device
 Habits I passed your check on the phone: habits, check-in / undo / backfill, the habit detail, Lio's bubble and page, both chests, Calendar from Habits, the Money tab and onboarding's first habit.
+
+### 2026-11-09 — Habits II: reminders
+**What was built:**
+- **API:** `reminderTimes` on habits. These are minutes after midnight (21:00 = 1260), up to 3, sorted. Migration `add_habit_reminder_times`.
+- **Shared:** `zonedInstant(day, minutes, zone)` gives the exact moment it's 21:00 on a day in your zone. It's tested on daylight-saving days.
+- **Phone:**
+  - `planReminders` works out what should be scheduled: the next 14 days, only due days, not today once it's done, nearest first, at most 60.
+  - `syncReminders` makes the phone's scheduled notifications match that plan.
+  - The Reminder row in the habit sheet.
+  - Notification permission is asked the first time you save a reminder, with an "Open Settings" way out if it's refused.
+  - "reminder 21:00" on the habit detail.
+  - Settings → Notifications On / Off.
+  - Tapping a reminder opens its habit.
+**Concepts:**
+- *Local vs push notifications:* local ones are scheduled by the phone itself, so they work offline and need no server. Push comes from a server (v1.2).
+- *Planning vs doing:* the plan is a pure function (easy to test with any date and zone). Only the small sync step talks to the phone.
+- *Why not repeating notifications:* a repeating one can't skip today once you've done it, or skip days the habit isn't due.
+**Found while building:**
+- Prisma 7's `migrate dev` no longer rebuilds the client, so `prisma generate` has to be run after a schema change.
+- Twice, the tests' fake server had to start answering like the real one after a change (settings after PATCH), or the app would "undo" the change.
+**Checks:**
+- Tests: planner 7, reminder screens 8, `zonedInstant` 4, API e2e 1.
+- Probes: 7 broken rules each make a test fail.
+- Totals: mobile 453, API 116 + 184, shared 143.
+- Not seen on the simulator: it's still signed out.
+
+**To learn:**
+1. Why does the plan stop at 60 reminders, and what happens if you don't open the app for three weeks?
+2. Why is notification permission asked when you first save a reminder, not when the app starts?
+

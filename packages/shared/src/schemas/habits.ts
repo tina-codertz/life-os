@@ -15,6 +15,9 @@ export const MAX_HABIT_TARGET = 100;
 export const HABIT_BACKFILL_DAYS = 7;
 // The quest path's challenge length ("Day 12 of 21"); the sheet offers these.
 export const HABIT_GOAL_DAYS = [7, 21, 30, 66] as const;
+
+// FR-HAB-006: up to 3 reminder times a day, as minutes after local midnight (21:00 = 1260).
+export const MAX_HABIT_REMINDERS = 3;
 const goalDays = z.number().int().min(1).max(365);
 
 const name = z
@@ -57,6 +60,12 @@ export const habitScheduleSchema = z.discriminatedUnion(
 );
 export type HabitSchedule = z.infer<typeof habitScheduleSchema>;
 
+// Sorted, without repeats, so the same times always look the same.
+const reminderTimes = z
+  .array(z.number().int().min(0).max(1439))
+  .max(MAX_HABIT_REMINDERS, { error: `Up to ${MAX_HABIT_REMINDERS} reminders a day.` })
+  .transform((times) => [...new Set(times)].sort((a, b) => a - b));
+
 // POST /habits. startDate defaults to today (the user's); before it, nothing is ever "missed".
 export const createHabitSchema = z.object({
   name,
@@ -66,6 +75,7 @@ export const createHabitSchema = z.object({
   targetCount: z.number().int().min(1).max(MAX_HABIT_TARGET).optional(),
   unit: z.string().trim().max(20).nullable().optional(),
   goalDays: goalDays.optional(),
+  reminderTimes: reminderTimes.optional(),
   startDate: localDateSchema.optional(),
   schedule: habitScheduleSchema,
 });
@@ -79,6 +89,7 @@ export const updateHabitSchema = z.strictObject({
   targetCount: z.number().int().min(1).max(MAX_HABIT_TARGET).optional(),
   unit: z.string().trim().max(20).nullable().optional(),
   goalDays: goalDays.optional(),
+  reminderTimes: reminderTimes.optional(),
   schedule: habitScheduleSchema.optional(),
   sortOrder: z.number().int().min(0).max(10_000).optional(),
 });
@@ -142,6 +153,8 @@ export interface PublicHabit {
   targetCount: number;
   unit: string | null;
   goalDays: number;
+  // Minutes after local midnight, sorted (FR-HAB-006); reminders are local notifications.
+  reminderTimes: number[];
   startDate: string;
   archivedAt: string | null;
   sortOrder: number;

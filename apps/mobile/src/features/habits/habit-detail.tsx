@@ -18,7 +18,7 @@ import {
 } from '@/components/ui';
 import { monthName, monthWeeks, weekdayLetter } from '@/features/history/history-dates';
 import { Badge } from '@/features/history/parts';
-import { formatDayLong, localToday } from '@/features/tasks/dates';
+import { formatDayLong, formatTime, localToday } from '@/features/tasks/dates';
 import { useMe } from '@/features/users/queries';
 import { useTimezone } from '@/features/users/use-timezone';
 import { radius, spacing, useTheme } from '@/theme';
@@ -90,6 +90,7 @@ export function HabitDetailScreen() {
             {habit && (
               <Text variant="caption" tone="secondary">
                 {scheduleLabel(habit.schedule)}
+                {reminderLabel(habit.reminderTimes)}
               </Text>
             )}
           </View>
@@ -168,6 +169,12 @@ function HabitDetail({ habit }: { habit: PublicHabit }) {
       ) : null}
     </>
   );
+}
+
+// The design's "Daily · reminder 21:00".
+function reminderLabel(times: number[]): string {
+  if (times.length === 0) return '';
+  return ` · ${times.length === 1 ? 'reminder' : 'reminders'} ${times.map(formatTime).join(', ')}`;
 }
 
 function todayButtonTitle(habit: PublicHabit, count: number, doneToday: boolean): string {

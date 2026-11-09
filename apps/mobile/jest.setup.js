@@ -20,3 +20,37 @@ jest.mock('expo-localization', () => {
     ]),
   };
 });
+// Local notifications: an in-memory phone. Tests read what's scheduled with
+// getAllScheduledNotificationsAsync() and set the permission with mockSetPermission('denied').
+jest.mock('expo-notifications', () => {
+  let scheduled = [];
+  let permission = 'granted';
+  const status = () => ({ granted: permission === 'granted', status: permission, ios: undefined });
+  return {
+    mockSetPermission: (next) => {
+      permission = next;
+    },
+    mockReset: () => {
+      scheduled = [];
+      permission = 'granted';
+    },
+    SchedulableTriggerInputTypes: { DATE: 'date' },
+    AndroidImportance: { DEFAULT: 3 },
+    IosAuthorizationStatus: { PROVISIONAL: 3 },
+    setNotificationHandler: jest.fn(),
+    setNotificationChannelAsync: jest.fn(async () => null),
+    getPermissionsAsync: jest.fn(async () => status()),
+    requestPermissionsAsync: jest.fn(async () => status()),
+    scheduleNotificationAsync: jest.fn(async (request) => {
+      const identifier = request.identifier ?? String(scheduled.length);
+      scheduled = scheduled.filter((n) => n.identifier !== identifier);
+      scheduled.push({ ...request, identifier });
+      return identifier;
+    }),
+    cancelScheduledNotificationAsync: jest.fn(async (identifier) => {
+      scheduled = scheduled.filter((n) => n.identifier !== identifier);
+    }),
+    getAllScheduledNotificationsAsync: jest.fn(async () => [...scheduled]),
+    addNotificationResponseReceivedListener: jest.fn(() => ({ remove: jest.fn() })),
+  };
+});

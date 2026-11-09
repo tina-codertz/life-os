@@ -16,28 +16,43 @@ export function useMe({ enabled = true }: { enabled?: boolean } = {}) {
   });
 }
 
-// Settings → Appearance. The cached settings change first, so useThemeFromSettings applies the
-// new theme at once; if the server refuses, the old theme comes back and a toast says so.
-export function useSetTheme() {
+// A settings change (PATCH /users/me/settings). The cached settings change first, so the app
+// reacts at once (the theme applies, reminders are re-planned); if the server refuses, the old
+// value comes back and a toast says so.
+type SettingsPatch = Partial<Pick<PublicSettings, 'theme' | 'habitRemindersOn'>>;
+
+function useSettingsPatch(failure: string) {
   const queryClient = useQueryClient();
   const toast = useToast();
   return useMutation({
-    mutationFn: (theme: Theme) => api().patch<PublicSettings>('/users/me/settings', { theme }),
-    onMutate: async (theme) => {
+    mutationFn: (patch: SettingsPatch) => api().patch<PublicSettings>('/users/me/settings', patch),
+    onMutate: async (patch) => {
       await queryClient.cancelQueries({ queryKey: userKeys.me });
       const before = queryClient.getQueryData<MeResponse>(userKeys.me);
       if (before) {
         queryClient.setQueryData<MeResponse>(userKeys.me, {
           ...before,
-          settings: { ...before.settings, theme },
+          settings: { ...before.settings, ...patch },
         });
       }
       return { before };
     },
-    onError: (_err, _theme, context) => {
+    onError: (_err, _patch, context) => {
       if (context?.before) queryClient.setQueryData(userKeys.me, context.before);
-      toast({ message: "Couldn't change the appearance. Try again.", tone: 'error' });
+      toast({ message: failure, tone: 'error' });
     },
     onSettled: () => queryClient.invalidateQueries({ queryKey: userKeys.me }),
   });
+}
+
+// Settings → Appearance.
+export function useSetTheme() {
+  const patch = useSettingsPatch("Couldn't change the appearance. Try again.");
+  return { ...patch, mutate: (theme: Theme) => patch.mutate({ theme }) };
+}
+
+// Settings → Notifications: habit reminders on or off (FR-SET-004).
+export function useSetHabitReminders() {
+  const patch = useSettingsPatch("Couldn't change notifications. Try again.");
+  return { ...patch, mutate: (on: boolean) => patch.mutate({ habitRemindersOn: on }) };
 }

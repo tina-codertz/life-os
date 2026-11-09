@@ -7,12 +7,12 @@ import { formatTime } from './dates';
 
 // Minutes after midnight ↔ the picker's Date. The picker only shows a wall-clock time, so the
 // date part and the phone's time zone don't matter: hours and minutes go in and come out.
-function toDate(minutes: number): Date {
+export function toDate(minutes: number): Date {
   const date = new Date(2026, 0, 1, 0, 0, 0, 0);
   date.setHours(Math.floor(minutes / 60), minutes % 60);
   return date;
 }
-const toMinutes = (date: Date) => date.getHours() * 60 + date.getMinutes();
+export const toMinutes = (date: Date) => date.getHours() * 60 + date.getMinutes();
 
 // The default when a time is first added: the next full hour, as a sensible starting point.
 function nextHour(): number {

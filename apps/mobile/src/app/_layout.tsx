@@ -9,6 +9,7 @@ import { OfflineBanner } from '@/components/offline-banner';
 import { ToastProvider } from '@/components/ui';
 import { useEffect } from 'react';
 import { SessionProvider, useSession, areaFor } from '@/features/auth/session';
+import { showNotificationsInApp } from '@/features/reminders/notifications';
 import { useThemeFromSettings } from '@/features/users/use-theme-from-settings';
 import { QueryProvider } from '@/services/query-provider';
 import { fonts, ThemeProvider, useTheme } from '@/theme';
@@ -17,6 +18,8 @@ import { fonts, ThemeProvider, useTheme } from '@/theme';
 // stored session at launch) and the font has loaded, so nobody sees the wrong screen, or text
 // jumping from the system font to Outfit, flash first.
 void SplashScreen.preventAutoHideAsync();
+// Habit reminders that arrive while the app is open are shown too.
+showNotificationsInApp();
 
 export default function RootLayout() {
   return (

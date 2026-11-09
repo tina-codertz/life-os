@@ -45,6 +45,7 @@ import Gift from 'lucide-react-native/icons/gift';
 import Footprints from 'lucide-react-native/icons/footprints';
 import Dumbbell from 'lucide-react-native/icons/dumbbell';
 import Droplet from 'lucide-react-native/icons/droplet';
+import Bell from 'lucide-react-native/icons/bell';
 import Brain from 'lucide-react-native/icons/brain';
 import Archive from 'lucide-react-native/icons/archive';
 import { View } from 'react-native';
@@ -54,6 +55,7 @@ import { useTheme } from '@/theme';
 // name an icon by meaning; each icon is imported on its own so only these end up in the app.
 const ICONS = {
   archive: Archive,
+  bell: Bell,
   brain: Brain,
   droplet: Droplet,
   dumbbell: Dumbbell,

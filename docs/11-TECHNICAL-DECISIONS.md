@@ -132,6 +132,12 @@
 - **Status:** Confirmed · 2026-11-04
 - **Decision:** `expo-notifications` schedules repeating local notifications from `Habit.reminderTimes`, re-synced when habits change and on app start.
 - **Consequences:** Reminders still fire offline. Reminders don't sync to a second device until the app opens there. Server push is deferred to v1.2 (needed for budget alerts and challenges).
+- **Amended 2026-11-09 (built):**
+  - **One-off notifications, not repeating ones.** The app schedules a notification for each due day in the next 14 days. A repeating trigger can't skip a day, so it would remind you on days the habit isn't due and after you'd already done it today. Expo's daily trigger is also Android-only (iOS needs a calendar trigger).
+  - **At most 60 pending, nearest first.** iOS keeps 64 per app.
+  - **When it syncs:** on app start, when the app comes back to the front, and whenever a habit, check-in or the setting changes. If the app isn't opened for two weeks, reminders run out until it is.
+  - **Permission:** asked the first time a reminder is saved, not at launch. Settings → Notifications turns them all off (`habitRemindersOn`). Signing out cancels them.
+  - **Timing:** times are in the user's saved zone (`zonedInstant`, DST-safe). On Android 12+ without `SCHEDULE_EXACT_ALARM` they may arrive a few minutes late; that's not requested, as Play restricts it to alarm and calendar apps.
 
 ### ADR-016 — Commit directly to `main`, no branch protection or PRs (for now)
 - **Status:** Confirmed · 2026-11-04

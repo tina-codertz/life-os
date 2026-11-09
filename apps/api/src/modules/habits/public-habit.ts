@@ -81,6 +81,7 @@ export function toPublicHabit(
     targetCount: habit.targetCount,
     unit: habit.unit,
     goalDays: habit.goalDays,
+    reminderTimes: habit.reminderTimes,
     startDate: fromDbDate(habit.startDate),
     archivedAt: habit.archivedAt?.toISOString() ?? null,
     sortOrder: habit.sortOrder,

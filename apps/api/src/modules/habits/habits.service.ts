@@ -108,6 +108,7 @@ export class HabitsService {
         targetCount: input.targetCount ?? 1,
         unit: input.unit || null,
         goalDays: input.goalDays ?? 21,
+        reminderTimes: input.reminderTimes ?? [],
         startDate: toDbDate(startDate),
         sortOrder: existing,
         schedules: {
@@ -130,6 +131,7 @@ export class HabitsService {
     if (input.targetCount !== undefined) data.targetCount = input.targetCount;
     if (input.unit !== undefined) data.unit = input.unit || null;
     if (input.goalDays !== undefined) data.goalDays = input.goalDays;
+    if (input.reminderTimes !== undefined) data.reminderTimes = input.reminderTimes;
     if (input.sortOrder !== undefined) data.sortOrder = input.sortOrder;
 
     if (input.schedule) {
