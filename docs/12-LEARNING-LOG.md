@@ -1364,3 +1364,13 @@ Reminders arrive with the habit's name, tapping one opens the habit, a habit alr
 2. How does putting goals under the `tasks` query key keep a goal's progress fresh when a linked task is completed?
 3. How do `strokeDasharray` and `strokeDashoffset` draw a partial ring?
 4. "On track" compares progress with time gone. When would that rule be unfair, and how could it be improved?
+
+### 2026-11-09 — Goals Part 3: linking tasks from the app
+**What was built:** a **Goal** row in the task sheet (an active goal, then optionally one of its milestones still to do; picking another goal clears the milestone, matching the server's rule; "No goal" unlinks; hidden when you have no goals, and on subtasks). A new task leaves the goal out unless you pick one, so tasks without goals send exactly what they did before. The Tasks card now has the design's **Goal · Ship MVP** pill (opens the goal) beside Subtasks, and the **+15 XP** badge.
+**Concepts:**
+- *Same rule on both sides:* the app clears the milestone when the goal changes, and the server enforces it too. The app's copy gives instant, correct feedback; the server's copy is the guarantee.
+- *Optional fields stay out of the request:* a field the user never touched is left undefined, so it isn't sent at all, rather than sent as `null` (which would mean "clear it").
+**Checks:** 4 new tests (pick goal then milestone, goal change clears it, no goal sends nothing, editing shows and unlinks, the card's pill and XP); mobile 533, API 116 + 208, shared 162; lint, typecheck and format clean. Probes: keeping the milestone on a goal change, offering done milestones, hiding the pill, or not filling the goal when editing each fails a test.
+**To learn:**
+1. Why check "a new goal clears the milestone" in the app when the server already enforces it?
+2. What's the difference between leaving `goalId` out of a PATCH and sending `goalId: null`?

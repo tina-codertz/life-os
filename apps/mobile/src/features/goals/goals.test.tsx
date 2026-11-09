@@ -109,6 +109,12 @@ const posts = (path: string) => calls.filter((c) => c.route === `POST ${path}`).
 const patches = (path: string) =>
   calls.filter((c) => c.route === `PATCH ${path}`).map((c) => c.body);
 
+// One page of tasks, as GET /tasks answers.
+const page = (items: PublicTask[]) => ({
+  status: 200,
+  body: { data: items, meta: { nextCursor: null, hasMore: false } },
+});
+
 async function open(url: string, goals: PublicGoal[] = [goal()], linked: PublicTask[] = [task]) {
   authStore.setState({ status: 'signedIn', user: USER, accessToken: 'a', refreshToken: 'r' });
   routes['GET /users/me'] = () => ({
@@ -432,5 +438,69 @@ describe('Linked task card', () => {
     });
     expect(within(card).getByText('Done')).toBeOnTheScreen();
     expect(within(card).queryByText('+15 XP')).toBeNull();
+  });
+});
+
+describe('Linking a task (Part 3)', () => {
+  it('the task sheet’s Goal row: pick a goal, then one of its milestones', async () => {
+    routes['POST /tasks'] = (body) => ({ status: 201, body: { data: { ...task, ...body } } });
+    // Real ids: the sheet checks them like the API does.
+    const G1 = '0190f1c4-6c1e-7cc0-8000-0000000000a1';
+    const M3 = '0190f1c4-6c1e-7cc0-8000-0000000000b3';
+    const ship = goal({ id: G1 });
+    ship.milestones = ship.milestones.map((m) => (m.id === 'm3' ? { ...m, id: M3 } : m));
+    await open('/task-form', [ship, goal({ id: 'g2', title: 'Learn NestJS', milestones: [] })]);
+    await fireEvent.changeText(await screen.findByLabelText('Title'), 'Habits screen');
+    await fireEvent.press(await screen.findByRole('radio', { name: 'Ship Life OS MVP' }));
+    // Only milestones still to do are offered.
+    expect(screen.queryByRole('radio', { name: 'Database schema' })).toBeNull();
+    await fireEvent.press(screen.getByRole('radio', { name: 'Core screens' }));
+    expect(screen.getByText('Ship Life OS MVP · Core screens')).toBeOnTheScreen();
+    // Another goal clears the milestone; back again, it starts from "Just the goal".
+    await fireEvent.press(screen.getByRole('radio', { name: 'Learn NestJS' }));
+    expect(screen.queryByRole('radio', { name: 'Core screens' })).toBeNull();
+    await fireEvent.press(screen.getByRole('radio', { name: 'Ship Life OS MVP' }));
+    expect(screen.getByRole('radio', { name: 'Just the goal' })).toBeSelected();
+    await fireEvent.press(screen.getByRole('radio', { name: 'Core screens' }));
+    await fireEvent.press(screen.getByRole('button', { name: 'Add task' }));
+    await waitFor(() =>
+      expect(posts('/tasks')).toEqual([
+        expect.objectContaining({ title: 'Habits screen', goalId: G1, milestoneId: M3 }),
+      ]),
+    );
+  });
+
+  it('a task without a goal sends none; with no goals the row isn’t shown', async () => {
+    routes['POST /tasks'] = (body) => ({ status: 201, body: { data: { ...task, ...body } } });
+    await open('/task-form', []);
+    await fireEvent.changeText(await screen.findByLabelText('Title'), 'Plain');
+    expect(screen.queryByText('Goal')).toBeNull();
+    await fireEvent.press(screen.getByRole('button', { name: 'Add task' }));
+    await waitFor(() => expect(posts('/tasks')).toHaveLength(1));
+    expect(posts('/tasks')[0]).not.toHaveProperty('goalId');
+  });
+
+  it('editing a linked task shows its goal and milestone; No goal unlinks it', async () => {
+    routes['GET /tasks/t1'] = () => ({ status: 200, body: { data: { ...task, subtasks: [] } } });
+    routes['PATCH /tasks/t1'] = (body) => ({ status: 200, body: { data: { ...task, ...body } } });
+    await open('/task-form?id=t1');
+    expect(await screen.findByText('Ship Life OS MVP · Core screens')).toBeOnTheScreen();
+    await fireEvent.press(screen.getByRole('radio', { name: 'No goal' }));
+    await fireEvent.press(screen.getByRole('button', { name: 'Save' }));
+    await waitFor(() =>
+      expect(patches('/tasks/t1')).toEqual([
+        expect.objectContaining({ goalId: null, milestoneId: null }),
+      ]),
+    );
+  });
+
+  it('the Tasks card shows the design’s Goal pill and +15 XP; the pill opens the goal', async () => {
+    routes['GET /tasks'] = () => page([task]);
+    const router = await open('/tasks');
+    const card = await screen.findByTestId('focus-card');
+    expect(within(card).getByText('+15 XP')).toBeOnTheScreen();
+    const pill = await within(card).findByRole('button', { name: 'Goal, Ship Life OS MVP' });
+    await fireEvent.press(pill);
+    await waitFor(() => expect(router.getPathname()).toBe('/goal/g1'));
   });
 });

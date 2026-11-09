@@ -1,6 +1,15 @@
-import { parseRule, type PublicCategory, type PublicTask, shortRule } from '@life-os/shared';
+import {
+  parseRule,
+  type PublicCategory,
+  type PublicGoal,
+  type PublicTask,
+  shortRule,
+  XP,
+} from '@life-os/shared';
+import { router } from 'expo-router';
 import { Pressable, View } from 'react-native';
-import { Icon, IconTile, Text } from '@/components/ui';
+import { Icon, type IconName, IconTile, Text } from '@/components/ui';
+import { Badge } from '@/features/history/parts';
 import { radius, spacing, useTheme } from '@/theme';
 import { categoryIcon } from './category-icon';
 import { formatDue, formatTime, repeatsLabel } from './dates';
@@ -9,15 +18,16 @@ import { SwipeToComplete } from './swipe-to-complete';
 export interface FocusCardProps {
   task: PublicTask;
   category: PublicCategory | undefined;
+  // The goal it counts towards, if any (the design's "Goal · Ship MVP").
+  goal?: Pick<PublicGoal, 'id' | 'title'> | undefined;
   today: string;
   onOpen: () => void;
   onComplete: () => void;
 }
 
-// The design's highlighted card at the top of Tasks: category and day, the title large, its
-// time, a Subtasks "2 of 4" pill, and "Swipe to complete". (The design's Goal pill and XP badge
-// come with Goals and gamification.)
-export function FocusCard({ task, category, today, onOpen, onComplete }: FocusCardProps) {
+// The design's highlighted card at the top of Tasks: category and day with "+15 XP", the title
+// large, its time, the Subtasks "2 of 4" and Goal "Ship MVP" pills, and "Swipe to complete".
+export function FocusCard({ task, category, goal, today, onOpen, onComplete }: FocusCardProps) {
   const { colors, shadows } = useTheme();
   const day = task.dueDate ? formatDue(task.dueDate, today, null).text : null;
   const context = [category?.name, day].filter(Boolean).join(' · ');
@@ -53,6 +63,7 @@ export function FocusCard({ task, category, today, onOpen, onComplete }: FocusCa
           <Text variant="callout" tone="secondary" style={{ flex: 1 }}>
             {context}
           </Text>
+          <Badge text={`+${XP.TASK} XP`} />
         </View>
         <Text variant="title1" style={{ marginTop: spacing.xs }}>
           {task.title}
@@ -79,36 +90,80 @@ export function FocusCard({ task, category, today, onOpen, onComplete }: FocusCa
         )}
       </Pressable>
 
-      {task.subtaskCount > 0 && (
-        <Pressable
-          accessibilityRole="button"
-          accessibilityLabel={`Subtasks, ${task.subtasksDone} of ${task.subtaskCount}`}
-          accessibilityHint="Opens the task to see its subtasks"
-          onPress={onOpen}
-          style={({ pressed }) => ({
-            alignSelf: 'flex-start',
-            minWidth: '48%',
-            flexDirection: 'row',
-            alignItems: 'center',
-            gap: spacing.sm + 2,
-            padding: spacing.sm,
-            paddingRight: spacing.md,
-            borderRadius: radius.lg,
-            backgroundColor: colors.bg.elevated,
-            opacity: pressed ? 0.7 : 1,
-          })}
-        >
-          <IconTile icon="layers" tint={colors.tile.lavender} size={42} round />
-          <View>
-            <Text variant="label">Subtasks</Text>
-            <Text variant="caption" tone="secondary" style={{ fontSize: 12 }}>
-              {task.subtasksDone} of {task.subtaskCount}
-            </Text>
-          </View>
-        </Pressable>
+      {(task.subtaskCount > 0 || goal) && (
+        <View style={{ flexDirection: 'row', gap: spacing.sm }}>
+          {task.subtaskCount > 0 && (
+            <Pill
+              icon="layers"
+              tint={colors.tile.lavender}
+              title="Subtasks"
+              detail={`${task.subtasksDone} of ${task.subtaskCount}`}
+              hint="Opens the task to see its subtasks"
+              onPress={onOpen}
+            />
+          )}
+          {goal && (
+            <Pill
+              icon="flag"
+              tint={colors.tile.lime}
+              title="Goal"
+              detail={goal.title}
+              hint="Opens the goal"
+              onPress={() => router.push({ pathname: '/goal/[id]', params: { id: goal.id } })}
+            />
+          )}
+        </View>
       )}
 
       <SwipeToComplete label={`Complete ${task.title}`} onComplete={onComplete} />
     </View>
+  );
+}
+
+// One of the card's two pills (Subtasks, Goal): a round icon, a bold title and a detail.
+function Pill({
+  icon,
+  tint,
+  title,
+  detail,
+  hint,
+  onPress,
+}: {
+  icon: IconName;
+  tint: string;
+  title: string;
+  detail: string;
+  hint: string;
+  onPress: () => void;
+}) {
+  const { colors } = useTheme();
+  return (
+    <Pressable
+      accessibilityRole="button"
+      accessibilityLabel={`${title}, ${detail}`}
+      accessibilityHint={hint}
+      onPress={onPress}
+      style={({ pressed }) => ({
+        flex: 1,
+        minWidth: 0,
+        maxWidth: '50%',
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: spacing.sm + 2,
+        padding: spacing.sm,
+        paddingRight: spacing.md,
+        borderRadius: radius.lg,
+        backgroundColor: colors.bg.elevated,
+        opacity: pressed ? 0.7 : 1,
+      })}
+    >
+      <IconTile icon={icon} tint={tint} size={42} round />
+      <View style={{ flex: 1, minWidth: 0 }}>
+        <Text variant="label">{title}</Text>
+        <Text variant="caption" tone="secondary" style={{ fontSize: 12 }} numberOfLines={1}>
+          {detail}
+        </Text>
+      </View>
+    </Pressable>
   );
 }

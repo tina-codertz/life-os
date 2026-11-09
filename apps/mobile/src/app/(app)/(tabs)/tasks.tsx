@@ -24,6 +24,7 @@ import {
   useTasks,
   useToggleTask,
 } from '@/features/tasks/queries';
+import { useGoals } from '@/features/goals/queries';
 import { FocusCard } from '@/features/tasks/focus-card';
 import { pickFocusTask } from '@/features/tasks/focus-task';
 import { TaskRow } from '@/features/tasks/task-row';
@@ -84,6 +85,7 @@ export default function Tasks() {
   const query = useDebouncedValue(search.trim());
   const tasks = useTasks(filter, query);
   const categories = useCategories();
+  const goals = useGoals();
   const toggle = useToggleTask();
   const remove = useDeleteTask();
   const today = localToday(useTimezone());
@@ -145,6 +147,7 @@ export default function Tasks() {
         <FocusCard
           task={focus}
           category={focus.categoryId ? categoryById.get(focus.categoryId) : undefined}
+          goal={goals.data?.find((g) => g.id === focus.goalId)}
           today={today}
           onOpen={() => openTask(focus)}
           onComplete={() => completeOrAsk(focus, true, (input) => toggle.mutate(input))}

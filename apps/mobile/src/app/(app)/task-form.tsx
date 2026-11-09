@@ -7,6 +7,7 @@ import { ScrollView, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Button, Chip, IconButton, ListGroup, Text, TextField, useToast } from '@/components/ui';
 import { applyApiError, useZodForm } from '@/features/forms/zod-form';
+import { GoalRow } from '@/features/goals/goal-row';
 import { ChoiceGroup } from '@/components/choice-group';
 import { localToday } from '@/features/tasks/dates';
 import { DateRow } from '@/features/tasks/date-row';
@@ -75,6 +76,9 @@ export default function TaskForm() {
   );
 
   const dueDate = useWatch({ control, name: 'dueDate' });
+  // A new task leaves these out unless one is picked; editing fills them from the task.
+  const goalId = useWatch({ control, name: 'goalId' });
+  const milestoneId = useWatch({ control, name: 'milestoneId' });
 
   // Editing: fill the form once the task has loaded.
   // Once per task: the cached task is replaced whenever a subtask is ticked or the list
@@ -92,6 +96,8 @@ export default function TaskForm() {
         dueDate: task.dueDate,
         dueTime: task.dueTime,
         recurrenceRule: task.recurrenceRule,
+        goalId: task.goalId,
+        milestoneId: task.milestoneId,
       });
     }
   }, [task, reset]);
@@ -123,6 +129,8 @@ export default function TaskForm() {
         'dueDate',
         'dueTime',
         'recurrenceRule',
+        'goalId',
+        'milestoneId',
       ]);
     }
   });
@@ -252,6 +260,18 @@ export default function TaskForm() {
             />
           )}
         />
+        {/* A subtask counts towards a goal through its task. */}
+        {!task?.parentId && (
+          <GoalRow
+            goalId={goalId ?? null}
+            milestoneId={milestoneId ?? null}
+            onChange={(link) => {
+              setValue('goalId', link.goalId, { shouldDirty: true });
+              setValue('milestoneId', link.milestoneId, { shouldDirty: true });
+            }}
+            error={formState.errors.goalId?.message ?? formState.errors.milestoneId?.message}
+          />
+        )}
         {id ? (
           task && <SubtasksRow mode="live" task={task} />
         ) : (
