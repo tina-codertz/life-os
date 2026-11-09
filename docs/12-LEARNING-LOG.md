@@ -465,6 +465,12 @@ Node is pinned in `.node-version` and Bun in `packageManager`, so CI uses the sa
 3. Why must the reset token be consumed in the same transaction as the password change?
 4. Why does a password reset log the user out of every device?
 5. Register succeeds even if the email can't be sent. Why is that OK here, and when would it not be?
+**Your answers (2026-11-09):**
+- *1 hour vs 48:* a reset link can change the password, so a short life limits misuse; a verification link only proves you own the address, and people don't always check mail at once. (Right: lifetime follows risk.)
+- *Email sent after answering:* the API answers quickly and the same way whether or not the account exists, instead of waiting for the mail server. (Right, and the second reason is the important one: if known emails waited for "create token + send", they'd answer measurably slower and give away which emails have accounts. Measured: 1.7 ms vs 1.6 ms.)
+- *Same transaction:* the password change and using up the token succeed or fail together. (Exactly. A burned link with no new password would strand the user; a new password with a live link would let the link be used again. Revoking the sessions is in the same transaction too.)
+- *Reset logs out everywhere:* it's a recovery action, so any session an attacker holds must end. (Right.)
+- *Register without the email:* creating the account and sending mail are separate; the account stays unverified and can resend. Not OK if verified email were required before access. (Exactly: ADR-015 lets unverified users in, so failing softly is safe here.)
 
 ### 2026-11-08 — 4.7 Profile, settings, change password
 **What was built:**
@@ -491,6 +497,12 @@ Node is pinned in `.node-version` and Bun in `packageManager`, so CI uses the sa
 3. Why does a wrong *current* password return 403 instead of 401?
 4. Why does the client send `onboardingCompleted: true` instead of a timestamp?
 5. After changing your password, why stay logged in on this device but not on the others?
+**Your answers (2026-11-09):**
+- *No `GET /users/:id`:* users only reach their own profile through `/users/me`. (Right. The second half: with `/users/:id`, every request would have to check that `:id` equals the token's user, and one forgotten check leaks someone's data. With `/me` there's no ID to change, so there's nothing to forget.)
+- *Strict PATCH, lenient POST:* PATCH changes an existing resource and must control which fields change. (Partly. Our concrete reason: on PATCH, a silently dropped typo (`displayname`) answers "saved" when nothing was saved, so unknown keys get a 400. On POST we keep stripping so an older app version sending an extra field still works.)
+- *403 for a wrong current password:* the user is authenticated but fails an extra requirement. (Right. The practical reason: the app treats any 401 as "refresh, then log out", so a typo in the current password would log the user out.)
+- *`onboardingCompleted: true`:* the app only needs to know whether it's done. (Partly. The main point: the time is a fact the server owns. The server sets it and keeps the first one, so a client can't choose or backdate it.)
+- *Logged in here, not elsewhere:* protect the account without logging out the person who just changed it. (Right: whoever changed it just proved they know the password.)
 
 ### 2026-11-08 — 4.8 Rate limits, security headers, CORS, Swagger
 **What was built:**
@@ -520,6 +532,12 @@ Node is pinned in `.node-version` and Bun in `packageManager`, so CI uses the sa
 3. Why doesn't the mobile app need CORS, and why should it never be `*`?
 4. Why does the order of the two global guards matter?
 5. Why is Swagger turned off in production?
+**Your answers (2026-11-09):**
+- *Per IP vs per user:* before login, identify by IP; after, by user ID, because the risks differ. (Partly. Why not IP after login: many mobile users share one IP (carrier NAT), so a per-IP limit would let one busy user block everyone behind the same IP.)
+- *`trust proxy`:* trusting nothing makes everyone look like Caddy's single IP (one shared bucket); trusting `X-Forwarded-For` from anyone lets attackers fake IPs; trust only our proxy. (Exactly.)
+- *CORS:* a browser rule about which websites' JavaScript may read our responses; a native app doesn't run in a browser. (Right. **Still open:** why never `*`? Hint: what could any website you visit do with our API if it were allowed?)
+- *Guard order:* authentication must run before the per-user rate limit. (Right, and the why: the per-user limit counts by the user the auth guard identified; run first, it has no user and falls back to IP. A test swaps the order and fails.)
+- *Swagger in production:* **still open.** The answer described what Swagger is; the question is why that's a problem in production. Hint: who else could read a complete, clickable list of every endpoint and its fields?
 
 ### 2026-11-08 — 4.9 Change email
 **What was built:**
