@@ -4,6 +4,7 @@ import {
   computeStats,
   computeStreaks,
   dayState,
+  isDueOn,
   type ScheduleVersion,
   type StreakInput,
 } from './streaks.ts';
@@ -164,6 +165,21 @@ describe('dayState', () => {
     expect(dayState(daily, '2026-11-09')).toBe('upcoming');
     expect(dayState(input({ schedules: [MON_WED_FRI] }), '2026-11-03')).toBe('off');
     expect(dayState(input({ schedules: [THREE_A_WEEK] }), '2026-11-03')).toBe('open');
+  });
+});
+
+describe('isDueOn (the calendar)', () => {
+  it('follows the schedule in force on each day, past or future', () => {
+    // Mon/Wed/Fri until 2026-11-15, then daily.
+    const changed = [MON_WED_FRI, { ...DAILY, effectiveFrom: '2026-11-16' }];
+    expect(days('2026-11-09', 9).filter((d) => isDueOn(changed, d))).toEqual([
+      '2026-11-09',
+      '2026-11-11',
+      '2026-11-13',
+      '2026-11-16',
+      '2026-11-17',
+    ]);
+    expect(isDueOn([THREE_A_WEEK], '2026-11-03')).toBe(true);
   });
 });
 

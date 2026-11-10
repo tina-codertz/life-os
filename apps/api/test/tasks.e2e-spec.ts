@@ -100,6 +100,7 @@ describe('Tasks (e2e)', () => {
         status: 'TODO',
         dueDate: null,
         dueTime: null,
+        durationMinutes: null,
         completedAt: null,
         categoryId: null,
         goalId: null,
@@ -181,6 +182,26 @@ describe('Tasks (e2e)', () => {
       expect(res.body.error.details).toEqual([
         { field: 'dueTime', message: 'A time needs a date.' },
       ]);
+    });
+
+    it('a length needs a time; removing the time (or the date) removes the length', async () => {
+      const task = await newTask(tina, {
+        dueDate: '2026-12-01',
+        dueTime: 600,
+        durationMinutes: 120,
+      });
+      expect(task).toMatchObject({ dueTime: 600, durationMinutes: 120 });
+      const noTime = (await as(tina).update(task.id, { dueTime: null }).expect(200)).body.data;
+      expect(noTime).toMatchObject({ dueTime: null, durationMinutes: null });
+
+      const res = await as(tina).update(task.id, { durationMinutes: 30 }).expect(400);
+      expect(res.body.error.details).toEqual([
+        { field: 'durationMinutes', message: 'A length needs a time.' },
+      ]);
+      // Time and length together in one change is fine.
+      await as(tina).update(task.id, { dueTime: 540, durationMinutes: 30 }).expect(200);
+      const noDate = (await as(tina).update(task.id, { dueDate: null }).expect(200)).body.data;
+      expect(noDate).toMatchObject({ dueTime: null, durationMinutes: null });
     });
 
     it('is strict: status changes go through /complete', async () => {
@@ -423,6 +444,7 @@ describe('Tasks (e2e)', () => {
         categoryId: category.id,
         dueDate: '2099-12-01',
         dueTime: 540,
+        durationMinutes: 15,
         recurrenceRule: 'FREQ=MONTHLY;BYMONTHDAY=1',
       });
       const { task, nextOccurrence } = await completeIt(tina, rent.id);
@@ -433,6 +455,7 @@ describe('Tasks (e2e)', () => {
         categoryId: category.id,
         dueDate: '2100-01-01',
         dueTime: 540,
+        durationMinutes: 15,
         status: 'TODO',
         recurrenceRule: 'FREQ=MONTHLY;BYMONTHDAY=1',
       });

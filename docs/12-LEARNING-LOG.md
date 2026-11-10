@@ -1382,3 +1382,25 @@ Reminders arrive with the habit's name, tapping one opens the habit, a habit alr
 **Checks:** mobile 531 tests (new: Goals from the Tasks header, Ask Lio from the Lio page, no tiles in Settings); lint, typecheck and format clean.
 
 **M8 passed (2026-11-09):** you checked Goals on your phone: goals and milestones from the Tasks header, ticking milestones, linking a task to a goal and milestone, Ask Lio on the Lio page, no tiles in Settings. Goals is done; next is block 17, Calendar.
+
+### 2026-11-10 — Calendar I Part 1: events and the calendar API
+**Your choices (2026-11-10):** events get their own sheet in the New task style (the design's + says "New event" but opens New task, and there's no event form); a habit with a reminder shows as a block at that time, others in an "All day" row; tasks get an optional length.
+**What was built:**
+- Migration `add_calendar_events` (additive): `Event` and `Task.durationMinutes`, with CHECKs (both times or neither, times within a day, end after start, a length only with a time).
+- Events are stored like tasks: local days and minutes after local midnight, not instants plus a zone (**ADR-022**, a change from docs/05). "Lunch at 12:30" stays 12:30 wherever you are.
+- `packages/shared`: event schemas, `eventTimesProblem()` (one copy of the when-rules, used by the schema for a new event and by the API for a change), `occursOn()` for repeats, `eventOccurrences()` to spread a repeating event over a range, and `isDueOn()` for habits.
+- `modules/events`: create, read, change and delete events (a change or delete applies to the whole series), and `GET /calendar?from&to` (up to 62 days): occurrences, tasks due in the range, and each habit's due days. The calendar asks the tasks and habits modules for theirs; nothing is copied.
+- Tasks take `durationMinutes` (5 min–12 h, needs a time; clearing the time or date clears it; a repeat's next task keeps it).
+**Found:** two real bugs, caught by the new tests:
+- Setting a repeat end date on an event that doesn't repeat was silently dropped instead of refused. The "repeat off clears its end" rule ran whenever the result had no repeat, not only when the change switched it off.
+- Habit days in the future all came back as due, even on days off. `dayState()` calls every future day "upcoming" before it looks at the schedule; the calendar now asks the schedule (`isDueOn`).
+**Concepts:**
+- *Expanding instead of storing occurrences:* a weekly event is one row, and its occurrences are worked out for the range asked for. Storing every occurrence would need an end and break when the rule changes.
+- *Overlap queries:* an event that started before the range can still reach into it, so the query looks back as far as an event can last (14 days).
+- *Validating against the stored row:* a PATCH may send only `startTime`; whether that's valid depends on the stored `endTime`, so the API merges first and checks the result with the same function as a new event.
+**Checks:** 12 new API e2e tests (also: another user gets 404, the deleted event disappears from the calendar), 5 new shared tests; all suites green (shared 190, API 116 + 220, mobile 531); lint, typecheck and format clean. Probe: no longer looking back for events that began before the range fails a test.
+**To learn:**
+1. Why is a repeating event one row, with its occurrences worked out on each read?
+2. Why does the calendar query look back 14 days before `from`?
+3. Why must a PATCH that changes only `startTime` be checked against the stored `endTime`?
+4. What would change if events were stored as instants plus a time zone (the docs/05 plan)?

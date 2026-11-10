@@ -49,6 +49,14 @@ export function ruleOn(schedules: ScheduleVersion[], day: string): ScheduleVersi
   return found ?? schedules[0];
 }
 
+// Is `day` one of the habit's days under the rule in force then? Every day for DAILY and
+// TIMES_PER_WEEK (any day can be used). Says nothing about the start date.
+export function isDueOn(schedules: ScheduleVersion[], day: string): boolean {
+  const rule = ruleOn(schedules, day);
+  if (!rule) return false;
+  return rule.frequency !== 'WEEKLY_DAYS' || rule.weekdays.includes(weekday(day));
+}
+
 function isDone(input: StreakInput, day: string): boolean {
   return (input.completions.get(day) ?? 0) >= input.targetCount;
 }

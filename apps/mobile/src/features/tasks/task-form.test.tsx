@@ -32,6 +32,7 @@ const EXISTING: PublicTask = {
   status: 'TODO',
   dueDate: null,
   dueTime: null,
+  durationMinutes: null,
   completedAt: null,
   categoryId: WORK.id,
   goalId: null,

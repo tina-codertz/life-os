@@ -173,6 +173,7 @@ export class TasksService {
         milestoneId: link.milestoneId ?? null,
         dueDate: input.dueDate ? toDbDate(input.dueDate) : null,
         dueTime: input.dueTime ?? null,
+        durationMinutes: input.durationMinutes ?? null,
         recurrenceRule: input.recurrenceRule ?? null,
       },
     });
@@ -198,17 +199,24 @@ export class TasksService {
     if (input.sortOrder !== undefined) data.sortOrder = input.sortOrder;
     if (input.dueDate !== undefined) data.dueDate = input.dueDate ? toDbDate(input.dueDate) : null;
     if (input.dueTime !== undefined) data.dueTime = input.dueTime;
+    if (input.durationMinutes !== undefined) data.durationMinutes = input.durationMinutes;
     // Changing the repeat changes this task and the ones it creates, not finished ones.
     if (input.recurrenceRule !== undefined) data.recurrenceRule = input.recurrenceRule;
 
     // A time or a repeat only means something with a day: removing the date removes both, and
-    // neither can be set on a task that has (or will have) no date.
+    // neither can be set on a task that has (or will have) no date. A length needs a time the
+    // same way.
     if (input.dueDate === null) {
       data.dueTime = null;
       data.recurrenceRule = null;
     }
+    if (data.dueTime === null) data.durationMinutes = null;
     const dateAfter = input.dueDate !== undefined ? input.dueDate : task.dueDate;
     if (input.dueTime != null && !dateAfter) throw fieldError('dueTime', 'A time needs a date.');
+    const timeAfter = data.dueTime !== undefined ? data.dueTime : task.dueTime;
+    if (input.durationMinutes != null && timeAfter === null) {
+      throw fieldError('durationMinutes', 'A length needs a time.');
+    }
     if (input.recurrenceRule != null && !dateAfter) {
       throw fieldError('recurrenceRule', 'A repeating task needs a date.');
     }
@@ -305,6 +313,7 @@ export class TasksService {
         milestoneId: task.milestoneId,
         dueDate: toDbDate(nextDueDate(rule, fromDbDate(task.dueDate), today)),
         dueTime: task.dueTime,
+        durationMinutes: task.durationMinutes,
         recurrenceRule: task.recurrenceRule,
         recurrenceSeriesId: seriesId,
       },
@@ -338,6 +347,26 @@ export class TasksService {
       });
     });
     return { task: await this.withCounts(todo) };
+  }
+
+  // GET /calendar: top-level tasks due from…to, done ones too, by day then time (untimed first).
+  async dueBetween(userId: string, from: string, to: string): Promise<PublicTask[]> {
+    const tasks = await this.prisma.task.findMany({
+      where: {
+        userId,
+        deletedAt: null,
+        parentId: null,
+        dueDate: { gte: toDbDate(from), lte: toDbDate(to) },
+      },
+      orderBy: [
+        { dueDate: 'asc' },
+        { dueTime: { sort: 'asc', nulls: 'first' } },
+        { sortOrder: 'asc' },
+        { createdAt: 'asc' },
+      ],
+    });
+    const counts = await this.subtaskCounts(tasks.map((t) => t.id));
+    return tasks.map((t) => toPublicTask(t, counts.get(t.id) ?? NO_SUBTASKS));
   }
 
   // Active subtasks per parent, total and done, for the given parents (one query).

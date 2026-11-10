@@ -36,6 +36,7 @@ const task = (overrides: Partial<PublicTask> = {}): PublicTask => {
     status: 'TODO',
     dueDate: null,
     dueTime: null,
+    durationMinutes: null,
     completedAt: null,
     categoryId: null,
     goalId: null,

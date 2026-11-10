@@ -134,8 +134,8 @@ Each user story follows: *As a user, I want … so that …*, followed by accept
 | FR-CAL-001 | Day, week and month views |
 | FR-CAL-002 | Events CRUD: title, start, end, all-day flag, location, notes, color |
 | FR-CAL-003 | Event recurrence (RRULE subset: daily/weekly/monthly, until/count) |
-| FR-CAL-004 | Tasks with a due date appear on the calendar. Tasks with a due time appear as timed items |
-| FR-CAL-005 | Habits appear as a compact daily indicator (not as timed blocks) |
+| FR-CAL-004 | Tasks with a due date appear on the calendar. Tasks with a due time appear as timed items. *(2026-11-10, your choice: a task can have an optional length, 5 min–12 h, for its block; without one it shows as 30 minutes.)* |
+| FR-CAL-005 | Habits appear on the days they're due. *(Changed 2026-11-10, your choice for the design's "Habit block": a habit with a reminder shows as a block at that time; one without sits in the day's "All day" row.)* |
 | FR-CAL-006 | Event reminders (local notification, N minutes before) |
 | FR-CAL-007 | External calendar sync (Google/Apple) |
 

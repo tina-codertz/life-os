@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { addDays } from '../dates.ts';
+import { addDays, daysBetween } from '../dates.ts';
 
 // FR-TASK-006: repeating tasks. Stored and sent as a small, strict subset of the calendar
 // standard RRULE (RFC 5545), so the same text can serve calendar events later (docs/05):
@@ -130,6 +130,18 @@ export function nextOccurrence(rule: Recurrence, after: string): string {
   const [year, month] = [date.getUTCFullYear(), date.getUTCMonth()];
   const sameMonth = monthDay(year, month, rule.day);
   return sameMonth > after ? sameMonth : monthDay(year, month + 1, rule.day);
+}
+
+// Does a series that starts on `first` fall on `day`? The first day always counts (as in the
+// calendar standard), then every day the rule names. Used to spread repeating events over the
+// calendar (Calendar I).
+export function occursOn(rule: Recurrence, first: string, day: string): boolean {
+  if (day < first) return false;
+  if (day === first) return true;
+  if (rule.freq === 'DAILY') return daysBetween(first, day) % rule.interval === 0;
+  if (rule.freq === 'WEEKLY') return rule.days.includes(weekdayOf(day));
+  const date = toDate(day);
+  return day === monthDay(date.getUTCFullYear(), date.getUTCMonth(), rule.day);
 }
 
 // The date for the next task when one is completed: the occurrence after its due date, moved

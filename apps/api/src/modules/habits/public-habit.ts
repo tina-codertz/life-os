@@ -12,7 +12,7 @@ import { fromDbDate } from '../../common/dates.js';
 import type { Habit, HabitCompletion, HabitSchedule } from '../../generated/prisma/client.js';
 
 // The column holds a palette name; anything else (hand-edited data) shows as grey.
-function paletteColor(value: string): CategoryColor {
+export function paletteColor(value: string): CategoryColor {
   return CATEGORY_COLORS.find((c) => c === value) ?? 'gray';
 }
 

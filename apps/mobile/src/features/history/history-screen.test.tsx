@@ -29,6 +29,7 @@ const task = (title: string, completedAt: string): PublicTask => ({
   status: 'DONE',
   dueDate: null,
   dueTime: null,
+  durationMinutes: null,
   completedAt,
   categoryId: null,
   goalId: null,

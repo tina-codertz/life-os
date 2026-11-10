@@ -46,6 +46,7 @@
 | 019 | Authentication required by default (global guard + `@Public()`) | **Confirmed** |
 | 020 | Light playful visual direction (the Nov 2026 design export) | **Confirmed** (dark variant Proposed) |
 | 021 | Floating JS tab bar; the design's Lucide icons; Outfit font | Proposed |
+| 022 | Events stored as local days + minutes, like tasks | Proposed |
 
 ---
 
@@ -179,3 +180,10 @@
 - **Decision:** Use Expo Router's JS tabs (`expo-router/js-tabs`) with a custom `tabBar` (`src/components/tab-bar.tsx`). Each tab is announced as a tab with its name and selected state. Icons are **Lucide, the design's own set** (`lucide-react-native` + `react-native-svg`, both in Expo Go), drawn with the design's 1.9 stroke. They're mapped by meaning in `src/components/ui/icon.tsx` and imported one by one, so only the icons in use are bundled. *(The first version used `expo-symbols` platform icons; the project owner asked for the design's icons on 2026-11-08.)* Outfit is loaded with `expo-font` from `@expo-google-fonts/outfit`, using only the four weights in use, and the splash screen stays up until the font is ready.
 - **Alternatives:** Keep the native tab bar (iOS 26 glass, but not the design, and it also truncated "Habits" / "Calendar"). Use platform symbols via `expo-symbols` (no extra dependency, native look, but not the design's icons). Use the system font.
 - **Consequences:** We lose the native tab bar's automatic iOS 26 glass and its system behaviours. Ours has to keep accessibility and the safe area right by hand, and has tests. Jest maps lucide's per-icon imports to its CommonJS build (`jest.config.js`). The iOS 26 tab-label truncation issue is gone.
+
+### ADR-022 — Events stored as local days + minutes, like tasks
+- **Status:** Proposed · 2026-11-10
+- **Context:** docs/05 planned `Event.startsAt`/`endsAt` as UTC instants plus the zone it was made in, with repeats expanded in that zone. Tasks already store a local day (`dueDate`) and minutes after midnight (`dueTime`), and habits work in local days (ADR-006). The calendar shows all three side by side.
+- **Decision:** An event has `startDate`/`endDate` (local days) and `startTime`/`endTime` (minutes after local midnight; both null = all day), read in the user's current zone like tasks. A repeating event is one row; the shared `eventOccurrences()` spreads it over the days its rule names (the same RRULE subset as tasks), each occurrence as long as the first.
+- **Alternatives:** Instants + zone as planned (right for meetings across zones, but needs zone maths on every read, and a repeat at 09:00 must be rebuilt per day across daylight saving).
+- **Consequences:** "Lunch at 12:30" stays 12:30 when the user travels, the same as a task. A call fixed in another zone's time can't be expressed; that comes with calendar sync (FR-CAL-007, v2) if ever. Reminders turn local times into instants on the phone (as habit reminders do).

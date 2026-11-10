@@ -12,6 +12,7 @@ const task = (o: Partial<PublicTask>): PublicTask => ({
   status: 'TODO',
   dueDate: TODAY,
   dueTime: null,
+  durationMinutes: null,
   completedAt: null,
   categoryId: null,
   goalId: null,

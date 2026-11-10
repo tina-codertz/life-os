@@ -88,6 +88,7 @@ const task: PublicTask = {
   status: 'TODO',
   dueDate: TODAY,
   dueTime: 600,
+  durationMinutes: null,
   completedAt: null,
   categoryId: null,
   goalId: 'g1',

@@ -33,9 +33,18 @@ const description = z
   });
 // Minutes after local midnight: 540 = 09:00.
 const dueTime = z.number().int().min(0).max(1439);
+// How long a timed task takes, for its block on the calendar (your choice, Calendar I).
+export const MIN_TASK_DURATION = 5;
+export const MAX_TASK_DURATION = 720;
+const durationMinutes = z
+  .number()
+  .int()
+  .min(MIN_TASK_DURATION, { error: `At least ${MIN_TASK_DURATION} minutes.` })
+  .max(MAX_TASK_DURATION, { error: 'At most 12 hours.' });
 
 const NEEDS_A_DATE = { path: ['dueTime'], error: 'A time needs a date.' };
 const REPEAT_NEEDS_A_DATE = { path: ['recurrenceRule'], error: 'A repeating task needs a date.' };
+const DURATION_NEEDS_A_TIME = { path: ['durationMinutes'], error: 'A length needs a time.' };
 
 // POST /tasks. Unknown keys are dropped (POST convention); the owner comes from the token.
 export const createTaskSchema = z
@@ -50,11 +59,13 @@ export const createTaskSchema = z
     milestoneId: z.uuid().nullable().optional(),
     dueDate: localDateSchema.nullable().optional(),
     dueTime: dueTime.nullable().optional(),
+    durationMinutes: durationMinutes.nullable().optional(),
     // FR-TASK-006, e.g. "FREQ=WEEKLY;BYDAY=MO,WE" (see recurrence.ts).
     recurrenceRule: recurrenceRuleSchema.nullable().optional(),
   })
   .refine((t) => t.dueTime == null || t.dueDate != null, NEEDS_A_DATE)
-  .refine((t) => t.recurrenceRule == null || t.dueDate != null, REPEAT_NEEDS_A_DATE);
+  .refine((t) => t.recurrenceRule == null || t.dueDate != null, REPEAT_NEEDS_A_DATE)
+  .refine((t) => t.durationMinutes == null || t.dueTime != null, DURATION_NEEDS_A_TIME);
 export type CreateTaskInput = z.infer<typeof createTaskSchema>;
 
 // PATCH /tasks/:id: strict, partial. `null` clears a field. Whether a time still has a date
@@ -68,6 +79,7 @@ export const updateTaskSchema = z.strictObject({
   milestoneId: z.uuid().nullable().optional(),
   dueDate: localDateSchema.nullable().optional(),
   dueTime: dueTime.nullable().optional(),
+  durationMinutes: durationMinutes.nullable().optional(),
   recurrenceRule: recurrenceRuleSchema.nullable().optional(),
   sortOrder: z.number().int().min(0).max(1_000_000).optional(),
 });
@@ -139,6 +151,7 @@ export interface PublicTask {
   status: TaskStatus;
   dueDate: string | null; // "2026-12-01"
   dueTime: number | null; // minutes after local midnight
+  durationMinutes: number | null; // only with a time; the calendar block's length
   completedAt: string | null;
   categoryId: string | null;
   // The goal it counts towards (FR-GOAL-004), or null.

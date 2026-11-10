@@ -270,9 +270,11 @@ Tasks also take `goalId` and `milestoneId` on POST / PATCH `/tasks` (your own, n
 ### Calendar
 | Method | Path | Notes |
 |---|---|---|
-| GET | `/calendar?from=2026-11-01&to=2026-11-30` | merged, range ≤ 62 days: `{ events: [expanded occurrences], tasks: [...], habitDays: { "2026-11-03": { scheduled: 3, done: 2 } } }` |
-| POST | `/events` | `{ title, startsAt, endsAt, allDay, timezone, recurrenceRule?, recurrenceUntil?, reminderMinutes?, location?, notes?, color? }` |
-| GET / PATCH / DELETE | `/events/:id` | PATCH on a recurring event: `?scope=all` only in MVP (`this`/`following` deferred) |
+| GET | `/calendar?from=2026-11-01&to=2026-11-30` | local days, both included, ≤ 62: `CalendarRange { from, to, events, tasks, habits }`. `events`: one entry per occurrence (a repeating event spread over its days, each with the event's id), by day then time, all-day first. `tasks`: top-level tasks due in the range, done ones too, with subtask counts. `habits`: each active habit with `reminderTimes` and `days` (a `HabitDay` for each day it's due or was done) |
+| POST | `/events` | `{ title, startDate, endDate?, startTime?, endTime?, recurrenceRule?, recurrenceUntil?, reminderMinutes?, location?, notes?, color? }` → `PublicEvent`. No times = all day; both times or neither; ends after it starts; ≤ 14 days; `recurrenceUntil` only on a repeating event, not before the start |
+| GET / PATCH / DELETE | `/events/:id` | PATCH is strict and changes every occurrence (no "only this one" in MVP); the when-fields are re-checked together; switching the repeat off clears `recurrenceUntil`. DELETE is soft and removes the whole series. `EVENT_NOT_FOUND` (404) |
+
+*(Built 2026-11-10, Calendar I Part 1. Changed from the plan: events use local days and minutes like tasks (ADR-022), and habits come per habit, not as day counts, so the day view can place one at its reminder time. Tasks also take `durationMinutes` (5–720, needs a time; clearing the time or date clears it; a repeating task's next one keeps it).)*
 
 ## 3. Endpoints: later releases (outline)
 

@@ -8,6 +8,7 @@ import { type Env, ENV } from './config/env.js';
 import { LoggingModule } from './logging/logging.module.js';
 import { AuthModule } from './modules/auth/auth.module.js';
 import { CategoriesModule } from './modules/categories/categories.module.js';
+import { EventsModule } from './modules/events/events.module.js';
 import { GoalsModule } from './modules/goals/goals.module.js';
 import { JwtAuthGuard } from './modules/auth/jwt-auth.guard.js';
 import { HabitsModule } from './modules/habits/habits.module.js';
@@ -34,6 +35,7 @@ import { rateLimitOptions } from './security/rate-limit.js';
     TasksModule,
     HabitsModule,
     GoalsModule,
+    EventsModule,
     ProgressModule,
   ],
   // APP_* providers (not app.useGlobal*) so they get DI and e2e tests get them too.

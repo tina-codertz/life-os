@@ -19,6 +19,7 @@ describe('createTaskSchema', () => {
       categoryId: '0198b7a2-5a6b-7c3d-8e9f-0a1b2c3d4e5f',
       dueDate: '2026-12-01',
       dueTime: 540,
+      durationMinutes: 90,
     };
     expect(createTaskSchema.parse(task)).toEqual(task);
   });
@@ -31,6 +32,9 @@ describe('createTaskSchema', () => {
     [{ title: 'A', dueDate: '01/12/2026' }, 'dueDate'],
     [{ title: 'A', dueDate: '2026-12-01', dueTime: 1440 }, 'dueTime'],
     [{ title: 'A', dueTime: 540 }, 'dueTime'], // a time without a date
+    [{ title: 'A', dueDate: '2026-12-01', durationMinutes: 30 }, 'durationMinutes'], // no time
+    [{ title: 'A', dueDate: '2026-12-01', dueTime: 540, durationMinutes: 4 }, 'durationMinutes'],
+    [{ title: 'A', dueDate: '2026-12-01', dueTime: 540, durationMinutes: 721 }, 'durationMinutes'],
     [{ title: 'A', categoryId: 'not-a-uuid' }, 'categoryId'],
   ])('rejects %j (field %s)', (input, field) => {
     expect(createTaskSchema.safeParse(input).error?.issues[0]?.path).toEqual([field]);

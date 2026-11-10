@@ -9,5 +9,6 @@ import { TasksService } from './tasks.service.js';
   imports: [CategoriesModule, ProgressModule],
   controllers: [TasksController],
   providers: [TasksService],
+  exports: [TasksService],
 })
 export class TasksModule {}

@@ -1,6 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import {
   addDays,
+  type CalendarHabit,
   type ChestReward,
   computeStats,
   computeStreaks,
@@ -13,6 +14,7 @@ import {
   type HabitStreak,
   HABIT_BACKFILL_DAYS,
   type HabitChest,
+  isDueOn,
   isMilestone,
   type HabitCheckInInput,
   type HabitSchedule as ScheduleInput,
@@ -37,6 +39,7 @@ import {
 } from './habit.errors.js';
 import {
   type HabitWithSchedules,
+  paletteColor,
   toPublicCompletion,
   toPublicHabit,
   toScheduleVersions,
@@ -234,6 +237,46 @@ export class HabitsService {
       out.push({ date: d, state: dayState(input, d), count: input.completions.get(d) ?? 0 });
     }
     return out;
+  }
+
+  // GET /calendar: each active habit with the days from…to it's due on or was done (not its
+  // days off, nor days before it started).
+  async calendar(userId: string, from: string, to: string): Promise<CalendarHabit[]> {
+    const day = await this.userDay(userId);
+    const habits = await this.prisma.habit.findMany({
+      where: { userId, deletedAt: null, archivedAt: null, startDate: { lte: toDbDate(to) } },
+      include: withSchedules,
+      orderBy: [{ sortOrder: 'asc' }, { createdAt: 'asc' }],
+    });
+    const completions = await this.prisma.habitCompletion.findMany({
+      where: {
+        habitId: { in: habits.map((h) => h.id) },
+        localDate: { gte: toDbDate(from), lte: toDbDate(to) },
+      },
+    });
+    return habits.map((habit) => {
+      const input = this.streakInput(
+        habit,
+        completions.filter((c) => c.habitId === habit.id),
+        day,
+      );
+      const days: HabitDay[] = [];
+      for (let d = from; d <= to; d = addDays(d, 1)) {
+        // dayState calls every future day "upcoming", so the schedule decides those.
+        const state = dayState(input, d);
+        if (state === 'done' || (state !== 'before-start' && isDueOn(input.schedules, d))) {
+          days.push({ date: d, state, count: input.completions.get(d) ?? 0 });
+        }
+      }
+      return {
+        id: habit.id,
+        name: habit.name,
+        icon: habit.icon,
+        color: paletteColor(habit.color),
+        reminderTimes: habit.reminderTimes,
+        days,
+      };
+    });
   }
 
   // Open today's 🎁 (+40 XP), on the day the streak reaches a milestone. Safe to repeat; once

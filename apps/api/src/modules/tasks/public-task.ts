@@ -18,6 +18,7 @@ export function toPublicTask(task: Task, subtasks: SubtaskCounts = NO_SUBTASKS):
     status: task.status,
     dueDate: task.dueDate ? fromDbDate(task.dueDate) : null,
     dueTime: task.dueTime,
+    durationMinutes: task.durationMinutes,
     completedAt: task.completedAt?.toISOString() ?? null,
     categoryId: task.categoryId,
     goalId: task.goalId,

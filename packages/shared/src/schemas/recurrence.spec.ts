@@ -4,6 +4,7 @@ import {
   formatRule,
   nextDueDate,
   nextOccurrence,
+  occursOn,
   parseRule,
   type Recurrence,
   recurrenceRuleSchema,
@@ -111,5 +112,37 @@ describe('describeRule / shortRule', () => {
   ])('%s → "%s" / "%s"', (text, long, short) => {
     expect(describeRule(rule(text))).toBe(long);
     expect(shortRule(rule(text))).toBe(short);
+  });
+});
+
+// The days from…to on which a series starting on `first` falls.
+const occurrenceDays = (text: string, first: string, from: string, to: string) => {
+  const out: string[] = [];
+  for (let d = new Date(`${from}T00:00:00Z`); d <= new Date(`${to}T00:00:00Z`);) {
+    const day = d.toISOString().slice(0, 10);
+    if (occursOn(rule(text), first, day)) out.push(day);
+    d.setUTCDate(d.getUTCDate() + 1);
+  }
+  return out;
+};
+
+describe('occursOn', () => {
+  it('every few days, counted from the first day', () => {
+    expect(
+      occurrenceDays('FREQ=DAILY;INTERVAL=3', '2026-11-02', '2026-10-30', '2026-11-11'),
+    ).toEqual(['2026-11-02', '2026-11-05', '2026-11-08', '2026-11-11']);
+  });
+
+  it('weekly on its days, and on the first day even if that is not one of them', () => {
+    // 2026-11-03 is a Tuesday.
+    expect(
+      occurrenceDays('FREQ=WEEKLY;BYDAY=MO,WE', '2026-11-03', '2026-11-01', '2026-11-10'),
+    ).toEqual(['2026-11-03', '2026-11-04', '2026-11-09']);
+  });
+
+  it('monthly on day 31 falls on the last day of shorter months', () => {
+    expect(
+      occurrenceDays('FREQ=MONTHLY;BYMONTHDAY=31', '2027-01-31', '2027-01-01', '2027-04-30'),
+    ).toEqual(['2027-01-31', '2027-02-28', '2027-03-31', '2027-04-30']);
   });
 });

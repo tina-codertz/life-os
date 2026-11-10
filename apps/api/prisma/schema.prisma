@@ -30,6 +30,7 @@ model User {
   tasks      Task[]
   habits     Habit[]
   goals      Goal[]
+  events     Event[]
   xpEvents   XpEvent[]
 }
 
@@ -138,6 +139,7 @@ model Task {
   status             TaskStatus   @default(TODO)
   dueDate            DateTime?    @db.Date // the user's local calendar date (ADR-006)
   dueTime            Int?         @db.SmallInt // minutes after local midnight, 0–1439
+  durationMinutes    Int?         @db.SmallInt // only with a time: its calendar block, 5–720
   completedAt        DateTime?    @db.Timestamptz(3)
   sortOrder          Int          @default(0)
   categoryId         String?      @db.Uuid
@@ -310,6 +312,34 @@ model GoalHabit {
 
   @@id([goalId, habitId])
   @@index([habitId])
+}
+
+// ───────────── Calendar (Calendar I) ─────────────
+
+// Like a task's date and time: local days and minutes after local midnight in the user's own
+// zone (ADR-022), not instants. No times = all day. A repeating event is one row; GET /calendar
+// spreads it over the days its rule names (eventOccurrences in packages/shared).
+model Event {
+  id              String    @id @default(uuid(7)) @db.Uuid
+  userId          String    @db.Uuid
+  title           String    @db.VarChar(120)
+  notes           String?   @db.VarChar(5000)
+  location        String?   @db.VarChar(200)
+  color           String    @db.VarChar(20) // a palette name (CATEGORY_COLORS), not hex
+  startDate       DateTime  @db.Date
+  endDate         DateTime  @db.Date
+  startTime       Int?      @db.SmallInt // minutes after local midnight; null on both = all day
+  endTime         Int?      @db.SmallInt
+  recurrenceRule  String?   @db.VarChar(200) // the same RRULE subset as tasks
+  recurrenceUntil DateTime? @db.Date // last day it may repeat on, inclusive
+  reminderMinutes Int?      @db.SmallInt // FR-CAL-006: minutes before the start
+  createdAt       DateTime  @default(now()) @db.Timestamptz(3)
+  updatedAt       DateTime  @updatedAt @db.Timestamptz(3)
+  deletedAt       DateTime? @db.Timestamptz(3)
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, startDate])
 }
 
 // ───────────── Progress (XP; gamification pieces brought forward for the quest path) ─────────────
