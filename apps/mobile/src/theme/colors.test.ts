@@ -96,6 +96,17 @@ describe.each([
     expect(contrast(colors.category[key], colors.categoryTile[key])).toBeGreaterThanOrEqual(3);
   });
 
+  // The Calendar's month dots (tasks, habits done, events) on the white card, and white dots on
+  // the chosen day's ink.
+  it.each([
+    ['task dot', colors.accent.default, colors.bg.surface],
+    ['habit dot', colors.quest.done, colors.bg.surface],
+    ['event dot', colors.category.orange, colors.bg.surface],
+    ['dot on the chosen day', colors.ink.text, colors.ink.fill],
+  ])('calendar %s ≥ 3:1', (_dot, fg, bg) => {
+    expect(contrast(fg, bg)).toBeGreaterThanOrEqual(3);
+  });
+
   it.each(Object.entries(colors.category))(
     'category %s dot is visible (≥ 3:1) on every background',
     (_category, color) => {

@@ -46,7 +46,7 @@ const EXISTING: PublicTask = {
   updatedAt: '2026-11-08T09:00:00.000Z',
 };
 
-const press = (name: string) => fireEvent.press(screen.getByRole('button', { name }));
+const press = (name: string | RegExp) => fireEvent.press(screen.getByRole('button', { name }));
 const choose = (name: string) => fireEvent.press(screen.getByRole('radio', { name }));
 const bodies = (route: string) => calls.filter((c) => c.route === route).map((c) => c.body);
 
@@ -108,6 +108,7 @@ describe('task form', () => {
       categoryId: WORK.id,
       dueDate: addDays(localToday(ZONE), 1), // "tomorrow" in the user's zone
       dueTime: null,
+      durationMinutes: null,
       recurrenceRule: null,
     });
     await waitFor(() => expect(router.getPathname()).toBe('/tasks'));
@@ -286,6 +287,37 @@ describe('task form', () => {
       await press('Save');
       await waitFor(() => expect(bodies(`PATCH /tasks/${EXISTING.id}`)).toHaveLength(1));
       expect(bodies(`PATCH /tasks/${EXISTING.id}`)[0]).toMatchObject({ dueTime: null });
+    });
+  });
+
+  describe('length (Calendar I, your choice)', () => {
+    it('needs a time; the chosen length is sent, and removing the time removes it', async () => {
+      createReturnsBody();
+      await openForm('/task-form');
+      await fireEvent.changeText(await screen.findByLabelText('Title'), 'Deep work');
+      expect(screen.getByLabelText('Length, Pick a time first')).toBeOnTheScreen();
+      await choose('Today');
+      await press('Time, None');
+      await choose('1 h 30');
+      expect(screen.getByLabelText('Length, 1 h 30')).toBeOnTheScreen();
+
+      await press('Remove time');
+      expect(screen.getByLabelText('Length, Pick a time first')).toBeOnTheScreen();
+      await press(/^Time, /);
+      await choose('2 h');
+      await press('Add task');
+      await waitFor(() => expect(bodies('POST /tasks')).toHaveLength(1));
+      expect(bodies('POST /tasks')[0]).toMatchObject({ dueDate: today(), durationMinutes: 120 });
+    });
+
+    it('editing shows the saved length', async () => {
+      await openForm(`/task-form?id=${EXISTING.id}`, {
+        ...EXISTING,
+        dueDate: today(),
+        dueTime: 600,
+        durationMinutes: 45,
+      });
+      expect(await screen.findByLabelText('Length, 45 min')).toBeOnTheScreen();
     });
   });
 

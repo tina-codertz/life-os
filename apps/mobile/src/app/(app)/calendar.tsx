@@ -1,5 +1,3 @@
-import { PlaceholderScreen } from '@/components/placeholder-screen';
+import { CalendarScreen } from '@/features/calendar/calendar-screen';
 
-export default function Calendar() {
-  return <PlaceholderScreen title="Calendar" description="Day and week views (Phase 6)." />;
-}
+export default CalendarScreen;

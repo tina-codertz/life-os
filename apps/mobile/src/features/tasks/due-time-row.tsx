@@ -25,14 +25,32 @@ export interface DueTimeRowProps {
   // A time needs a date (the API refuses one without).
   hasDate: boolean;
   error?: string | undefined;
+  // The event sheet's "Starts" / "Ends" rows reuse this one.
+  title?: string;
+  // null: no remove button (the event sheet's Ends row; Starts has "All day").
+  removeLabel?: string | null;
+  // The time first offered when there's none yet (default: the next full hour).
+  suggested?: number;
+  testID?: string;
+  pickerTestID?: string;
 }
 
 // The design's Time row. Tapping it opens the phone's own time picker: a dialog on Android, a
 // wheel under the row on iOS. "Remove time" clears it.
-export function DueTimeRow({ value, onChange, hasDate, error }: DueTimeRowProps) {
+export function DueTimeRow({
+  value,
+  onChange,
+  hasDate,
+  error,
+  title = 'Time',
+  removeLabel = 'Remove time',
+  suggested,
+  testID = 'due-time-row',
+  pickerTestID = 'time-picker',
+}: DueTimeRowProps) {
   const { colors, scheme } = useTheme();
   const [wheelOpen, setWheelOpen] = useState(false);
-  const current = value ?? nextHour();
+  const current = value ?? suggested ?? nextHour();
 
   function open() {
     if (Platform.OS === 'android') {
@@ -53,14 +71,14 @@ export function DueTimeRow({ value, onChange, hasDate, error }: DueTimeRowProps)
     <ListRow
       icon="clock"
       tint={colors.tile.lime}
-      title="Time"
+      title={title}
       value={!hasDate ? 'Pick a date first' : value === null ? 'None' : formatTime(value)}
       {...(hasDate ? { onPress: open, accessibilityHint: 'Opens the time picker' } : {})}
-      testID="due-time-row"
+      testID={testID}
     >
       {hasDate && wheelOpen && Platform.OS !== 'android' && (
         <DateTimePicker
-          testID="time-picker"
+          testID={pickerTestID}
           value={toDate(current)}
           mode="time"
           display="spinner"
@@ -70,9 +88,9 @@ export function DueTimeRow({ value, onChange, hasDate, error }: DueTimeRowProps)
           onValueChange={(_event, date) => onChange(toMinutes(date))}
         />
       )}
-      {hasDate && value !== null && (
+      {hasDate && value !== null && removeLabel !== null && (
         <Button
-          title="Remove time"
+          title={removeLabel}
           variant="ghost"
           size="sm"
           onPress={() => {

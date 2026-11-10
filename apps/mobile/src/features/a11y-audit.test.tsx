@@ -1,4 +1,11 @@
-import type { GoalDetail, HistoryDay, PublicTask, PublicUser } from '@life-os/shared';
+import type {
+  CalendarEvent,
+  CalendarRange,
+  GoalDetail,
+  HistoryDay,
+  PublicTask,
+  PublicUser,
+} from '@life-os/shared';
 import { router as appRouter, type Href } from 'expo-router';
 import { act, fireEvent, renderRouter, screen } from 'expo-router/testing-library';
 import { authStore } from '@/features/auth/auth-instance';
@@ -132,11 +139,50 @@ function serve(onboarded = true) {
     body: { data: [GOAL, { ...GOAL, id: 'g2', title: 'Learn NestJS' }] },
   });
   routes['GET /goals/g1'] = () => ({ status: 200, body: { data: GOAL } });
+  routes['GET /calendar'] = (_body, path) => {
+    const query = new URLSearchParams(path.split('?')[1]);
+    const data: CalendarRange = {
+      from: query.get('from') ?? TODAY,
+      to: query.get('to') ?? TODAY,
+      events: [CALENDAR_EVENT, { ...CALENDAR_EVENT, id: 'e2', startTime: null, endTime: null }],
+      tasks: [{ ...(TASKS[0] as PublicTask), dueTime: 600, durationMinutes: 60 }],
+      habits: [
+        {
+          id: 'h1',
+          name: 'Read',
+          icon: 'book-open',
+          color: 'green',
+          reminderTimes: [600],
+          days: [{ date: TODAY, state: 'done', count: 1 }],
+        },
+      ],
+    };
+    return { status: 200, body: { data } };
+  };
+  routes['GET /events/e1'] = () => ({ status: 200, body: { data: CALENDAR_EVENT } });
   routes['GET /tasks/history'] = () => {
     const days: HistoryDay[] = [{ date: TODAY, count: 1, tasks: [TASKS[2] as PublicTask] }];
     return { status: 200, body: { data: { from: TODAY, to: TODAY, total: 1, days } } };
   };
 }
+
+// An event that overlaps the task and the habit, so the day view splits them into columns.
+const CALENDAR_EVENT: CalendarEvent = {
+  id: 'e1',
+  title: 'Stand-up',
+  notes: null,
+  location: null,
+  color: 'blue',
+  startDate: TODAY,
+  endDate: TODAY,
+  startTime: 600,
+  endTime: 630,
+  recurrenceRule: 'FREQ=DAILY',
+  recurrenceUntil: null,
+  reminderMinutes: null,
+  createdAt: '2026-11-01T09:00:00.000Z',
+  updatedAt: '2026-11-01T09:00:00.000Z',
+};
 
 // A goal with each kind of milestone (done, next with tasks, later) and a linked task.
 const GOAL: GoalDetail = {
@@ -277,6 +323,21 @@ describe('every control can be named by a screen reader', () => {
   it('Milestone sheet (editing)', async () => {
     await open('/milestone-form?goalId=g1&id=m2');
     await screen.findByDisplayValue('Core screens');
+    expect(unnamedControls()).toEqual([]);
+  });
+
+  it.each(['Day', 'Week', 'Month'])('Calendar: %s', async (view) => {
+    await open('/calendar');
+    await screen.findAllByRole('button', { name: /^Stand-up, / });
+    if (view !== 'Day') await fireEvent.press(screen.getByRole('tab', { name: view }));
+    await screen.findAllByRole('button', { name: /Stand-up/ });
+    expect(unnamedControls()).toEqual([]);
+  });
+
+  it('Event sheet (editing), with the times and repeat end showing', async () => {
+    await open('/event-form?id=e1');
+    await screen.findByDisplayValue('Stand-up');
+    await screen.findAllByLabelText(/^Stop repeating/);
     expect(unnamedControls()).toEqual([]);
   });
 

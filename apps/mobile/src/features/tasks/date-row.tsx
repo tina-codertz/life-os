@@ -5,8 +5,9 @@ import { spacing, useTheme } from '@/theme';
 import { addDays, formatDue } from './dates';
 import { MonthCalendar } from './month-calendar';
 
-// A date in a sheet (a task's due date, a goal's target, a milestone's due date): with
-// `quickPicks`, one tap for Today or Tomorrow; any other day from the month calendar.
+// A date in a sheet (a task's due date, a goal's target, a milestone's due date, an event's
+// day): with `quickPicks`, one tap for Today or Tomorrow; any other day from the month calendar.
+// Without `removeLabel` the date can't be removed (an event always has a day).
 export function DateRow({
   title,
   removeLabel,
@@ -19,7 +20,7 @@ export function DateRow({
   error,
 }: {
   title: string;
-  removeLabel: string;
+  removeLabel?: string;
   value: string | null;
   onChange: (day: string | null) => void;
   today: string;
@@ -66,7 +67,7 @@ export function DateRow({
       {calendarOpen && (
         <MonthCalendar value={value} today={today} weekStartsOn={weekStartsOn} onChange={choose} />
       )}
-      {value && (
+      {value && removeLabel && (
         <Button
           title={removeLabel}
           variant="ghost"

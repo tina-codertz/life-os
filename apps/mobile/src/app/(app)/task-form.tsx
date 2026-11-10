@@ -12,6 +12,7 @@ import { ChoiceGroup } from '@/components/choice-group';
 import { localToday } from '@/features/tasks/dates';
 import { DateRow } from '@/features/tasks/date-row';
 import { DueTimeRow } from '@/features/tasks/due-time-row';
+import { DurationRow } from '@/features/tasks/duration-row';
 import { RepeatRow } from '@/features/tasks/repeat-row';
 import {
   createSubtasks,
@@ -71,11 +72,13 @@ export default function TaskForm() {
       categoryId: null,
       dueDate: null,
       dueTime: null,
+      durationMinutes: null,
       recurrenceRule: null,
     },
   );
 
   const dueDate = useWatch({ control, name: 'dueDate' });
+  const dueTime = useWatch({ control, name: 'dueTime' });
   // A new task leaves these out unless one is picked; editing fills them from the task.
   const goalId = useWatch({ control, name: 'goalId' });
   const milestoneId = useWatch({ control, name: 'milestoneId' });
@@ -95,6 +98,7 @@ export default function TaskForm() {
         categoryId: task.categoryId,
         dueDate: task.dueDate,
         dueTime: task.dueTime,
+        durationMinutes: task.durationMinutes,
         recurrenceRule: task.recurrenceRule,
         goalId: task.goalId,
         milestoneId: task.milestoneId,
@@ -128,6 +132,7 @@ export default function TaskForm() {
         'categoryId',
         'dueDate',
         'dueTime',
+        'durationMinutes',
         'recurrenceRule',
         'goalId',
         'milestoneId',
@@ -224,9 +229,10 @@ export default function TaskForm() {
               value={field.value ?? null}
               onChange={(day) => {
                 field.onChange(day);
-                // No date, no time or repeat (the API refuses either on its own).
+                // No date, no time, length or repeat (the API refuses them on their own).
                 if (day === null) {
                   setValue('dueTime', null);
+                  setValue('durationMinutes', null);
                   setValue('recurrenceRule', null);
                 }
               }}
@@ -242,8 +248,23 @@ export default function TaskForm() {
           render={({ field, fieldState }) => (
             <DueTimeRow
               value={field.value ?? null}
-              onChange={field.onChange}
+              onChange={(minutes) => {
+                field.onChange(minutes);
+                if (minutes === null) setValue('durationMinutes', null);
+              }}
               hasDate={dueDate != null}
+              error={fieldState.error?.message}
+            />
+          )}
+        />
+        <Controller
+          control={control}
+          name="durationMinutes"
+          render={({ field, fieldState }) => (
+            <DurationRow
+              value={field.value ?? null}
+              onChange={field.onChange}
+              hasTime={dueTime != null}
               error={fieldState.error?.message}
             />
           )}

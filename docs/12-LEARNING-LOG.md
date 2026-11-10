@@ -1404,3 +1404,26 @@ Reminders arrive with the habit's name, tapping one opens the habit, a habit alr
 2. Why does the calendar query look back 14 days before `from`?
 3. Why must a PATCH that changes only `startTime` be checked against the stored `endTime`?
 4. What would change if events were stored as instants plus a time zone (the docs/05 plan)?
+
+### 2026-11-10 — Calendar I Parts 2 and 3: the Calendar screens and the Event sheet
+**What was built:**
+- **Calendar** (from the Habits header): the design's Day, Week and Month views over one `GET /calendar` per week (Day, Week) or per month grid (Month). One chosen day is shared by the three views.
+- **Day:** the week as pills, an "All day" row (all-day events, tasks without a time, habits without a reminder), then the hours with blocks: "10:00 – 12:00 · Task", "12:30 – 13:30 · Event", "14:00 – 14:30 · Habit" (your choices). Overlapping blocks sit side by side. A violet line marks now on today.
+- **Week:** blocks without words (as in the design), each still named for a screen reader; tapping a day opens it in Day.
+- **Month:** dots for tasks, habits done and events; the chosen day's list underneath; month arrows.
+- **Event sheet** (new or edit): title, day, Starts / Ends (a start adds an end an hour later; "All day" clears both), repeat and Stop repeating, colour, place, notes; delete asks first and removes every repeat.
+- **Task sheet:** a Length row (needs a time; removing the time removes it).
+- Any save anywhere in the app refreshes the calendar (one rule in `query-client.ts`), since it shows tasks, habits and events together.
+**Found:**
+- `toSorted` would have crashed on the phone (Hermes doesn't have it); the project's `sorted()` helper is used instead, and the Hermes test would have caught it.
+- The first event sheet had two "All day" buttons (one under Starts, one under Ends) doing the same thing; now only Starts has it.
+**Concepts:**
+- *Pure layout functions:* which items go in "All day", how overlapping blocks share the width (`placeBlocks`) and which hours to show are plain functions with their own tests; the views only draw what they return.
+- *Interval colouring:* overlapping blocks form a group; each block takes the first column free at its start, and the whole group shares the widest column count.
+- *Invalidate, don't update by hand:* the calendar is a read model of three modules, so instead of patching its cache after each kind of save, every save marks it stale and it fetches again.
+**Checks:** 37 new mobile tests (layout rules, the three views, opening items, the event sheet, the Length row, the calendar refreshing after a save), the accessibility audit covers Day, Week, Month and the Event sheet, 8 new contrast checks for the month dots; mobile 568, shared 190; lint, typecheck and format clean. Probe: switching off the refresh after a save fails a test. Not yet seen on a phone.
+**To learn:**
+1. Why are `itemsOn` and `placeBlocks` plain functions instead of code inside the views?
+2. Walk through `placeBlocks` for blocks 9:00–11:00, 10:00–10:30 and 10:30–11:40: which column does each get, and why?
+3. Why does every save refresh the calendar, instead of each mutation updating the calendar's cache?
+4. Why does the Week view give each wordless block an accessibility label?

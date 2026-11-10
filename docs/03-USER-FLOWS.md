@@ -98,7 +98,7 @@ flowchart TD
 | 10 | Habit list | `(tabs)/habits` | MVP | empty, all checked |
 | 11 | Habit detail | `habit/[id]` (from the habit card on Habits) | MVP | streak, Consistency / Total days / Best streak, this month, Mark done today |
 | 12 | Habit form | `(modals)/habit-form` | MVP | frequency pickers |
-| 13 | Calendar | `calendar` (pushed from Habits) | MVP | day / week / month segments |
+| 13 | Calendar | `calendar` (pushed from Habits), `event-form` | MVP | day / week / month segments. *Built 2026-11-10:* opened only from the calendar button on the **Habits header**. One chosen day is shared by the views (pick a day in Month, Day shows it; a day in Week opens it in Day). Day and Week have **+** (New event on the chosen day); Month has the month arrows. Tasks open the task sheet, habits their detail, events the **Event sheet** (title, day, starts / ends or all day, repeat and stop repeating, colour, place, notes; delete asks first) |
 | 14 | Event form | `(modals)/event-form` | MVP | recurrence picker |
 | 15 | Goals list / detail / form | `goals.tsx`, `goal/[id].tsx`, `goal-form.tsx`, `milestone-form.tsx` | MVP | progress, milestones. *Built 2026-11-09:* opened from a target button on the **Tasks header** (your choice, the same day: sections aren't buried in Settings, and each screen has one way in; the design's Settings tiles were removed). Calendar opens only from the Habits header; Ask Lio from the Lio page (`coming-soon` until v2); Insights and History move to Today's "This week" when Today is built |
 | 16 | More | `(tabs)/more` | MVP | menu |

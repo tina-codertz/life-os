@@ -1,4 +1,4 @@
-import { QueryClient } from '@tanstack/react-query';
+import { MutationCache, QueryClient } from '@tanstack/react-query';
 import { isApiError } from './api-error';
 
 const MINUTE = 60_000;
@@ -12,10 +12,18 @@ export function shouldRetry(failureCount: number, error: unknown): boolean {
   return error.status === 0 || error.status === 408 || error.status >= 500;
 }
 
+// The Calendar shows tasks, habits and events together, so any save may change it.
+export const CALENDAR_KEY = ['calendar'] as const;
+
 // One client per signed-in user (QueryProvider). Offline, queries *pause* instead of failing
 // (networkMode 'online', the default) and resume when the connection is back.
 export function createQueryClient(): QueryClient {
-  return new QueryClient({
+  const client: QueryClient = new QueryClient({
+    // After every save (whichever screen made it), the calendar is stale: refetched now if it's
+    // on screen, otherwise next time it is.
+    mutationCache: new MutationCache({
+      onSettled: () => client.invalidateQueries({ queryKey: CALENDAR_KEY }),
+    }),
     defaultOptions: {
       queries: {
         staleTime: 30_000, // refetch on use after 30 s, show cached data meanwhile
@@ -25,4 +33,5 @@ export function createQueryClient(): QueryClient {
       mutations: { retry: false },
     },
   });
+  return client;
 }
